@@ -1,0 +1,18 @@
+source https://api.nuget.org/v3/index.json
+storage: none
+
+group Server
+    source https://api.nuget.org/v3/index.json
+    storage: none
+
+    nuget FSharp.Core
+    nuget Microsoft.AspNetCore.Antiforgery
+    nuget Microsoft.AspNetCore.Authentication.Google
+    nuget Microsoft.AspNetCore.Server.Kestrel
+    nuget Microsoft.AspNetCore.SpaServices
+    nuget Microsoft.Extensions.Configuration.UserSecrets
+    nuget Saturn
+
+    clitool Microsoft.DotNet.Watcher.Tools
+    clitool Microsoft.Extensions.SecretManager.Tools
+    clitool dotnet-saturn
