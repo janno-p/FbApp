@@ -13,7 +13,7 @@ open Microsoft.Extensions.FileProviders
 open Saturn
 open System.IO
 
-let clientPath = Path.Combine("..", "Client") |> Path.GetFullPath
+let clientPath = Path.Combine("..", "Client", "dist", "spa-mat") |> Path.GetFullPath
 
 let apiRouter = scope {
     post "/tokeninfo" (Successful.OK "")

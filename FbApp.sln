@@ -12,9 +12,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{
 		paket.dependencies = paket.dependencies
 		paket.references = paket.references
 		.gitignore = .gitignore
+		README.md = README.md
+		global.json = global.json
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "build", "build.proj", "{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Client\Client.proj", "{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,7 +46,6 @@ Global
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29}.Release|x86.ActiveCfg = Release|x86
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29}.Release|x86.Build.0 = Release|x86
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x64.ActiveCfg = Debug|x64
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x64.Build.0 = Debug|x64
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x86.ActiveCfg = Debug|x86
@@ -53,9 +56,21 @@ Global
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x64.Build.0 = Release|x64
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x86.ActiveCfg = Release|x86
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x86.Build.0 = Release|x86
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Debug|x64.ActiveCfg = Debug|x64
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Debug|x64.Build.0 = Debug|x64
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Debug|x86.ActiveCfg = Debug|x86
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Debug|x86.Build.0 = Debug|x86
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Release|x64.ActiveCfg = Release|x64
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Release|x64.Build.0 = Release|x64
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Release|x86.ActiveCfg = Release|x86
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29} = {CAF751A1-1794-44EE-AD21-59AD4CFA4080}
 		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0} = {68F75DAC-3BD4-47F2-B680-63F72464AE9C}
+		{797DD99B-4A08-4DEC-BEDD-70DD6D9D0FD7} = {CAF751A1-1794-44EE-AD21-59AD4CFA4080}
 	EndGlobalSection
 EndGlobal
