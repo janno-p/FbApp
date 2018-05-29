@@ -8,4 +8,5 @@
     <Content Include="src\store\mutation-types.js" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -8,7 +8,10 @@ group Build
     storage: none
 
     nuget BouncyCastle
+    nuget Fake.Core.Environment
     nuget Fake.Core.Target
+nuget Fake.DotNet.Cli
+nuget Fake.JavaScript.Yarn
 
 group Server
     source https://api.nuget.org/v3/index.json

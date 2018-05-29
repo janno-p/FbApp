@@ -2,7 +2,10 @@
 #load "./.fake/build.fsx/intellisense.fsx"
 
 open Fake.Core
+open Fake.DotNet
+open Fake.IO
 open Fake.IO.FileSystemOperators
+open Fake.JavaScript
 open Org.BouncyCastle.Asn1.X509
 open Org.BouncyCastle.Crypto
 open Org.BouncyCastle.Crypto.Generators
@@ -24,7 +27,33 @@ let [<Literal>] SubjectName = "CN=localhost"
 let srcDir = __SOURCE_DIRECTORY__ </> "src"
 let certificatePath = srcDir </> (sprintf "%s.pfx" ApplicationName)
 
-Target.create "Default" ignore
+let clientPath = "./src/Client" |> Path.getFullName
+let serverPath = "./src/Server" |> Path.getFullName
+
+let dotnetCliVersion = DotNet.getSDKVersionFromGlobalJson()
+
+let install =
+    lazy DotNet.install (fun opt -> { opt with Version = DotNet.Version dotnetCliVersion })
+
+let inline withWorkingDir wd =
+    DotNet.Options.lift install.Value
+    >> DotNet.Options.withWorkingDirectory wd
+
+Target.create "Run" (fun _ ->
+    let client = async {
+        Yarn.exec "quasar dev" (fun o -> { o with WorkingDirectory = clientPath })
+    }
+    let server = async {
+        Environment.setEnvironVar "ASPNETCORE_ENVIRONMENT" "Development"
+        let result = DotNet.exec (withWorkingDir serverPath) "watch" "run"
+        if not result.OK then
+            failwithf "'watch run' failed with errors %A." result.Errors
+    }
+    [ client; server ]
+    |> Async.Parallel
+    |> Async.RunSynchronously
+    |> ignore
+)
 
 Target.create "GenerateCertificate" (fun _ ->
     let randomGenerator = CryptoApiRandomGenerator()
@@ -70,4 +99,4 @@ Target.create "GenerateCertificate" (fun _ ->
     File.WriteAllBytes(certificatePath, stream.ToArray())
 )
 
-Target.runOrDefault "Default"
+Target.runOrDefault "Run"
