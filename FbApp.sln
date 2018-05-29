@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
@@ -6,6 +6,15 @@ MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CAF751A1-1794-44EE-AD21-59AD4CFA4080}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Server", "src\Server\Server.fsproj", "{601C27EA-FE24-4B59-B26C-7C3132B1CF29}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{68F75DAC-3BD4-47F2-B680-63F72464AE9C}"
+	ProjectSection(SolutionItems) = preProject
+		paket.dependencies = paket.dependencies
+		paket.references = paket.references
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "build", "build.proj", "{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,8 +41,21 @@ Global
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29}.Release|x64.Build.0 = Release|x64
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29}.Release|x86.ActiveCfg = Release|x86
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29}.Release|x86.Build.0 = Release|x86
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x64.ActiveCfg = Debug|x64
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x64.Build.0 = Debug|x64
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x86.ActiveCfg = Debug|x86
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Debug|x86.Build.0 = Debug|x86
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x64.ActiveCfg = Release|x64
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x64.Build.0 = Release|x64
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x86.ActiveCfg = Release|x86
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{601C27EA-FE24-4B59-B26C-7C3132B1CF29} = {CAF751A1-1794-44EE-AD21-59AD4CFA4080}
+		{D982DD7C-0465-4308-98E1-0D14D6CFE3B0} = {68F75DAC-3BD4-47F2-B680-63F72464AE9C}
 	EndGlobalSection
 EndGlobal

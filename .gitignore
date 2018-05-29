@@ -1,4 +1,6 @@
-﻿/.paket/
+﻿/.idea/
+
+/.paket/
 !/.paket/paket.exe
 !/.paket/Paket.Restore.targets
 
@@ -6,3 +8,5 @@
 
 bin/
 obj/
+
+*.user
