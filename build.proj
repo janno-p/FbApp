@@ -5,6 +5,9 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <DefaultItemExcludes>**\*.*</DefaultItemExcludes>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="build.fsx" />
+  </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Import Project=".paket\Paket.Restore.targets" />
 </Project>

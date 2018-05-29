@@ -1,12 +1,13 @@
-﻿/.idea/
-
+﻿/.fake/
+/.idea/
 /.paket/
+/paket-files/
+
 !/.paket/paket.exe
 !/.paket/Paket.Restore.targets
-
-/paket-files/
 
 bin/
 obj/
 
+*.pfx
 *.user
