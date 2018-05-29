@@ -10,11 +10,10 @@ module.exports = function (ctx) {
             'app.styl'
         ],
         extras: [
-            ctx.theme.mat ? 'roboto-font' : null,
+            'roboto-font',
             'material-icons',
-            ctx.theme.ios ? 'ionicons' : null,
-            // 'mdi',
-            // 'fontawesome'
+            'mdi',
+            'fontawesome'
         ],
         supportIE: true,
         build: {
@@ -31,43 +30,55 @@ module.exports = function (ctx) {
                     loader: 'eslint-loader',
                     exclude: /(node_modules|quasar)/
                 })
+            },
+            env: {
+                API: JSON.stringify("/api")
             }
         },
         devServer: {
-            // https: true,
+            proxy: {
+                "/api": {
+                    target: "https://localhost:5001",
+                    changeOrigin: true,
+                    secure: false
+                }
+            },
+            https: true,
             // port: 8080,
             open: true // opens browser window automatically
         },
-        // framework: 'all' --- includes everything; for dev only!
-        framework: {
-            components: [
-                'QLayout',
-                'QLayoutHeader',
-                'QLayoutDrawer',
-                'QPageContainer',
-                'QPage',
-                'QToolbar',
-                'QToolbarTitle',
-                'QBtn',
-                'QIcon',
-                'QList',
-                'QListHeader',
-                'QItem',
-                'QItemMain',
-                'QItemSide'
+        framework: ctx.dev
+            ? 'all' // includes everything; for dev only!
+            : {
+                components: [
+                    'QLayout',
+                    'QLayoutHeader',
+                    'QLayoutDrawer',
+                    'QPageContainer',
+                    'QPage',
+                    'QToolbar',
+                    'QToolbarTitle',
+                    'QBtn',
+                    'QIcon',
+                    'QList',
+                    'QListHeader',
+                    'QItem',
+                    'QItemMain',
+                    'QItemSide'
+                ],
+                directives: [
+                    'Ripple'
+                ],
+                // Quasar plugins
+                plugins: [
+                    'Notify'
+                ],
+                iconSet: ctx.theme.mat ? 'material-icons' : 'ionicons'
+            },
+        animations: ctx.dev
+            ? 'all' // includes all animations
+            : [
             ],
-            directives: [
-                'Ripple'
-            ],
-            // Quasar plugins
-            plugins: [
-                'Notify'
-            ],
-            iconSet: ctx.theme.mat ? 'material-icons' : 'ionicons'
-        },
-        // animations: 'all' --- includes all animations
-        animations: [
-        ],
         pwa: {
             // workboxPluginMode: 'InjectManifest',
             // workboxOptions: {},
@@ -135,4 +146,4 @@ module.exports = function (ctx) {
             }
         }
     }
-}
+};
