@@ -64,6 +64,11 @@ const store = new Vuex.Store({
             state.imageUrl = payload ? payload.picture : ""
             state.name = payload ? payload.name : ""
             state.roles = payload ? payload.roles : []
+            if (payload) {
+                localStorage.setItem("XSRF-TOKEN", payload.xsrfToken)
+            } else {
+                localStorage.removeItem("XSRF-TOKEN")
+            }
         }
     },
 

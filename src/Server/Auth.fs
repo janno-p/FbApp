@@ -7,6 +7,7 @@ open FbApp.Server.Common
 open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
 open Giraffe.Serialization
+open Microsoft.AspNetCore.Antiforgery
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Http
@@ -20,6 +21,7 @@ type User =
         Name: string
         Picture: string
         Roles: string[]
+        XsrfToken: string
     }
 
 [<CLIMutable>]
@@ -46,20 +48,42 @@ type TokenInfo =
         Locale: string
     }
 
-let createUser (claimsPrincipal: ClaimsPrincipal) =
+let createUser (claimsPrincipal: ClaimsPrincipal) (context: HttpContext) =
     {
         Email = claimsPrincipal.FindFirst(ClaimTypes.Email).Value
         Name = claimsPrincipal.FindFirst(ClaimTypes.Name).Value
         Picture = claimsPrincipal.FindFirst("Picture").Value
         Roles = claimsPrincipal.FindAll(ClaimTypes.Role) |> Seq.map (fun x -> x.Value) |> Seq.toArray
+        XsrfToken = XsrfToken.create context
     }
+
+let notLoggedIn =
+    RequestErrors.FORBIDDEN "You must be logged in"
+
+let resetXsrfToken: HttpHandler =
+    (fun next context ->
+        task {
+            XsrfToken.refresh context
+            return! next context
+        })
+
+let validateXsrfToken: HttpHandler =
+    (fun next context ->
+        task {
+            let antiforgery = context.GetService<IAntiforgery>()
+            try
+                do! antiforgery.ValidateRequestAsync(context)
+                return! next context
+            with e ->
+                return! RequestErrors.FORBIDDEN e.Message next context
+        })
 
 let tokenInfo: HttpHandler =
     (fun (next: HttpFunc) (context: HttpContext) ->
         task {
             let handler =
                 if context.User.Identity.IsAuthenticated then
-                    Successful.OK (context.User |> createUser)
+                    Successful.OK (createUser context.User context)
                 else Successful.OK None
             return! handler next context
         })
@@ -83,8 +107,8 @@ let tokenSignIn: HttpHandler =
                 ]
                 let claimsIdentity = ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)
                 let claimsPrincipal = ClaimsPrincipal(claimsIdentity)
-                let user = createUser claimsPrincipal
                 do! context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal)
+                let user = createUser claimsPrincipal context
                 return! Successful.OK user next context
             else
                 return! RequestErrors.BAD_REQUEST "Token validation failed!" next context
@@ -93,13 +117,10 @@ let tokenSignIn: HttpHandler =
 let tokenSignOut: HttpHandler =
     signOut CookieAuthenticationDefaults.AuthenticationScheme >=> Successful.OK ()
 
-let notLoggedIn =
-    RequestErrors.FORBIDDEN "You must be logged in"
-
 let authScope = scope {
     post "/info" tokenInfo
     post "/signin" tokenSignIn
-    post "/signout" tokenSignOut
+    post "/signout" (resetXsrfToken >=> tokenSignOut)
 }
 
 let authPipe = pipeline {

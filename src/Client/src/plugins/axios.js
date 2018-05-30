@@ -24,6 +24,16 @@ $axios.interceptors.response.use(
     }
 )
 
+$axios.interceptors.request.use(
+    (config) => {
+        const xsrfToken = localStorage.getItem("XSRF-TOKEN")
+        if (xsrfToken) {
+            config.headers["X-XSRF-TOKEN"] = xsrfToken
+        }
+        return config
+    }
+)
+
 export default ({ Vue }) => {
     Vue.prototype.$axios = $axios
 }

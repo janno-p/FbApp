@@ -8,11 +8,13 @@ module XsrfToken =
 
     let [<Literal>] CookieName = "XSRF-TOKEN"
 
-    let refresh (context: HttpContext) =
+    let create (context: HttpContext) =
         let antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>()
         let tokens = antiforgery.GetAndStoreTokens(context)
-        context.Response.Cookies.Delete(CookieName)
-        context.Response.Cookies.Append(CookieName, tokens.RequestToken, CookieOptions(HttpOnly = true))
+        tokens.RequestToken
+
+    let refresh (context: HttpContext) =
+        context |> create |> ignore
 
 module HttpsConfig =
     open System.Net

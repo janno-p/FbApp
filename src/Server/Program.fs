@@ -24,6 +24,7 @@ let mainRouter = scope {
 
     forward "/api" (scope {
         pipe_through Auth.authPipe
+        pipe_through Auth.validateXsrfToken
     })
 }
 
@@ -37,6 +38,7 @@ let endpoints = [
 ]
 
 let configureServices (context: WebHostBuilderContext) (services: IServiceCollection) =
+    services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
 

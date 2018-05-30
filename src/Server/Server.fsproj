@@ -6,8 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Common.fs" />
-    <Compile Include="Auth.fs" />
     <Compile Include="HttpExtensions.fs" />
+    <Compile Include="Auth.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
