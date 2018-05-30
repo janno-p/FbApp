@@ -17,21 +17,14 @@ open System.IO
 
 let clientPath = Path.Combine("..", "Client", "dist", "spa-mat") |> Path.GetFullPath
 
-let notLoggedIn = RequestErrors.FORBIDDEN "You must be logged in"
-
-let authPipe = pipeline {
-    requires_authentication notLoggedIn
-}
-
-let apiRouter = scope {
-    post "/tokeninfo" Auth.tokenInfo
-    post "/tokensignin" Auth.tokenSignIn
-    post "/tokensignout" Auth.tokenSignOut
-}
-
 let mainRouter = scope {
     get "/" (Path.Combine(clientPath, "index.html") |> ResponseWriters.htmlFile)
-    forward "/api" apiRouter
+
+    forward "/api/auth" Auth.authScope
+
+    forward "/api" (scope {
+        pipe_through Auth.authPipe
+    })
 }
 
 let endpoints = [

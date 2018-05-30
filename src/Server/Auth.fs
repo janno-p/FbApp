@@ -12,6 +12,7 @@ open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Options
 open Newtonsoft.Json
+open Saturn
 
 type User =
     {
@@ -91,3 +92,16 @@ let tokenSignIn: HttpHandler =
 
 let tokenSignOut: HttpHandler =
     signOut CookieAuthenticationDefaults.AuthenticationScheme >=> Successful.OK ()
+
+let notLoggedIn =
+    RequestErrors.FORBIDDEN "You must be logged in"
+
+let authScope = scope {
+    post "/info" tokenInfo
+    post "/signin" tokenSignIn
+    post "/signout" tokenSignOut
+}
+
+let authPipe = pipeline {
+    requires_authentication notLoggedIn
+}

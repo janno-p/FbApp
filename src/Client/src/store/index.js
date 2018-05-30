@@ -10,7 +10,7 @@ const store = new Vuex.Store({
     actions: {
         async authenticate (context) {
             try {
-                const response = await this._vm.$axios.post("/tokeninfo", {})
+                const response = await this._vm.$axios.post("/auth/info", {})
                 context.commit(SET_USER, response.data)
                 context.commit(SET_GOOGLE_READY, { isReady: true })
             } catch (e) {
@@ -22,7 +22,7 @@ const store = new Vuex.Store({
             try {
                 const auth = window.gapi.auth2.getAuthInstance()
                 const googleUser = await auth.signIn()
-                const response = await this._vm.$axios.post("/tokensignin", {
+                const response = await this._vm.$axios.post("/auth/signin", {
                     idToken: googleUser.getAuthResponse().id_token
                 })
                 context.commit(SET_USER, response.data)
@@ -35,7 +35,7 @@ const store = new Vuex.Store({
             try {
                 const auth = window.gapi.auth2.getAuthInstance()
                 auth.disconnect()
-                await this._vm.$axios.post("/tokensignout", {})
+                await this._vm.$axios.post("/auth/signout", {})
                 context.commit(SET_USER, null)
             } catch (e) {
                 console.error(e)
