@@ -23,7 +23,7 @@ const store = new Vuex.Store({
                 const auth = window.gapi.auth2.getAuthInstance()
                 const googleUser = await auth.signIn()
                 const response = await this._vm.$axios.post("/tokensignin", {
-                    id_token: googleUser.getAuthResponse().id_token
+                    idToken: googleUser.getAuthResponse().id_token
                 })
                 context.commit(SET_USER, response.data)
             } catch (e) {
@@ -45,7 +45,7 @@ const store = new Vuex.Store({
 
     getters: {
         hasDashboard (state) {
-            return state.claims.includes("use-dashboard")
+            return state.roles.includes("Administrator")
         }
     },
 
@@ -59,11 +59,11 @@ const store = new Vuex.Store({
         },
 
         [SET_USER] (state, payload) {
-            state.isSignedIn = payload ? payload.isSignedIn : false
+            state.isSignedIn = !!payload
             state.email = payload ? payload.email : ""
             state.imageUrl = payload ? payload.picture : ""
             state.name = payload ? payload.name : ""
-            state.claims = payload ? payload.claims : []
+            state.roles = payload ? payload.roles : []
         }
     },
 
@@ -73,7 +73,7 @@ const store = new Vuex.Store({
         name: "",
         imageUrl: "",
         email: "",
-        claims: []
+        roles: []
     }
 })
 

@@ -1,5 +1,7 @@
 ﻿module FbApp.Server.Program
 
+open FbApp.Server
+open FbApp.Server.Common
 open FbApp.Server.HttpsConfig
 open Giraffe
 open Giraffe.HttpStatusCodeHandlers
@@ -15,10 +17,16 @@ open System.IO
 
 let clientPath = Path.Combine("..", "Client", "dist", "spa-mat") |> Path.GetFullPath
 
+let notLoggedIn = RequestErrors.FORBIDDEN "You must be logged in"
+
+let authPipe = pipeline {
+    requires_authentication notLoggedIn
+}
+
 let apiRouter = scope {
-    post "/tokeninfo" (Successful.OK "")
-    post "/tokensignin" (Successful.OK "")
-    post "/tokensignout" (Successful.OK "")
+    post "/tokeninfo" Auth.tokenInfo
+    post "/tokensignin" Auth.tokenSignIn
+    post "/tokensignout" Auth.tokenSignOut
 }
 
 let mainRouter = scope {
@@ -36,7 +44,8 @@ let endpoints = [
 ]
 
 let configureServices (context: WebHostBuilderContext) (services: IServiceCollection) =
-    ()
+    services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
+    services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
 
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)
@@ -49,6 +58,8 @@ let app = application {
     router mainRouter
     memory_cache
     use_gzip
+
+    use_cookies_authentication "jnx.era.ee"
 
     app_config (fun app ->
         app.UseStaticFiles(

@@ -2,6 +2,7 @@
 #load "./.fake/build.fsx/intellisense.fsx"
 
 open Fake.Core
+open Fake.Core.TargetOperators
 open Fake.DotNet
 open Fake.IO
 open Fake.IO.FileSystemOperators
@@ -98,5 +99,8 @@ Target.create "GenerateCertificate" (fun _ ->
     stream.Position <- 0L
     File.WriteAllBytes(certificatePath, stream.ToArray())
 )
+
+"GenerateCertificate"
+    =?> ("Run", not (File.exists certificatePath))
 
 Target.runOrDefault "Run"

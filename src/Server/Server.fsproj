@@ -2,8 +2,11 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
+    <!--<UserSecretsId>d6072641-6e1a-4bbc-bbb6-d355f0e38db4</UserSecretsId>-->
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Common.fs" />
+    <Compile Include="Auth.fs" />
     <Compile Include="HttpExtensions.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -11,6 +14,7 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="appsettings.Development.json" />
     <Content Include="appsettings.json" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

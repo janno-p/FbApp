@@ -17,7 +17,7 @@
                     <q-btn v-if="hasDashboard" flat dense round title="Ava kontrollpaneel" @click="$router.push('/dashboard')">
                         <q-icon name="mdi-settings" />
                     </q-btn>
-                    <q-btn flat dense round @click="googleSignOut" title="Logi välja">
+                    <q-btn flat dense round @click="signOut" title="Logi välja">
                         <q-icon name="mdi-logout" />
                     </q-btn>
                 </template>
@@ -54,7 +54,11 @@ export default {
         ...mapActions([
             "googleSignIn",
             "googleSignOut"
-        ])
+        ]),
+        async signOut () {
+            await this.googleSignOut()
+            this.$router.push("/")
+        }
     }
 }
 </script>
