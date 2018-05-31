@@ -890,8 +890,8 @@ acorn@^3.0.4:
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-3.3.0.tgz#45e37fb39e8da3f25baee3ff5369e2bb5f22017a"
 
 acorn@^5.0.0, acorn@^5.3.0, acorn@^5.5.0:
-  version "5.5.3"
-  resolved "https://registry.yarnpkg.com/acorn/-/acorn-5.5.3.tgz#f473dd47e0277a08e28e9bec5aeeb04751f0b8c9"
+  version "5.6.0"
+  resolved "https://registry.yarnpkg.com/acorn/-/acorn-5.6.0.tgz#572bedb377a1c61b7a289e72b8c5cfeb7baaf0bf"
 
 ajv-keywords@^2.1.0:
   version "2.1.1"
@@ -1414,12 +1414,12 @@ caniuse-api@^1.5.2:
     lodash.uniq "^4.5.0"
 
 caniuse-db@^1.0.30000529, caniuse-db@^1.0.30000634, caniuse-db@^1.0.30000639:
-  version "1.0.30000846"
-  resolved "https://registry.yarnpkg.com/caniuse-db/-/caniuse-db-1.0.30000846.tgz#d9c86f914738db4da098eeded997413c44561bd2"
+  version "1.0.30000847"
+  resolved "https://registry.yarnpkg.com/caniuse-db/-/caniuse-db-1.0.30000847.tgz#ff4072a5468809fec0ae9ac3b4035ef891e5b144"
 
 caniuse-lite@^1.0.30000844:
-  version "1.0.30000846"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30000846.tgz#2092911eecad71a89dae1faa62bcc202fde7f959"
+  version "1.0.30000847"
+  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30000847.tgz#be77f439be29bbc57ae08004b1e470b653b1ec1d"
 
 chalk@2.4.1, chalk@^2.0.0, chalk@^2.0.1, chalk@^2.1.0, chalk@^2.3.0, chalk@^2.4.1:
   version "2.4.1"
@@ -4916,8 +4916,8 @@ preserve@^0.2.0:
   resolved "https://registry.yarnpkg.com/preserve/-/preserve-0.2.0.tgz#815ed1f6ebc65926f865b310c0713bcb3315ce4b"
 
 prettier@^1.13.0:
-  version "1.13.2"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.13.2.tgz#412b87bc561cb11074d2877a33a38f78c2303cda"
+  version "1.13.3"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.13.3.tgz#e74c09a7df6519d472ca6febaa37cf7addb48a20"
 
 pretty-bytes@^4.0.2:
   version "4.0.2"
@@ -5022,9 +5022,9 @@ qs@6.5.1:
   version "6.5.1"
   resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.1.tgz#349cdf6eef89ec45c12d7d5eb3fc0c870343a6d8"
 
-quasar-cli@^0.16.3:
-  version "0.16.3"
-  resolved "https://registry.yarnpkg.com/quasar-cli/-/quasar-cli-0.16.3.tgz#6e086903ec64342b443eb025c955655e23aa8688"
+quasar-cli@^0.16.4:
+  version "0.16.4"
+  resolved "https://registry.yarnpkg.com/quasar-cli/-/quasar-cli-0.16.4.tgz#43fb97b405ec5410a8f928e3802ba7c6ad7a9a70"
   dependencies:
     "@babel/core" "7.0.0-beta.49"
     "@babel/plugin-transform-runtime" "7.0.0-beta.49"

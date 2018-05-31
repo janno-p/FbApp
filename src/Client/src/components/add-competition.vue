@@ -1,0 +1,92 @@
+<template>
+    <q-modal v-model="isOpen" no-backdrop-dismiss :content-css="{ minWidth: '500px', minHeight: '340px' }">
+        <q-modal-layout>
+            <q-toolbar slot="header">
+                <q-toolbar-title>Võistluse lisamine</q-toolbar-title>
+                <q-btn flat round dense @click="$emit('close')" icon="mdi-window-close" />
+            </q-toolbar>
+
+            <q-toolbar slot="footer" color="light">
+                <q-toolbar-title />
+                <q-btn label="Salvesta" color="positive" icon="mdi-check-outline" @click="saveCompetition" :loading="isSaving">
+                    <q-spinner-pie slot="loading" />
+                </q-btn>
+            </q-toolbar>
+
+            <div class="q-pa-md" v-if="!!competition">
+                <q-field icon="mdi-sign-text">
+                    <q-input float-label="Võistluse nimetus" v-model="competition.description" />
+                </q-field>
+                <q-field icon="mdi-calendar-text" class="q-mt-md">
+                    <q-select float-label="Võistluse hooaeg" v-model="competition.season" :options="seasonOptions" />
+                </q-field>
+                <q-field icon="mdi-import" class="q-mt-md">
+                    <q-spinner-puff v-if="isDataSourceLoading" color="primary" :size="30" />
+                    <q-select v-else float-label="Tulemuste sisendvoog" v-model="competition.dataSource" :options="dataSourceOptions" />
+                </q-field>
+            </div>
+        </q-modal-layout>
+    </q-modal>
+</template>
+
+<script>
+import _ from "lodash"
+
+function initCompetition () {
+    return {
+        description: "",
+        season: 2018,
+        dataSource: null
+    }
+}
+
+export default {
+    name: "AppAddCompetition",
+
+    data () {
+        const initialYear = new Date().getFullYear()
+        return {
+            competition: initCompetition(),
+            seasonOptions: _(_.range(initialYear, initialYear - 5, -1)).map((x) => ({ label: x.toString(), value: x })).value(),
+            dataSourceOptions: [],
+            isDataSourceLoading: false,
+            isSaving: false
+        }
+    },
+
+    methods: {
+        async loadCompetitionSources (year) {
+            this.isDataSourceLoading = true
+            this.competition.dataSource = null
+            this.$set(this, "dataSourceOptions", [])
+            if (year) {
+                const response = await this.$axios.get(`/dashboard/competition_sources/${year}`)
+                this.$set(this, "dataSourceOptions", response.data)
+            }
+            this.isDataSourceLoading = false
+        },
+
+        async saveCompetition () {
+            this.isSaving = true
+        }
+    },
+
+    props: {
+        isOpen: {
+            type: Boolean,
+            default: false
+        }
+    },
+
+    watch: {
+        async isOpen (value) {
+            this.$set(this, "competition", value ? initCompetition() : null)
+            await this.loadCompetitionSources(this.competition.season)
+        },
+
+        "competition.season" (value) {
+            return this.loadCompetitionSources(value)
+        }
+    }
+}
+</script>

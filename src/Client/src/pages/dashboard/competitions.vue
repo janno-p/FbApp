@@ -6,24 +6,17 @@
             </div>
         </q-table>
 
-        <q-modal v-model="isModalOpen" :content-css="{minWidth: '80vw', minHeight: '80vh'}" no-backdrop-dismiss>
-            <q-modal-layout content-class="q-pa-md">
-                <q-toolbar slot="header">
-                    <q-toolbar-title>Võistluse lisamine</q-toolbar-title>
-                    <q-btn flat round dense @click="isModalOpen = false" icon="mdi-window-close" />
-                </q-toolbar>
-
-                <div>
-                    <p>&lt; Võistluse lisamise vorm &gt;</p>
-                </div>
-            </q-modal-layout>
-        </q-modal>
+        <app-add-competition :is-open="isModalOpen" @close="isModalOpen = false" />
     </q-page>
 </template>
 
 <script>
+import AppAddCompetition from "../../components/add-competition"
+
 export default {
     name: "PageDashboardCompetitions",
+
+    components: {AppAddCompetition},
 
     data () {
         return {
@@ -44,7 +37,6 @@ export default {
     methods: {
         addCompetition () {
             this.isModalOpen = true
-            console.info("competition added ...")
         }
     }
 }

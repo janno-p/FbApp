@@ -17,6 +17,7 @@ group Server
     source https://api.nuget.org/v3/index.json
     storage: none
 
+nuget EventStore.ClientAPI.NetCore
     nuget FSharp.Core
     nuget Microsoft.AspNetCore.Antiforgery
     nuget Microsoft.AspNetCore.Authentication.Google

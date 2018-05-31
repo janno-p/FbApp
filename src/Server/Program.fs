@@ -25,6 +25,8 @@ let mainRouter = scope {
     forward "/api" (scope {
         pipe_through Auth.authPipe
         pipe_through Auth.validateXsrfToken
+
+        forward "/dashboard" Dashboard.dashboardScope
     })
 }
 
