@@ -10,8 +10,8 @@ group Build
     nuget BouncyCastle
     nuget Fake.Core.Environment
     nuget Fake.Core.Target
-nuget Fake.DotNet.Cli
-nuget Fake.JavaScript.Yarn
+    nuget Fake.DotNet.Cli
+    nuget Fake.JavaScript.Yarn
 
 group Server
     source https://api.nuget.org/v3/index.json
@@ -25,6 +25,4 @@ group Server
     nuget Microsoft.Extensions.Configuration.UserSecrets
     nuget Saturn
 
-    clitool Microsoft.DotNet.Watcher.Tools
-    clitool Microsoft.Extensions.SecretManager.Tools
     clitool dotnet-saturn

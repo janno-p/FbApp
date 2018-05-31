@@ -5,6 +5,19 @@
                 <q-btn color="positive" round icon="mdi-plus" @click="addCompetition" title="Lisa võistlus" />
             </div>
         </q-table>
+
+        <q-modal v-model="isModalOpen" :content-css="{minWidth: '80vw', minHeight: '80vh'}" no-backdrop-dismiss>
+            <q-modal-layout content-class="q-pa-md">
+                <q-toolbar slot="header">
+                    <q-toolbar-title>Võistluse lisamine</q-toolbar-title>
+                    <q-btn flat round dense @click="isModalOpen = false" icon="mdi-window-close" />
+                </q-toolbar>
+
+                <div>
+                    <p>&lt; Võistluse lisamise vorm &gt;</p>
+                </div>
+            </q-modal-layout>
+        </q-modal>
     </q-page>
 </template>
 
@@ -23,12 +36,14 @@ export default {
                     field: "name",
                     sortable: "true"
                 }
-            ]
+            ],
+            isModalOpen: false
         }
     },
 
     methods: {
         addCompetition () {
+            this.isModalOpen = true
             console.info("competition added ...")
         }
     }

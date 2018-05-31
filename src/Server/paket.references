@@ -5,7 +5,5 @@
     Microsoft.AspNetCore.Authentication.Google
     Microsoft.AspNetCore.Server.Kestrel
     Microsoft.AspNetCore.SpaServices
-    Microsoft.DotNet.Watcher.Tools
     Microsoft.Extensions.Configuration.UserSecrets
-    Microsoft.Extensions.SecretManager.Tools
     Saturn
