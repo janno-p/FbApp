@@ -5,6 +5,10 @@
     <!--<UserSecretsId>d6072641-6e1a-4bbc-bbb6-d355f0e38db4</UserSecretsId>-->
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Competition.fs" />
+    <Compile Include="Aggregate.fs" />
+    <Compile Include="Serialization.fs" />
+    <Compile Include="EventStore.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="HttpExtensions.fs" />
     <Compile Include="Auth.fs" />

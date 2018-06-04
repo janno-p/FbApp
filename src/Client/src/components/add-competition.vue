@@ -68,6 +68,13 @@ export default {
 
         async saveCompetition () {
             this.isSaving = true
+            const payload = {
+                description: this.competition.description,
+                externalSource: this.competition.dataSource
+            }
+            const response = await this.$axios.post("/dashboard/competition/add", payload)
+            payload.id = response.data
+            this.$emit("competition-added", payload)
         }
     },
 
@@ -80,12 +87,15 @@ export default {
 
     watch: {
         async isOpen (value) {
+            this.isSaving = false
             this.$set(this, "competition", value ? initCompetition() : null)
-            await this.loadCompetitionSources(this.competition.season)
+            if (value) {
+                await this.loadCompetitionSources(this.competition.season)
+            }
         },
 
         "competition.season" (value) {
-            return this.loadCompetitionSources(value)
+            return value ? this.loadCompetitionSources(value) : []
         }
     }
 }

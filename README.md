@@ -23,6 +23,7 @@ Playground application for trying out new technologies, libraries, frameworks, p
 Build and run application:
 
 ```
+dotnet tool install fake-cli -g --version 5.0.0-rc*
 dotnet restore FbApp.sln
 dotnet fake run build.fsx
 ```
