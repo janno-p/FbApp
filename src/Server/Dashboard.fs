@@ -12,6 +12,10 @@ open FbApp.Server
 open FbApp.Server
 open FbApp.Server
 open Giraffe
+open MongoDB.Bson
+open MongoDB.Bson.Serialization.Attributes
+open MongoDB.Driver
+open MongoDB.Driver
 open Newtonsoft.Json
 open Saturn
 open System
@@ -48,41 +52,42 @@ let connection =
 
 type CompetitionReadModel =
     {
-        Id: Guid
+        [<BsonId>] Id: Guid
         Description: string
         ExternalSource: int64
+        Version: int64
     }
 
-let competitions = System.Collections.Generic.Dictionary<Guid, CompetitionReadModel>()
+let mongo = MongoClient()
+let db = mongo.GetDatabase("fbapp")
+let competitions = db.GetCollection("competitions")
 
-let eventAppeared (x: EventStoreCatchUpSubscription) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     let md: EventStore.Metadata = Serialization.deserializeType e.Event.Metadata
     match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
     | Competition.Created args ->
-        competitions.Add(
-            md.AggregateId,
-            {
-                Id = md.AggregateId
-                Description = args.Description
-                ExternalSource = args.ExternalSource
-            }
-        )
+        try
+            let competitionModel =
+                {
+                    Id =  md.AggregateId
+                    Description = args.Description
+                    ExternalSource = args.ExternalSource
+                    Version = md.AggregateSequenceNumber
+                }
+            let! _ = competitions.InsertOneAsync(competitionModel)
+            ()
+        with
+            | :? MongoWriteException as e -> printfn "Already exists: %A" e
 }
 
-let liveProcessingStarted (_: EventStoreCatchUpSubscription) =
-    ()
+let t = task {
+    //connection.CreatePersistentSubscriptionAsync("$ce-Competition", "sync-competitions-read-model", PersistentSubscriptionSettings.Create().Build(), null)
+    //|> ignore
+    connection.ConnectToPersistentSubscription("$ce-Competition", "sync-competitions-read-model", eventAppeared)
+    |> ignore
+}
 
-let subscriptionDropped (_: EventStoreCatchUpSubscription) (_: SubscriptionDropReason) (_: exn)=
-    ()
-
-connection.SubscribeToStreamFrom("$ce-Competition", Nullable(), CatchUpSubscriptionSettings.Default, eventAppeared, liveProcessingStarted, subscriptionDropped)
-|> ignore
-
-(*
-let get =
-    let get = EventStore.makeReadModelGetter connection (fun data -> Serialization.deserializeType<CompetitionReadModel>(data))
-    fun (id: Guid) -> get (sprintf "CompetitionReadModel-%s" (id.ToString("N")))
-*)
+t.Wait()
 
 let handleCommand =
     Aggregate.makeHandler
@@ -115,7 +120,9 @@ let addCompetition: HttpHandler =
 let getCompetitions: HttpHandler =
     (fun next context ->
         task {
-            let competitions = competitions.Values |> Seq.sortBy (fun x -> x.Description) |> Seq.toList
+            let sort = Builders<CompetitionReadModel>.Sort.Ascending(FieldDefinition<CompetitionReadModel>.op_Implicit("Description"))
+            let! competitions = competitions.FindAsync((fun _ -> true), FindOptions<_>(Sort = sort))
+            let! competitions = competitions.ToListAsync()
             return! Successful.OK competitions next context
         })
 

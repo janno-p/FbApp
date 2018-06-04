@@ -8,3 +8,4 @@ Microsoft.AspNetCore.SpaServices
 Microsoft.Extensions.Configuration.UserSecrets
 Saturn
 EventStore.ClientAPI.NetCore
+MongoDB.Driver

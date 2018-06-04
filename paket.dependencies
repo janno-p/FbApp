@@ -24,6 +24,7 @@ nuget EventStore.ClientAPI.NetCore
     nuget Microsoft.AspNetCore.Server.Kestrel
     nuget Microsoft.AspNetCore.SpaServices
     nuget Microsoft.Extensions.Configuration.UserSecrets
+nuget MongoDB.Driver
     nuget Saturn
 
     clitool dotnet-saturn
