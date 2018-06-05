@@ -108,6 +108,7 @@ let tokenSignIn: HttpHandler =
                 let claimsIdentity = ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)
                 let claimsPrincipal = ClaimsPrincipal(claimsIdentity)
                 do! context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal)
+                context.User <- claimsPrincipal
                 let user = createUser claimsPrincipal context
                 return! Successful.OK user next context
             else

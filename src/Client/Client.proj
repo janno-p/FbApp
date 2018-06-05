@@ -5,6 +5,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="src\plugins\auth2.js" />
     <Content Include="src\store\mutation-types.js" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />

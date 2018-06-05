@@ -1,6 +1,6 @@
 <template>
     <q-page class="q-pa-lg">
-        <q-table title="Võistlused" :columns="columns" selection="single" :data="data" :loading="isDataLoading" row-key="id" :selected.sync="selected">
+        <q-table title="Võistlused" :columns="columns" selection="single" :data="data" :loading="isDataLoading" row-key="id" :selected.sync="selected" :pagination.sync="pagination" hide-bottom>
             <div slot="top-right" slot-scope="props">
                 <q-btn color="positive" round icon="mdi-plus" @click="addCompetition" title="Lisa võistlus" />
             </div>
@@ -33,7 +33,13 @@ export default {
             data: [],
             selected: [],
             isDataLoading: false,
-            isModalOpen: false
+            isModalOpen: false,
+            pagination: {
+                sortBy: null,
+                descending: false,
+                page: 1,
+                rowsPerPage: 0
+            }
         }
     },
 
