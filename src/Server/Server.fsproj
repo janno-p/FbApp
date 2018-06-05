@@ -11,6 +11,7 @@
     <Compile Include="EventStore.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="HttpExtensions.fs" />
+    <Compile Include="FootballData.fs" />
     <Compile Include="Auth.fs" />
     <Compile Include="Dashboard.fs" />
     <Compile Include="Program.fs" />

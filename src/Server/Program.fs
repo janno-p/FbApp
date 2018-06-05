@@ -1,6 +1,7 @@
 ﻿module FbApp.Server.Program
 
 open FbApp.Server
+open FbApp.Server
 open FbApp.Server.Common
 open FbApp.Server.HttpsConfig
 open Giraffe
@@ -43,6 +44,7 @@ let configureServices (context: WebHostBuilderContext) (services: IServiceCollec
     services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
+    FootballData.footballDataToken <- context.Configuration.["Authentication:FootballDataToken"]
 
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)

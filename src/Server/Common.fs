@@ -9,6 +9,7 @@ let notAuthorized: HttpHandler =
 type AuthOptions =
     {
         AdminEmails: string[]
+        FootballDataToken: string
     }
 
 [<CLIMutable>]

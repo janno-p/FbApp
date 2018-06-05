@@ -16,7 +16,7 @@ module private Converters =
         override __.CanConvert (typ) =
             typ.IsGenericType && typ.GetGenericTypeDefinition() = typedefof<list<_>>
         override __.WriteJson (writer, value, serializer) =
-            let list = unbox<obj seq> value
+            let list = value :?> System.Collections.IEnumerable |> Seq.cast
             serializer.Serialize(writer, list)
         override __.ReadJson (reader, typ, _, serializer) =
             let itemType = typ.GetGenericArguments().[0]

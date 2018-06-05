@@ -91,13 +91,13 @@ let makeRepository (connection: IEventStoreConnection)
             )
 
         let expectedVersion =
-            match expectedVersion with 0L -> ExpectedVersion.NoStream | v -> v
+            match expectedVersion with 0L -> ExpectedVersion.NoStream | v -> v - 1L
 
         use! transaction = connection.StartTransactionAsync(streamId, expectedVersion)
         do! transaction.WriteAsync(eventDatas)
         let! writeResult = transaction.CommitAsync()
 
-        return ()
+        return writeResult.NextExpectedVersion + 1L
     }
 
     (load, commit)
