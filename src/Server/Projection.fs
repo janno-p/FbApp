@@ -3,6 +3,7 @@ module FbApp.Server.Projection
 open EventStore.ClientAPI
 open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
+open Microsoft.Extensions.Logging
 open MongoDB.Bson.Serialization.Attributes
 open MongoDB.Driver
 open System
@@ -41,10 +42,10 @@ let competitions = db.GetCollection("competitions")
 let competitionIdFilter (id, ver) =
     Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
-let eventAppeared (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
-        if e.Event |> isNotNull && not (e.Event.EventStreamId.StartsWith("$$")) then
-            let md: EventStore.Metadata = Serialization.deserializeType e.Event.Metadata
+        match EventStore.getMetadata e with
+        | Some(md) when md.AggregateName = "Competition" ->
             match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
             | Competition.Created args ->
                 try
@@ -60,7 +61,8 @@ let eventAppeared (subscription: EventStorePersistentSubscriptionBase) (e: Resol
                     let! _ = competitions.InsertOneAsync(competitionModel)
                     ()
                 with
-                    | :? MongoWriteException as e -> printfn "Already exists: %A" e
+                    | :? MongoWriteException as ex ->
+                        log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
             | Competition.TeamsAssigned teams ->
                 let teamProjections =
@@ -93,10 +95,14 @@ let eventAppeared (subscription: EventStorePersistentSubscriptionBase) (e: Resol
                             .Set((fun x -> x.Fixtures), fixtureProjections)
                 let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
                 ()
+        | _ -> ()
     with ex ->
-        printfn "Error in projections (%s): %A" e.Event.EventStreamId ex
+        log.LogError(ex, "Projection error of event {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
         raise ex
 }
 
-let connectSubscription (connection: IEventStoreConnection) =
-    connection.ConnectToPersistentSubscription("$ce-Competition", "projections", eventAppeared) |> ignore
+type private X = class end
+
+let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
+    let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
+    connection.ConnectToPersistentSubscription("$ce-Competition", "projections", (eventAppeared log)) |> ignore

@@ -1,28 +1,33 @@
 module FbApp.Server.ProcessManager
 
 open EventStore.ClientAPI
+open EventStore.ClientAPI.Exceptions
 open Giraffe
+open Microsoft.Extensions.Logging
 
-let eventAppeared (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
-        let md: EventStore.Metadata = Serialization.deserializeType e.Event.Metadata
-        match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
-        | Competition.Created args ->
-            let! teams = FootballData.loadCompetitionTeams args.ExternalSource
-            let teamsCommand = Competition.Command.AssignTeams (teams |> List.ofArray)
-            let! version = Aggregate.Handlers.competitionHandler (md.AggregateId, md.AggregateSequenceNumber) teamsCommand
-            match version with
-            | Ok(v) ->
-                let! fixtures = FootballData.loadCompetitionFixtures args.ExternalSource
-                let fixturesCommand = Competition.Command.AssignFixtures (fixtures |> List.ofArray)
-                let! _ = Aggregate.Handlers.competitionHandler (md.AggregateId, v) fixturesCommand
-                ()
+        match EventStore.getMetadata e with
+        | Some(md) when md.AggregateName = "Competition" ->
+            match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
+            | Competition.Created args ->
+                try
+                    let! teams = FootballData.loadCompetitionTeams args.ExternalSource
+                    let! fixtures = FootballData.loadCompetitionFixtures args.ExternalSource
+                    let command = Competition.Command.AssignTeamsAndFixtures (teams |> List.ofArray, fixtures |> List.ofArray)
+                    let! _ = Aggregate.Handlers.competitionHandler (md.AggregateId, md.AggregateSequenceNumber) command
+                    ()
+                with :? WrongExpectedVersionException as ex ->
+                    log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
             | _ -> ()
         | _ -> ()
-    with e ->
-        printfn "Error fixtures: %A" e
-        raise e
+    with ex ->
+        log.LogError(ex, "Process manager error with event {0} {1}.", e.OriginalStreamId, e.OriginalEventNumber)
+        raise ex
 }
 
-let connectSubscription (connection: IEventStoreConnection) =
-    connection.ConnectToPersistentSubscription("$ce-Competition", "process-manager", eventAppeared) |> ignore
+type private X = class end
+
+let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
+    let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
+    connection.ConnectToPersistentSubscription("$ce-Competition", "process-manager", (eventAppeared log)) |> ignore

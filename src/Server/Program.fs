@@ -19,6 +19,7 @@ open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Configuration.UserSecrets
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.FileProviders
+open Microsoft.Extensions.Logging
 open Saturn
 open System.IO
 
@@ -79,8 +80,10 @@ let app = application {
             )
         ) |> ignore
 
-        Projection.connectSubscription EventStore.connection
-        ProcessManager.connectSubscription EventStore.connection
+        let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
+
+        Projection.connectSubscription EventStore.connection loggerFactory
+        ProcessManager.connectSubscription EventStore.connection loggerFactory
 
         app
     )

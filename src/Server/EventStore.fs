@@ -117,3 +117,12 @@ let makeReadModelGetter (connection: IEventStoreConnection)
     }
 
 let connection = connect().Result
+
+let getMetadata (e: ResolvedEvent) : Metadata option =
+    e.Event
+    |> Option.ofObj
+    |> Option.bind (fun x ->
+        match e.Event.Metadata with
+        | null | [||] -> None
+        | arr -> Some(Serialization.deserializeType arr)
+    )

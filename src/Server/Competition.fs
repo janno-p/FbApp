@@ -32,8 +32,7 @@ type FixtureAssignment =
 
 type Command =
     | Create of string * int64
-    | AssignTeams of TeamAssignment list
-    | AssignFixtures of FixtureAssignment list
+    | AssignTeamsAndFixtures of TeamAssignment list * FixtureAssignment list
 
 type Event =
     | Created of Created
@@ -44,10 +43,8 @@ let decide: State -> Command -> Result<Event list,unit> =
     (fun state -> function
         | Create (description, externalSource) ->
             Ok([Created { Description = description; ExternalSource = externalSource }])
-        | AssignTeams teams ->
-            Ok([TeamsAssigned teams])
-        | AssignFixtures fixtures ->
-            Ok([FixturesAssigned fixtures])
+        | AssignTeamsAndFixtures (teams, fixtures) ->
+            Ok([TeamsAssigned teams; FixturesAssigned fixtures])
     )
 
 let evolve: State -> Event -> State =
