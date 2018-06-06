@@ -69,7 +69,10 @@ let makeRepository (connection: IEventStoreConnection)
             if not slice.IsEndOfStream then return! readNextPage pages else return pages
         }
         let! events = readNextPage []
-        return events |> List.rev |> Seq.concat |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data))
+        let events = events |> List.rev |> Seq.concat
+        let domainEvents = events |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data))
+        let version = events |> Seq.map (fun e -> e.Event.EventNumber) |> Seq.max
+        return (version, domainEvents)
     }
 
     let commit (id, expectedVersion) (events: 'Event list) = task {
@@ -122,7 +125,7 @@ let getMetadata (e: ResolvedEvent) : Metadata option =
     e.Event
     |> Option.ofObj
     |> Option.bind (fun x ->
-        match e.Event.Metadata with
+        match x.Metadata with
         | null | [||] -> None
         | arr -> Some(Serialization.deserializeType arr)
     )

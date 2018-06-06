@@ -1,29 +1,13 @@
 module FbApp.Server.Dashboard
 
 open EventStore.ClientAPI
-open EventStore.ClientAPI
-open EventStore.ClientAPI
-open FSharp.Control.Tasks
-open FSharp.Control.Tasks
 open FbApp.Server.Common
-open FSharp.Control.Tasks.ContextInsensitive
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
 open FbApp.Server
 open FbApp.Server.Projection
 open Giraffe
-open Microsoft.Extensions.DependencyInjection
-open MongoDB.Bson
-open MongoDB.Bson.Serialization.Attributes
 open MongoDB.Driver
-open MongoDB.Driver
-open Newtonsoft.Json
 open Saturn
 open System
-open System.Net.Http
-open System.Threading.Tasks
 
 type CompetitionItem =
     {
@@ -54,7 +38,7 @@ let addCompetition: HttpHandler =
             let! dto = context.BindJsonAsync<CompetitionDto>()
             let command = Competition.Create(dto.Description, dto.ExternalSource)
             let id = Guid.NewGuid()
-            let! result = Aggregate.Handlers.competitionHandler (id, 0L) command
+            let! result = Aggregate.Handlers.competitionHandler (id, Some(0L)) command
             match result with
             | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
             | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context

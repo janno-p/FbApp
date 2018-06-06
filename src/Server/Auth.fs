@@ -1,12 +1,10 @@
 module FbApp.Server.Auth
 
-open System.Net
 open System.Net.Http
 open System.Security.Claims
 open FbApp.Server.Common
 open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
-open Giraffe.Serialization
 open Microsoft.AspNetCore.Antiforgery
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Cookies

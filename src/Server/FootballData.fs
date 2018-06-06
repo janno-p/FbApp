@@ -4,6 +4,7 @@ module FbApp.Server.FootballData
 open Giraffe
 open Newtonsoft.Json
 open System
+open System.Collections.Generic
 open System.Net.Http
 
 let mutable footballDataToken = ""
@@ -40,10 +41,34 @@ type CompetitionFixtureData =
     {
         [<JsonProperty("_links")>] Links: CompetitionFixtureLinks
         Date: DateTime
+        Matchday: int
     }
 
 [<CLIMutable>]
 type CompetitionFixturesData = { Fixtures: CompetitionFixtureData[] }
+
+[<CLIMutable>]
+type CompetitionLeagueItem =
+    {
+        Group: string
+        Rank: int
+        Team: string
+        TeamId: int64
+        PlayedGames: int
+        CrestUri: string
+        Points: int
+        Goals: int
+        GoalsAgainst: int
+        GoalDifference: int
+    }
+
+[<CLIMutable>]
+type CompetitionLeagueTable =
+    {
+        LeagueCaption: string
+        Matchday: int
+        Standings: IDictionary<string, CompetitionLeagueItem[]>
+    }
 
 [<CLIMutable>]
 type CompetitionData =
@@ -99,7 +124,7 @@ let loadCompetitionTeams (id: int64) = task {
 
 let loadCompetitionFixtures (id: int64) = task {
     let! fixtures = downloadData<CompetitionFixturesData> (sprintf "competitions/%d/fixtures" id)
-    return fixtures.Fixtures |> Array.map (fun x ->
+    return fixtures.Fixtures |> Array.filter (fun x -> x.Matchday < 4) |> Array.map (fun x ->
         let fixture: Competition.FixtureAssignment =
             {
                 HomeTeamId = parseLinkId x.Links.HomeTeam
@@ -109,4 +134,11 @@ let loadCompetitionFixtures (id: int64) = task {
             }
         fixture
     )
+}
+
+let loadCompetitionGroups (id: int64) = task {
+    let! leagueTable = downloadData<CompetitionLeagueTable> (sprintf "competitions/%d/leagueTable" id)
+    return leagueTable.Standings
+        |> Seq.map (fun kvp -> kvp.Key, kvp.Value |> Array.map (fun t -> t.TeamId))
+        |> Seq.toList
 }

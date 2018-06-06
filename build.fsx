@@ -17,7 +17,6 @@ open Org.BouncyCastle.Pkcs
 open Org.BouncyCastle.Security
 open Org.BouncyCastle.Utilities
 open Org.BouncyCastle.X509
-open System
 open System.IO
 
 let [<Literal>] ApplicationName = "FbApp"
@@ -62,7 +61,7 @@ Target.create "GenerateCertificate" (fun _ ->
 
     let certificateGenerator = X509V3CertificateGenerator()
 
-    let serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(Int64.MaxValue), random)
+    let serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(System.Int64.MaxValue), random)
     certificateGenerator.SetSerialNumber(serialNumber)
 
     let subjectDn = X509Name(SubjectName)
@@ -70,7 +69,7 @@ Target.create "GenerateCertificate" (fun _ ->
     certificateGenerator.SetIssuerDN(issuerDn)
     certificateGenerator.SetSubjectDN(subjectDn)
 
-    let notBefore = DateTime.UtcNow.Date
+    let notBefore = System.DateTime.UtcNow.Date
     let notAfter = notBefore.AddYears(2)
     certificateGenerator.SetNotBefore(notBefore)
     certificateGenerator.SetNotAfter(notAfter)
@@ -98,6 +97,10 @@ Target.create "GenerateCertificate" (fun _ ->
 
     stream.Position <- 0L
     File.WriteAllBytes(certificatePath, stream.ToArray())
+)
+
+Target.create "SetupEventStore" (fun _ ->
+    ()
 )
 
 "GenerateCertificate"

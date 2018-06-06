@@ -5,7 +5,7 @@ open EventStore.ClientAPI.Exceptions
 open Giraffe
 open Microsoft.Extensions.Logging
 
-let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger) (_: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match EventStore.getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
@@ -14,8 +14,9 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
                 try
                     let! teams = FootballData.loadCompetitionTeams args.ExternalSource
                     let! fixtures = FootballData.loadCompetitionFixtures args.ExternalSource
-                    let command = Competition.Command.AssignTeamsAndFixtures (teams |> List.ofArray, fixtures |> List.ofArray)
-                    let! _ = Aggregate.Handlers.competitionHandler (md.AggregateId, md.AggregateSequenceNumber) command
+                    let! groups = FootballData.loadCompetitionGroups args.ExternalSource
+                    let command = Competition.Command.AssignTeamsAndFixtures (teams |> List.ofArray, fixtures |> List.ofArray, groups)
+                    let! _ = Aggregate.Handlers.competitionHandler (md.AggregateId, Some(md.AggregateSequenceNumber)) command
                     ()
                 with :? WrongExpectedVersionException as ex ->
                     log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)

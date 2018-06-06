@@ -1,13 +1,12 @@
 source https://api.nuget.org/v3/index.json
 storage: none
 
-clitool dotnet-fake
-
 group Build
     source https://api.nuget.org/v3/index.json
     storage: none
 
     nuget BouncyCastle
+    nuget EventStore.ClientAPI.NetCore
     nuget Fake.Core.Environment
     nuget Fake.Core.Target
     nuget Fake.DotNet.Cli
@@ -17,14 +16,14 @@ group Server
     source https://api.nuget.org/v3/index.json
     storage: none
 
-nuget EventStore.ClientAPI.NetCore
+    nuget EventStore.ClientAPI.NetCore
     nuget FSharp.Core
     nuget Microsoft.AspNetCore.Antiforgery
     nuget Microsoft.AspNetCore.Authentication.Google
     nuget Microsoft.AspNetCore.Server.Kestrel
     nuget Microsoft.AspNetCore.SpaServices
     nuget Microsoft.Extensions.Configuration.UserSecrets
-nuget MongoDB.Driver
+    nuget MongoDB.Driver
     nuget Saturn
 
     clitool dotnet-saturn

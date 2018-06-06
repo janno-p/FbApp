@@ -39,7 +39,7 @@ module private Converters =
                 let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
                 fields.[0]
             serializer.Serialize(writer, value)
-        override __.ReadJson(reader, typ, existingValue, serializer) =
+        override __.ReadJson(reader, typ, _, serializer) =
             let innerType = typ.GetGenericArguments().[0]
             let innerType =
                 if innerType.IsValueType then typedefof<Nullable<_>>.MakeGenericType([|innerType|])
@@ -146,8 +146,7 @@ serializer.Converters.Add(Converters.UnionCaseNameConverter())
 let eventType o =
     let typ = o.GetType()
     if FSharpType.IsUnion(typ) || (typ.DeclaringType |> isNull && FSharpType.IsUnion(typ.DeclaringType)) then
-        let cases = FSharpType.GetUnionCases(typ)
-        let unionCase, _ = FSharpValue.GetUnionFields(o, typ)
+        let unionCase = FSharpValue.GetUnionFields(o, typ) |> fst
         unionCase.Name
     else typ.Name
 
@@ -160,7 +159,7 @@ let serialize o =
     let data = ms.ToArray()
     (eventType o, data)
 
-let deserialize (typ, eventType, data: byte array) =
+let deserialize (typ, _, data: byte array) =
     use ms = new MemoryStream(data)
     use reader = new JsonTextReader(new StreamReader(ms))
     serializer.Deserialize(reader, typ)

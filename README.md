@@ -33,14 +33,14 @@ Prepare build environment:
 
 ```
 .paket\paket.exe install
-dotnet tool install fake-cli -g --version 5.0.0-rc018*
-dotnet restore FbApp.sln
+dotnet tool install fake-cli -g
+dotnet restore
 ```
 
 Build and run application:
 
 ```
-dotnet fake run build.fsx
+fake run build.fsx
 ```
 
 The [site](http://localhost:8080) should automatically open in default browser.

@@ -1,17 +1,9 @@
 ﻿module FbApp.Server.Program
 
 open FbApp.Server
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
-open FbApp.Server
 open FbApp.Server.Common
 open FbApp.Server.HttpsConfig
 open Giraffe
-open Giraffe.HttpStatusCodeHandlers
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
@@ -29,6 +21,7 @@ let mainRouter = scope {
     get "/" (Path.Combine(clientPath, "index.html") |> ResponseWriters.htmlFile)
 
     forward "/api/auth" Auth.authScope
+    forward "/api/predict" Predict.predictScope
 
     forward "/api" (scope {
         pipe_through Auth.authPipe

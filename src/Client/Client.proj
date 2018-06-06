@@ -1,13 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project>
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
-  <ItemGroup>
-    <Content Include="src\plugins\auth2.js" />
-    <Content Include="src\store\mutation-types.js" />
-  </ItemGroup>
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

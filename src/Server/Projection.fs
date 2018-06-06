@@ -7,6 +7,7 @@ open Microsoft.Extensions.Logging
 open MongoDB.Bson.Serialization.Attributes
 open MongoDB.Driver
 open System
+open System.Collections.Generic
 
 module Projections =
     type Team =
@@ -32,6 +33,7 @@ module Projections =
             ExternalSource: int64
             Teams: Team[]
             Fixtures: Fixture[]
+            Groups: IDictionary<string, int64[]>
             Version: int64
         }
 
@@ -42,7 +44,7 @@ let competitions = db.GetCollection("competitions")
 let competitionIdFilter (id, ver) =
     Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
-let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger) (_: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match EventStore.getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
@@ -56,6 +58,7 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
                             ExternalSource = args.ExternalSource
                             Teams = [||]
                             Fixtures = [||]
+                            Groups = Dictionary<_,_>()
                             Version = md.AggregateSequenceNumber
                         }
                     let! _ = competitions.InsertOneAsync(competitionModel)
@@ -93,6 +96,14 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
                 let u = Builders<Projections.Competition>.Update
                             .Set((fun x -> x.Version), md.AggregateSequenceNumber)
                             .Set((fun x -> x.Fixtures), fixtureProjections)
+                let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
+                ()
+
+            | Competition.GroupsAssigned groups ->
+                let groupProjections = groups |> dict
+                let u = Builders<Projections.Competition>.Update
+                            .Set((fun x -> x.Version), md.AggregateSequenceNumber)
+                            .Set((fun x -> x.Groups), groupProjections)
                 let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
                 ()
         | _ -> ()
