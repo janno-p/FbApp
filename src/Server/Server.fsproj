@@ -8,10 +8,12 @@
     <Compile Include="Competition.fs" />
     <Compile Include="Aggregate.fs" />
     <Compile Include="Serialization.fs" />
+    <Compile Include="FootballData.fs" />
     <Compile Include="EventStore.fs" />
+    <Compile Include="Projection.fs" />
+    <Compile Include="ProcessManager.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="HttpExtensions.fs" />
-    <Compile Include="FootballData.fs" />
     <Compile Include="Auth.fs" />
     <Compile Include="Dashboard.fs" />
     <Compile Include="Program.fs" />

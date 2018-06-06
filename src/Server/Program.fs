@@ -2,6 +2,12 @@
 
 open FbApp.Server
 open FbApp.Server
+open FbApp.Server
+open FbApp.Server
+open FbApp.Server
+open FbApp.Server
+open FbApp.Server
+open FbApp.Server
 open FbApp.Server.Common
 open FbApp.Server.HttpsConfig
 open Giraffe
@@ -46,6 +52,11 @@ let configureServices (context: WebHostBuilderContext) (services: IServiceCollec
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
     FootballData.footballDataToken <- context.Configuration.["Authentication:FootballDataToken"]
 
+    Aggregate.Handlers.competitionHandler <-
+        Aggregate.makeHandler
+            { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve }
+            (EventStore.makeRepository EventStore.connection "Competition" Serialization.serialize Serialization.deserialize)
+
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)
           .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName, optional=true, reloadOnChange=true)
@@ -66,7 +77,12 @@ let app = application {
                 FileProvider = new PhysicalFileProvider(clientPath),
                 RequestPath = PathString.Empty
             )
-        )
+        ) |> ignore
+
+        Projection.connectSubscription EventStore.connection
+        ProcessManager.connectSubscription EventStore.connection
+
+        app
     )
 
     host_config (fun host ->

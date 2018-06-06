@@ -115,3 +115,5 @@ let makeReadModelGetter (connection: IEventStoreConnection)
             return Some(deserialize(ev.Event.Data))
         | _ -> return None
     }
+
+let connection = connect().Result

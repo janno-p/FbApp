@@ -12,7 +12,9 @@ open FbApp.Server
 open FbApp.Server
 open FbApp.Server
 open FbApp.Server
+open FbApp.Server.Projection
 open Giraffe
+open Microsoft.Extensions.DependencyInjection
 open MongoDB.Bson
 open MongoDB.Bson.Serialization.Attributes
 open MongoDB.Driver
@@ -21,6 +23,7 @@ open Newtonsoft.Json
 open Saturn
 open System
 open System.Net.Http
+open System.Threading.Tasks
 
 type CompetitionItem =
     {
@@ -33,100 +36,6 @@ type CompetitionDto =
         Description: string
         ExternalSource: int64
     }
-
-let connection =
-    EventStore.connect().Result
-
-let handleCommand =
-    Aggregate.makeHandler
-        { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve }
-        (EventStore.makeRepository connection "Competition" Serialization.serialize Serialization.deserialize)
-
-type CompetitionTeamReadModel =
-    {
-        Name: string
-        Code: string
-        FlagUrl: string
-        ExternalId: int64
-    }
-
-type CompetitionFixtureReadModel =
-    {
-        HomeTeamId: int64
-        AwayTeamId: int64
-        Date: DateTime
-        ExternalId: int64
-    }
-
-type CompetitionReadModel =
-    {
-        [<BsonId>] Id: Guid
-        Description: string
-        ExternalSource: int64
-        Teams: CompetitionTeamReadModel[]
-        Fixtures: CompetitionFixtureReadModel[]
-        Version: int64
-    }
-
-let mongo = MongoClient()
-let db = mongo.GetDatabase("fbapp")
-let competitions = db.GetCollection("competitions")
-
-let eventAppeared (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
-    try
-        let md: EventStore.Metadata = Serialization.deserializeType e.Event.Metadata
-        match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
-        | Competition.Created args ->
-            try
-                let competitionModel =
-                    {
-                        Id =  md.AggregateId
-                        Description = args.Description
-                        ExternalSource = args.ExternalSource
-                        Teams = [||]
-                        Fixtures = [||]
-                        Version = md.AggregateSequenceNumber
-                    }
-                let! _ = competitions.InsertOneAsync(competitionModel)
-                let! teams = FootballData.loadCompetitionTeams args.ExternalSource
-                let teamsCommand = Competition.Command.AssignTeams (teams |> List.ofArray)
-                let! version = handleCommand (md.AggregateId, md.AggregateSequenceNumber) teamsCommand
-                match version with
-                | Ok(v) ->
-                    let! fixtures = FootballData.loadCompetitionFixtures args.ExternalSource
-                    let fixturesCommand = Competition.Command.AssignFixtures (fixtures |> List.ofArray)
-                    let! _ = handleCommand (md.AggregateId, v) fixturesCommand
-                    ()
-                | _ -> ()
-            with
-                | :? MongoWriteException as e -> printfn "Already exists: %A" e
-        | Competition.TeamsAssigned teams ->
-            let f = Builders<CompetitionReadModel>.Filter.Where(fun x -> x.Id = md.AggregateId && x.Version = (md.AggregateSequenceNumber - 1L))
-            let u = Builders<CompetitionReadModel>.Update
-                        .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                        .Set((fun x -> x.Teams), teams |> List.map (fun t -> { Name = t.Name; Code = t.Code; FlagUrl = t.FlagUrl; ExternalId = t.ExternalId }) |> List.toArray)
-            let! _ = competitions.UpdateOneAsync(f, u)
-            ()
-        | Competition.FixturesAssigned fixtures ->
-            let f = Builders<CompetitionReadModel>.Filter.Where(fun x -> x.Id = md.AggregateId && x.Version = (md.AggregateSequenceNumber - 1L))
-            let u = Builders<CompetitionReadModel>.Update
-                        .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                        .Set((fun x -> x.Fixtures), fixtures |> List.map (fun t -> { HomeTeamId = t.HomeTeamId; AwayTeamId = t.AwayTeamId; Date = t.Date; ExternalId = t.ExternalId }) |> List.toArray)
-            let! _ = competitions.UpdateOneAsync(f, u)
-            ()
-    with e ->
-        printfn "Error fixtures: %A" e
-        raise e
-}
-
-let t = task {
-    //connection.CreatePersistentSubscriptionAsync("$ce-Competition", "sync-competitions-read-model", PersistentSubscriptionSettings.Create().Build(), null)
-    //|> ignore
-    connection.ConnectToPersistentSubscription("$ce-Competition", "sync-competitions-read-model", eventAppeared)
-    |> ignore
-}
-
-t.Wait()
 
 let getCompetitionSources year: HttpHandler =
     (fun next context ->
@@ -145,7 +54,7 @@ let addCompetition: HttpHandler =
             let! dto = context.BindJsonAsync<CompetitionDto>()
             let command = Competition.Create(dto.Description, dto.ExternalSource)
             let id = Guid.NewGuid()
-            let! result = handleCommand (id, 0L) command
+            let! result = Aggregate.Handlers.competitionHandler (id, 0L) command
             match result with
             | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
             | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context
@@ -154,7 +63,7 @@ let addCompetition: HttpHandler =
 let getCompetitions: HttpHandler =
     (fun next context ->
         task {
-            let sort = Builders<CompetitionReadModel>.Sort.Ascending(FieldDefinition<CompetitionReadModel>.op_Implicit("Description"))
+            let sort = Builders<Projections.Competition>.Sort.Ascending(FieldDefinition<Projections.Competition>.op_Implicit("Description"))
             let! competitions = competitions.FindAsync((fun _ -> true), FindOptions<_>(Sort = sort))
             let! competitions = competitions.ToListAsync()
             return! Successful.OK competitions next context

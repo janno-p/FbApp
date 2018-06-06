@@ -13,9 +13,10 @@ type Aggregate<'State, 'Command, 'Event, 'Error> =
     }
 
 type Id = Guid
+type CommandHandler<'Command, 'Error> = Id * int64 -> 'Command -> Task<Result<int64, 'Error>>
 
 let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
-                (load: Type * Id -> Task<obj seq>, commit: Id * int64 -> 'Event list -> Task<int64>) =
+                (load: Type * Id -> Task<obj seq>, commit: Id * int64 -> 'Event list -> Task<int64>) : CommandHandler<'Command, 'Error> =
     fun (id, version) command -> task {
         let! events = load (typeof<'Event>, id)
         let events = events |> Seq.cast<'Event>
@@ -27,3 +28,7 @@ let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
         | Error(err) ->
             return Error(err)
     }
+
+module Handlers =
+    type CompetitionHandler = CommandHandler<Competition.Command, unit>
+    let mutable competitionHandler = Unchecked.defaultof<CompetitionHandler>
