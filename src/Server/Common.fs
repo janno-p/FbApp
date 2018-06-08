@@ -2,9 +2,6 @@ module FbApp.Server.Common
 
 open Giraffe
 
-let notAuthorized: HttpHandler =
-    RequestErrors.FORBIDDEN "Not Authorized"
-
 [<CLIMutable>]
 type AuthOptions =
     {
