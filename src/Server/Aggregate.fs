@@ -32,3 +32,6 @@ let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
 module Handlers =
     type CompetitionHandler = CommandHandler<Competition.Command, unit>
     let mutable competitionHandler = Unchecked.defaultof<CompetitionHandler>
+
+    type PredictionHandler = CommandHandler<Prediction.Command, unit>
+    let mutable predictionHandler = Unchecked.defaultof<PredictionHandler>

@@ -2,7 +2,9 @@
 module FbApp.Server.Serialization
 
 open FSharp.Reflection
+open Giraffe
 open Newtonsoft.Json
+open Newtonsoft.Json.Serialization
 open System.IO
 open System.Text
 
@@ -142,13 +144,24 @@ serializer.Converters.Add(Converters.TupleArrayConverter())
 serializer.Converters.Add(Converters.OptionConverter())
 serializer.Converters.Add(Converters.ListConverter())
 serializer.Converters.Add(Converters.UnionCaseNameConverter())
+serializer.ContractResolver <- CamelCasePropertyNamesContractResolver()
 
 let eventType o =
     let typ = o.GetType()
-    if FSharpType.IsUnion(typ) || (typ.DeclaringType |> isNull && FSharpType.IsUnion(typ.DeclaringType)) then
+    let unionType =
+        if FSharpType.IsUnion(typ) then Some(typ)
+        else if typ.DeclaringType |> isNotNull && FSharpType.IsUnion(typ.DeclaringType) then Some(typ.DeclaringType)
+        else None
+    let typeName (typ: System.Type) =
+        let name =
+            let n = typ.FullName
+            n.Substring(n.LastIndexOf(".") + 1)
+        name.Replace("+Event", "")
+    unionType
+    |> Option.fold (fun _ ut ->
         let unionCase = FSharpValue.GetUnionFields(o, typ) |> fst
-        unionCase.Name
-    else typ.Name
+        sprintf "%s.%s" (typeName unionCase.DeclaringType) unionCase.Name
+    ) typ.Name
 
 let serialize o =
     use ms = new MemoryStream()

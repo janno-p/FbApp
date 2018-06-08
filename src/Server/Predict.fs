@@ -52,6 +52,19 @@ let private getFixtures: HttpHandler =
         return! Successful.OK fixtures next context
     })
 
+let private savePredictions: HttpHandler =
+    (fun next context -> task {
+        let! dto = context.BindJsonAsync<Prediction.PredictionRegistrationInput>()
+        let user = Auth.createUser context.User context
+        let command = Prediction.Register (dto, user.Name, user.Email)
+        let id = Guid.NewGuid()
+        let! result = Aggregate.Handlers.predictionHandler (id, Some(0L)) command
+        match result with
+        | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
+        | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context
+    })
+
 let predictScope = scope {
+    post "/" (Auth.authPipe >=> Auth.validateXsrfToken >=> savePredictions)
     get "/fixtures" getFixtures
 }

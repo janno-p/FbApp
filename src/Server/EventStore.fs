@@ -6,6 +6,7 @@ open EventStore.ClientAPI.SystemData
 open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
 open System
+open System.Net
 
 let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
 
@@ -15,6 +16,7 @@ let toUnixTime (dateTimeOffset: DateTimeOffset) =
 [<CLIMutable>]
 type Metadata =
     {
+        ApplicationName: string
         Guid: Guid
         //SourceId: SourceId
         EventType: string
@@ -31,6 +33,7 @@ with
     static member Create (aggregateName, aggregateId) =
         let now = DateTimeOffset.Now
         {
+            ApplicationName = "FbApp"
             Guid = Guid.Empty
             EventType = ""
             Timestamp = now

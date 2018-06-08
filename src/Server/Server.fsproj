@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Competition.fs" />
+    <Compile Include="Prediction.fs" />
     <Compile Include="Aggregate.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="FootballData.fs" />

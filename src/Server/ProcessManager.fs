@@ -5,7 +5,7 @@ open EventStore.ClientAPI.Exceptions
 open Giraffe
 open Microsoft.Extensions.Logging
 
-let eventAppeared (log: ILogger) (_: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match EventStore.getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
@@ -22,13 +22,14 @@ let eventAppeared (log: ILogger) (_: EventStorePersistentSubscriptionBase) (e: R
                     log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
             | _ -> ()
         | _ -> ()
+        subscription.Acknowledge(e)
     with ex ->
         log.LogError(ex, "Process manager error with event {0} {1}.", e.OriginalStreamId, e.OriginalEventNumber)
-        raise ex
+        subscription.Fail(e, PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured")
 }
 
 type private X = class end
 
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    connection.ConnectToPersistentSubscription("$ce-Competition", "process-manager", (eventAppeared log)) |> ignore
+    connection.ConnectToPersistentSubscription("domain-events", "process-manager", (eventAppeared log), autoAck = false) |> ignore

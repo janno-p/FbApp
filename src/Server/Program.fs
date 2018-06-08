@@ -51,6 +51,11 @@ let configureServices (context: WebHostBuilderContext) (services: IServiceCollec
             { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve }
             (EventStore.makeRepository EventStore.connection "Competition" Serialization.serialize Serialization.deserialize)
 
+    Aggregate.Handlers.predictionHandler <-
+            Aggregate.makeHandler
+                { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve }
+                (EventStore.makeRepository EventStore.connection "Prediction" Serialization.serialize Serialization.deserialize)
+
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)
           .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName, optional=true, reloadOnChange=true)

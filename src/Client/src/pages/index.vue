@@ -52,8 +52,8 @@
                         </div>
 
                         <q-btn v-if="currentStep < 6" color="primary" @click="moveToNextQualRound" :label="c.buttonText" :disabled="!qualifiers[i].isFull" />
-                        <q-btn v-else-if="isSignedIn" color="positive" label="Registreeri oma ennustus" @click="registerPrediction" />
-                        <q-btn v-else color="positive" icon="mdi-google" label="Registreeri oma ennustus Google kontoga" @click="registerPrediction" />
+                        <q-btn v-else-if="isSignedIn" color="positive" label="Registreeri oma ennustus" @click="registerPrediction" :disabled="!qualifiers[i].isFull" />
+                        <q-btn v-else color="positive" icon="mdi-google" label="Registreeri oma ennustus Google kontoga" @click="registerPrediction" :disabled="!qualifiers[i].isFull" />
                     </template>
                 </q-step>
             </template>
@@ -112,7 +112,7 @@ export default {
 
     computed: {
         groupStageComplete () {
-            return true // !!this.fixtures && _(this.fixtures).every((f) => !!f.result)
+            return !!this.fixtures && _(this.fixtures).every((f) => !!f.result)
         },
 
         counterValue () {
@@ -130,6 +130,7 @@ export default {
 
     data () {
         return {
+            competitionId: null,
             currentStep: 0,
             isLoadingStep: false,
             fixtures: null,
@@ -170,9 +171,11 @@ export default {
         async moveToGroupStage () {
             this.isLoadingStep = true
             const response = await this.$axios.get("/predict/fixtures")
-            const teams = response.data.teams
+            const teams = _(response.data.teams).mapValues((t, k) => ({ id: k, ...t })).value()
+            this.competitionId = response.data.competitionId
             const fixtures = _(response.data.fixtures)
                 .map((f) => ({
+                    id: f.id,
                     homeTeam: teams[f.homeTeamId],
                     awayTeam: teams[f.awayTeamId],
                     result: null
@@ -225,7 +228,18 @@ export default {
             if (!this.isSignedIn) {
                 await this.googleSignIn()
             }
-            await this.$axios.post("/predict", {})
+            const mapQualifiers = (i) => _(this.qualifiers[i].teams).values().flatten().filter((x) => x.selected).map((x) => x.team.id).value()
+            await this.$axios.post("/predict/", {
+                competitionId: this.competitionId,
+                fixtures: _(this.fixtures).map((x) => ({ id: x.id, result: x.result })).value(),
+                qualifiers: {
+                    roundOf16: mapQualifiers(2),
+                    roundOf8: mapQualifiers(3),
+                    roundOf4: mapQualifiers(4),
+                    roundOf2: mapQualifiers(5)
+                },
+                winner: mapQualifiers(6)[0]
+            })
         },
 
         ...mapActions([

@@ -44,7 +44,7 @@ let competitions = db.GetCollection("competitions")
 let competitionIdFilter (id, ver) =
     Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
-let eventAppeared (log: ILogger) (_: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match EventStore.getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
@@ -107,13 +107,14 @@ let eventAppeared (log: ILogger) (_: EventStorePersistentSubscriptionBase) (e: R
                 let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
                 ()
         | _ -> ()
+        subscription.Acknowledge(e)
     with ex ->
         log.LogError(ex, "Projection error of event {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
-        raise ex
+        subscription.Fail(e, PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured")
 }
 
 type private X = class end
 
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    connection.ConnectToPersistentSubscription("$ce-Competition", "projections", (eventAppeared log)) |> ignore
+    connection.ConnectToPersistentSubscription("domain-events", "projections", (eventAppeared log), autoAck = false) |> ignore
