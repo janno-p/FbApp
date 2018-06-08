@@ -19,9 +19,18 @@
     <Compile Include="Dashboard.fs" />
     <Compile Include="Predict.fs" />
     <Compile Include="Program.fs" />
-    <Content Include="appsettings.Development.json" />
-    <Content Include="appsettings.json" />
+    <None Include="appsettings.Development.json" />
+    <None Include="appsettings.json" CopyToPublishDirectory="Always" />
     <None Include="paket.references" />
   </ItemGroup>
+  <Target Name="PublishQuasarApplication" BeforeTargets="_IncludePrePublishGeneratedContent">
+    <Exec Command="yarn quasar build" WorkingDirectory="$(ProjectDir)..\Client" />
+  </Target>
+  <Target Name="_IncludePrePublishGeneratedContent" BeforeTargets="GetCopyToPublishDirectoryItems">
+    <ItemGroup>
+      <_WebProjectGeneratedContent Include="wwwroot\**" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);@(_ContentIncludedByDefault)" />
+      <ContentWithTargetPath Include="@(_WebProjectGeneratedContent)" TargetPath="%(Identity)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

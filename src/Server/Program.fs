@@ -15,10 +15,8 @@ open Microsoft.Extensions.Logging
 open Saturn
 open System.IO
 
-let clientPath = Path.Combine("..", "Client", "dist", "spa-mat") |> Path.GetFullPath
-
 let mainRouter = scope {
-    get "/" (Path.Combine(clientPath, "index.html") |> ResponseWriters.htmlFile)
+    get "/" (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
 
     forward "/api/auth" Auth.authScope
     forward "/api/predict" Predict.predictScope
@@ -71,12 +69,15 @@ let app = application {
     use_cookies_authentication "jnx.era.ee"
 
     app_config (fun app ->
-        app.UseStaticFiles(
-            new StaticFileOptions(
-                FileProvider = new PhysicalFileProvider(clientPath),
-                RequestPath = PathString.Empty
-            )
-        ) |> ignore
+        let env = app.ApplicationServices.GetService<IHostingEnvironment>()
+
+        if env.IsProduction() then
+            app.UseStaticFiles(
+                new StaticFileOptions(
+                    FileProvider = new PhysicalFileProvider(Path.GetFullPath("wwwroot")),
+                    RequestPath = PathString.Empty
+                ))
+            |> ignore
 
         let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
 

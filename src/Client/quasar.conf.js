@@ -34,7 +34,8 @@ module.exports = function (ctx) {
             },
             env: {
                 API: JSON.stringify("/api")
-            }
+            },
+            distDir: "../Server/wwwroot"
         },
         devServer: {
             proxy: {
