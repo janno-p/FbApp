@@ -57,10 +57,10 @@ let private savePredictions: HttpHandler =
         let! dto = context.BindJsonAsync<Prediction.PredictionRegistrationInput>()
         let user = Auth.createUser context.User context
         let command = Prediction.Register (dto, user.Name, user.Email)
-        let id = Guid.NewGuid()
+        let id = Prediction.Id (dto.CompetitionId, Prediction.Email user.Email)
         let! result = Aggregate.Handlers.predictionHandler (id, Some(0L)) command
         match result with
-        | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
+        | Ok(_) -> return! Successful.ACCEPTED id next context
         | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context
     })
 

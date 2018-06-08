@@ -62,7 +62,7 @@ let makeRepository (connection: IEventStoreConnection)
                    (aggregateName: string)
                    (serialize: obj -> string * byte array)
                    (deserialize: Type * string * byte array -> obj) =
-    let streamId (id: Aggregate.Id) = sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
+    let streamId (id: Guid) = sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
     let load (eventType, id) = task {
         let streamId = streamId id

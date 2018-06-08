@@ -3,6 +3,10 @@ module FbApp.Server.Prediction
 
 open System
 
+type Email = Email of string
+
+type Id = Guid * Email
+
 type State = unit
 
 let initialState =
@@ -113,3 +117,9 @@ let evolve: State -> Event -> State =
     (fun _ -> function
         | Registered _ -> ()
     )
+
+let predictionsGuid = Guid.Parse("2945d861-0b2f-4783-914b-97988b98c76b")
+
+let streamId (id: Id) =
+    let guid, Email email = id
+    Guid.createDeterministicGuid predictionsGuid (sprintf "%s-%s" (guid.ToString("N")) email)

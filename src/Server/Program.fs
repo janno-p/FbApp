@@ -48,12 +48,12 @@ let configureServices (context: WebHostBuilderContext) (services: IServiceCollec
 
     Aggregate.Handlers.competitionHandler <-
         Aggregate.makeHandler
-            { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve }
+            { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve; StreamId = id }
             (EventStore.makeRepository EventStore.connection "Competition" Serialization.serialize Serialization.deserialize)
 
     Aggregate.Handlers.predictionHandler <-
             Aggregate.makeHandler
-                { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve }
+                { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
                 (EventStore.makeRepository EventStore.connection "Prediction" Serialization.serialize Serialization.deserialize)
 
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =

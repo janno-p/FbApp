@@ -4,6 +4,8 @@ module FbApp.Server.Competition
 open System
 open System.Collections.Generic
 
+type Id = Guid
+
 type State = unit
 
 let initialState =

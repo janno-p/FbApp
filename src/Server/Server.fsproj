@@ -4,6 +4,7 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Guid.fs" />
     <Compile Include="Competition.fs" />
     <Compile Include="Prediction.fs" />
     <Compile Include="Aggregate.fs" />
