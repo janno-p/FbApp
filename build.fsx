@@ -1,6 +1,8 @@
 ﻿#r "paket: groupref Build //"
 #load "./.fake/build.fsx/intellisense.fsx"
 
+open EventStore.ClientAPI
+open EventStore.ClientAPI.SystemData
 open Fake.Core
 open Fake.Core.TargetOperators
 open Fake.DotNet
@@ -69,7 +71,8 @@ Target.create "GenerateCertificate" (fun _ ->
     certificateGenerator.SetIssuerDN(issuerDn)
     certificateGenerator.SetSubjectDN(subjectDn)
 
-    let notBefore = System.DateTime.UtcNow.Date
+    let now = System.DateTime.UtcNow
+    let notBefore = now.Date
     let notAfter = notBefore.AddYears(2)
     certificateGenerator.SetNotBefore(notBefore)
     certificateGenerator.SetNotAfter(notAfter)
@@ -100,7 +103,31 @@ Target.create "GenerateCertificate" (fun _ ->
 )
 
 Target.create "SetupEventStore" (fun _ ->
-    ()
+    let settings =
+        ConnectionSettings
+            .Create()
+            .UseConsoleLogger()
+            .SetDefaultUserCredentials(UserCredentials("admin", "changeit"))
+            .Build()
+
+    let connection = EventStoreConnection.Create(settings, System.Uri("tcp://localhost:1113"))
+
+    async {
+        do! (connection.ConnectAsync()
+             |> Async.AwaitTask)
+
+        let settings = PersistentSubscriptionSettings.Create().ResolveLinkTos().Build()
+
+        try
+            do! (connection.CreatePersistentSubscriptionAsync("$ce-Competition", "projections", settings, null)
+                 |> Async.AwaitTask)
+        with _ -> ()
+
+        try
+            do! (connection.CreatePersistentSubscriptionAsync("$ce-Competition", "process-manager", settings, null)
+                 |> Async.AwaitTask)
+        with _ -> ()
+    } |> Async.RunSynchronously
 )
 
 "GenerateCertificate"

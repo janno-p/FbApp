@@ -28,6 +28,7 @@ type FixturesDto =
         CompetitionId: Guid
         Teams: IDictionary<int64, TeamDto>
         Fixtures: FixtureDto[]
+        Groups: IDictionary<string, int64[]>
     }
 
 let private getFixtures: HttpHandler =
@@ -45,6 +46,8 @@ let private getFixtures: HttpHandler =
                 Fixtures =
                     activeCompetition.Fixtures
                     |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
+                Groups =
+                    activeCompetition.Groups
             }
         return! Successful.OK fixtures next context
     })

@@ -66,12 +66,10 @@ let makeRepository (connection: IEventStoreConnection)
         let rec readNextPage pages = task {
             let! slice = connection.ReadStreamEventsForwardAsync(streamId, 1L, 4096, false)
             let pages = slice.Events :: pages
-            if not slice.IsEndOfStream then return! readNextPage pages else return pages
+            if not slice.IsEndOfStream then return! readNextPage pages else return (slice.LastEventNumber, pages)
         }
-        let! events = readNextPage []
-        let events = events |> List.rev |> Seq.concat
-        let domainEvents = events |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data))
-        let version = events |> Seq.map (fun e -> e.Event.EventNumber) |> Seq.max
+        let! version, events = readNextPage []
+        let domainEvents = events |> List.rev |> Seq.concat |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data))
         return (version, domainEvents)
     }
 
