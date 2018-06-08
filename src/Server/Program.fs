@@ -14,6 +14,7 @@ open Microsoft.Extensions.FileProviders
 open Microsoft.Extensions.Logging
 open Saturn
 open System.IO
+open Microsoft.AspNetCore.HttpOverrides
 
 let mainRouter = scope {
     get "/" (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
@@ -66,9 +67,10 @@ let app = application {
     memory_cache
     use_gzip
 
-    use_cookies_authentication "jnx.era.ee"
-
     app_config (fun app ->
+        app.UseForwardedHeaders(new ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
+        |> ignore
+
         let env = app.ApplicationServices.GetService<IHostingEnvironment>()
 
         if env.IsProduction() then
@@ -86,6 +88,8 @@ let app = application {
 
         app
     )
+
+    use_cookies_authentication "jnx.era.ee"
 
     host_config (fun host ->
         host.UseKestrel(fun o -> o.ConfigureEndpoints endpoints)
