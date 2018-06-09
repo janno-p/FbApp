@@ -52,8 +52,12 @@
                         </div>
 
                         <q-btn v-if="currentStep < 6" color="primary" @click="moveToNextQualRound" :label="c.buttonText" :disabled="!qualifiers[i].isFull" />
-                        <q-btn v-else-if="isSignedIn" color="positive" label="Registreeri oma ennustus" @click="registerPrediction" :disabled="!qualifiers[i].isFull" />
-                        <q-btn v-else color="positive" icon="mdi-google" label="Registreeri oma ennustus Google kontoga" @click="registerPrediction" :disabled="!qualifiers[i].isFull" />
+                        <q-btn v-else-if="isSignedIn" color="positive" label="Registreeri oma ennustus" @click="registerPrediction" :disabled="!qualifiers[i].isFull" :loading="isSaveInProgress">
+                            <q-spinner-pie slot="loading" />
+                        </q-btn>
+                        <q-btn v-else color="positive" icon="mdi-google" label="Registreeri oma ennustus Google kontoga" @click="registerPrediction" :disabled="!qualifiers[i].isFull" :loading="isSaveInProgress">
+                            <q-spinner-pie slot="loading" />
+                        </q-btn>
                     </template>
                 </q-step>
             </template>
@@ -71,6 +75,7 @@
 
 <script>
 import _ from "lodash"
+import { Notify } from "quasar"
 import { mapActions, mapState } from "vuex"
 
 class SelectedTeam {
@@ -130,6 +135,7 @@ export default {
 
     data () {
         return {
+            isSaveInProgress: false,
             competitionId: null,
             currentStep: 0,
             isLoadingStep: false,
@@ -225,21 +231,39 @@ export default {
         },
 
         async registerPrediction () {
-            if (!this.isSignedIn) {
-                await this.googleSignIn()
+            this.isSaveInProgress = true
+            try {
+                if (!this.isSignedIn) {
+                    await this.googleSignIn()
+                }
+                const mapQualifiers = (i) => _(this.qualifiers[i].teams).values().flatten().filter((x) => x.selected).map((x) => x.team.id).value()
+                await this.$axios.post("/predict/", {
+                    competitionId: this.competitionId,
+                    fixtures: _(this.fixtures).map((x) => ({ id: x.id, result: x.result })).value(),
+                    qualifiers: {
+                        roundOf16: mapQualifiers(2),
+                        roundOf8: mapQualifiers(3),
+                        roundOf4: mapQualifiers(4),
+                        roundOf2: mapQualifiers(5)
+                    },
+                    winner: mapQualifiers(6)[0]
+                })
+            } catch (error) {
+                if (error.response.status === 409) {
+                    Notify.create({
+                        message: "Oled juba varasemalt oma ennustuse teinud!",
+                        position: "bottom",
+                        type: "warning",
+                        actions: [
+                            {
+                                label: "Sulge"
+                            }
+                        ]
+                    })
+                }
+            } finally {
+                this.isSaveInProgress = false
             }
-            const mapQualifiers = (i) => _(this.qualifiers[i].teams).values().flatten().filter((x) => x.selected).map((x) => x.team.id).value()
-            await this.$axios.post("/predict/", {
-                competitionId: this.competitionId,
-                fixtures: _(this.fixtures).map((x) => ({ id: x.id, result: x.result })).value(),
-                qualifiers: {
-                    roundOf16: mapQualifiers(2),
-                    roundOf8: mapQualifiers(3),
-                    roundOf4: mapQualifiers(4),
-                    roundOf2: mapQualifiers(5)
-                },
-                winner: mapQualifiers(6)[0]
-            })
         },
 
         ...mapActions([

@@ -68,13 +68,17 @@ export default {
 
         async saveCompetition () {
             this.isSaving = true
-            const payload = {
-                description: this.competition.description,
-                externalSource: this.competition.dataSource
+            try {
+                const payload = {
+                    description: this.competition.description,
+                    externalSource: this.competition.dataSource
+                }
+                const response = await this.$axios.post("/dashboard/competition/add", payload)
+                payload.id = response.data
+                this.$emit("competition-added", payload)
+            } finally {
+                this.isSaving = false
             }
-            const response = await this.$axios.post("/dashboard/competition/add", payload)
-            payload.id = response.data
-            this.$emit("competition-added", payload)
         }
     },
 
