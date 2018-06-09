@@ -117,4 +117,4 @@ type private X = class end
 
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    connection.ConnectToPersistentSubscription("domain-events", "projections", (eventAppeared log), autoAck = false) |> ignore
+    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProjectionsSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore

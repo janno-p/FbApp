@@ -1,9 +1,6 @@
 ﻿#r "paket: groupref Build //"
 #load "./.fake/build.fsx/intellisense.fsx"
 
-open EventStore.ClientAPI
-open EventStore.ClientAPI.Projections
-open EventStore.ClientAPI.SystemData
 open Fake.Core
 open Fake.Core.TargetOperators
 open Fake.DotNet
@@ -20,8 +17,6 @@ open Org.BouncyCastle.Pkcs
 open Org.BouncyCastle.Security
 open Org.BouncyCastle.Utilities
 open Org.BouncyCastle.X509
-open System
-open System.Net
 open System.IO
 
 let [<Literal>] ApplicationName = "FbApp"
@@ -74,7 +69,7 @@ Target.create "GenerateCertificate" (fun _ ->
     certificateGenerator.SetIssuerDN(issuerDn)
     certificateGenerator.SetSubjectDN(subjectDn)
 
-    let now = DateTime.UtcNow
+    let now = System.DateTime.UtcNow
     let notBefore = now.Date
     let notAfter = notBefore.AddYears(2)
     certificateGenerator.SetNotBefore(notBefore)
@@ -103,50 +98,6 @@ Target.create "GenerateCertificate" (fun _ ->
 
     stream.Position <- 0L
     File.WriteAllBytes(certificatePath, stream.ToArray())
-)
-
-Target.create "SetupEventStore" (fun _ ->
-    let settings =
-        ConnectionSettings
-            .Create()
-            .UseConsoleLogger()
-            .SetDefaultUserCredentials(UserCredentials("admin", "changeit"))
-            .Build()
-
-    let connection = EventStoreConnection.Create(settings, System.Uri("tcp://localhost:1113"))
-
-    async {
-        do! (connection.ConnectAsync()
-             |> Async.AwaitTask)
-
-        let projectionsManager = ProjectionsManager(Common.Log.ConsoleLogger(), DnsEndPoint("localhost", 2113), TimeSpan.FromSeconds(5.0))
-
-        let query = """fromAll()
-.when({
-    $any: function (state, ev) {
-        if (ev.metadata !== null && ev.metadata.applicationName === "FbApp") {
-            linkTo("domain-events", ev)
-        }
-    }
-})"""
-
-        try
-            do! (projectionsManager.CreateContinuousAsync("domain-events", query, UserCredentials("admin", "changeit"))
-                 |> Async.AwaitTask)
-        with e -> Trace.tracefn "%A" (e.ToString())
-
-        let settings = PersistentSubscriptionSettings.Create().ResolveLinkTos().Build()
-
-        try
-            do! (connection.CreatePersistentSubscriptionAsync("domain-events", "projections", settings, null)
-                 |> Async.AwaitTask)
-        with e -> Trace.tracefn "%A" (e.ToString())
-
-        try
-            do! (connection.CreatePersistentSubscriptionAsync("domain-events", "process-manager", settings, null)
-                 |> Async.AwaitTask)
-        with e -> Trace.tracefn "%A" (e.ToString())
-    } |> Async.RunSynchronously
 )
 
 "GenerateCertificate"

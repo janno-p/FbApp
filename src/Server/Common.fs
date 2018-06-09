@@ -1,7 +1,5 @@
 module FbApp.Server.Common
 
-open Giraffe
-
 [<CLIMutable>]
 type AuthOptions =
     {

@@ -50,30 +50,43 @@ module.exports = function (ctx) {
             open: true // opens browser window automatically
         },
         framework: ctx.dev
-            ? 'all' // includes everything; for dev only!
+            ? "all" // includes everything; for dev only!
             : {
                 components: [
-                    'QLayout',
-                    'QLayoutHeader',
-                    'QLayoutDrawer',
-                    'QPageContainer',
-                    'QPage',
-                    'QToolbar',
-                    'QToolbarTitle',
-                    'QBtn',
-                    'QIcon',
-                    'QList',
-                    'QListHeader',
-                    'QItem',
-                    'QItemMain',
-                    'QItemSide'
+                    "QBtn",
+                    "QField",
+                    "QIcon",
+                    "QInnerLoading",
+                    "QInput",
+                    "QItem",
+                    "QItemMain",
+                    "QItemSide",
+                    "QItemTile",
+                    "QLayout",
+                    "QLayoutHeader",
+                    "QList",
+                    "QListHeader",
+                    "QModal",
+                    "QLayoutDrawer",
+                    "QModalLayout",
+                    "QPage",
+                    "QPageContainer",
+                    "QPageSticky",
+                    "QRating",
+                    "QSelect",
+                    "QSpinnerPie",
+                    "QSpinnerPuff",
+                    "QStep",
+                    "QStepper",
+                    "QTable",
+                    "QToolbar",
+                    "QToolbarTitle"
                 ],
                 directives: [
-                    'Ripple'
+                    "Ripple"
                 ],
-                // Quasar plugins
                 plugins: [
-                    'Notify'
+                    "Notify"
                 ],
                 iconSet: ctx.theme.mat ? 'material-icons' : 'ionicons'
             },

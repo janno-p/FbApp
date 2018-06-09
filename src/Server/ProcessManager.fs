@@ -4,6 +4,7 @@ open EventStore.ClientAPI
 open EventStore.ClientAPI.Exceptions
 open Giraffe
 open Microsoft.Extensions.Logging
+open FbApp.Server
 
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
@@ -32,4 +33,4 @@ type private X = class end
 
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    connection.ConnectToPersistentSubscription("domain-events", "process-manager", (eventAppeared log), autoAck = false) |> ignore
+    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProcessManagerSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore

@@ -6,7 +6,6 @@ group Build
     storage: none
 
     nuget BouncyCastle
-    nuget EventStore.ClientAPI.NetCore
     nuget Fake.Core.Environment
     nuget Fake.Core.Target
     nuget Fake.DotNet.Cli

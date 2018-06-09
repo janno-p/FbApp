@@ -15,6 +15,8 @@ open Microsoft.Extensions.Logging
 open Saturn
 open System.IO
 open Microsoft.AspNetCore.HttpOverrides
+open EventStore.ClientAPI
+open Microsoft.Extensions.Options
 
 let mainRouter = scope {
     get "/" (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
@@ -41,19 +43,12 @@ let endpoints = [
 
 let configureServices (context: WebHostBuilderContext) (services: IServiceCollection) =
     services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
+
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
-    FootballData.footballDataToken <- context.Configuration.["Authentication:FootballDataToken"]
+    services.Configure<EventStore.EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
 
-    Aggregate.Handlers.competitionHandler <-
-        Aggregate.makeHandler
-            { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve; StreamId = id }
-            (EventStore.makeRepository EventStore.connection "Competition" Serialization.serialize Serialization.deserialize)
-
-    Aggregate.Handlers.predictionHandler <-
-            Aggregate.makeHandler
-                { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
-                (EventStore.makeRepository EventStore.connection "Prediction" Serialization.serialize Serialization.deserialize)
+    services.AddSingleton<IEventStoreConnection>((fun sp -> EventStore.createEventStoreConnection(sp.GetService<IOptions<EventStore.EventStoreOptions>>().Value).Result)) |> ignore
 
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)
@@ -81,10 +76,24 @@ let app = application {
                 ))
             |> ignore
 
+        let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
         let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
+        let eventStoreConnection = app.ApplicationServices.GetService<IEventStoreConnection>()
 
-        Projection.connectSubscription EventStore.connection loggerFactory
-        ProcessManager.connectSubscription EventStore.connection loggerFactory
+        FootballData.footballDataToken <- authOptions.FootballDataToken
+
+        Projection.connectSubscription eventStoreConnection loggerFactory
+        ProcessManager.connectSubscription eventStoreConnection loggerFactory
+
+        Aggregate.Handlers.competitionHandler <-
+            Aggregate.makeHandler
+                { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve; StreamId = id }
+                (EventStore.makeRepository eventStoreConnection "Competition" Serialization.serialize Serialization.deserialize)
+
+        Aggregate.Handlers.predictionHandler <-
+                Aggregate.makeHandler
+                    { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
+                    (EventStore.makeRepository eventStoreConnection "Prediction" Serialization.serialize Serialization.deserialize)
 
         app
     )

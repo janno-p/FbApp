@@ -2,6 +2,8 @@
 module FbApp.Server.EventStore
 
 open EventStore.ClientAPI
+open EventStore.ClientAPI.Common.Log
+open EventStore.ClientAPI.Projections
 open EventStore.ClientAPI.SystemData
 open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
@@ -12,6 +14,73 @@ let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
 
 let toUnixTime (dateTimeOffset: DateTimeOffset) =
     Convert.ToInt64((dateTimeOffset.UtcDateTime - epoch).TotalSeconds);
+
+let [<Literal>] ApplicationName = "FbApp"
+let [<Literal>] DomainEventsStreamName = "domain-events"
+let [<Literal>] ProjectionsSubscriptionGroup = "projections"
+let [<Literal>] ProcessManagerSubscriptionGroup = "process-manager"
+
+[<CLIMutable>]
+type EventStoreOptions =
+    {
+        Uri: string
+        UserName: string
+        Password: string
+    }
+with
+    member this.UserCredentials =
+        UserCredentials(this.UserName, this.Password)
+
+let setupEventStore (connection: IEventStoreConnection, options: EventStoreOptions) = task {
+    let logger = ConsoleLogger()
+
+    let projectionsManager = ProjectionsManager(logger, IPEndPoint(IPAddress.Loopback, 2113), TimeSpan.FromSeconds(5.0))
+
+    let query = (sprintf """fromAll()
+.when({
+    $any: function (state, ev) {
+        if (ev.metadata !== null && ev.metadata.applicationName === "%s") {
+            linkTo("%s", ev)
+        }
+    }
+})""" ApplicationName DomainEventsStreamName)
+
+    let withExceptionLogging f = task {
+        try
+            do! f()
+        with e -> logger.Info(e, e.Message)
+    }
+
+    do! withExceptionLogging (fun () -> task {
+        do! projectionsManager.CreateContinuousAsync(DomainEventsStreamName, query, options.UserCredentials)
+    })
+
+    let settings = PersistentSubscriptionSettings.Create().ResolveLinkTos().Build()
+
+    do! withExceptionLogging (fun () -> task {
+        do! connection.CreatePersistentSubscriptionAsync(DomainEventsStreamName, ProjectionsSubscriptionGroup, settings, null)
+    })
+
+    do! withExceptionLogging (fun () -> task {
+        do! connection.CreatePersistentSubscriptionAsync(DomainEventsStreamName, ProcessManagerSubscriptionGroup, settings, null)
+    })
+}
+
+let createEventStoreConnection (options: EventStoreOptions) = task {
+    let settings =
+        ConnectionSettings
+            .Create()
+            .UseConsoleLogger()
+            .SetDefaultUserCredentials(options.UserCredentials)
+            .Build()
+
+    let connection = EventStoreConnection.Create(settings, Uri(options.Uri))
+    do! connection.ConnectAsync()
+
+    do! setupEventStore (connection, options)
+
+    return connection
+}
 
 [<CLIMutable>]
 type Metadata =
@@ -33,7 +102,7 @@ with
     static member Create (aggregateName, aggregateId) =
         let now = DateTimeOffset.Now
         {
-            ApplicationName = "FbApp"
+            ApplicationName = ApplicationName
             Guid = Guid.Empty
             EventType = ""
             Timestamp = now
@@ -43,20 +112,6 @@ with
             AggregateName = aggregateName
             BatchId = Guid.NewGuid()
         }
-
-let connect () = task {
-    let settings =
-        ConnectionSettings
-            .Create()
-            .UseConsoleLogger()
-            .SetDefaultUserCredentials(UserCredentials("admin", "changeit"))
-            .Build()
-
-    let connection = EventStoreConnection.Create(settings, Uri("tcp://localhost:1113"))
-    do! connection.ConnectAsync()
-
-    return connection
-}
 
 let makeRepository (connection: IEventStoreConnection)
                    (aggregateName: string)
@@ -119,8 +174,6 @@ let makeReadModelGetter (connection: IEventStoreConnection)
             return Some(deserialize(ev.Event.Data))
         | _ -> return None
     }
-
-let connection = connect().Result
 
 let getMetadata (e: ResolvedEvent) : Metadata option =
     e.Event

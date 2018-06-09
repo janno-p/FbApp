@@ -66,6 +66,7 @@ module HttpsConfig =
         member this.ConfigureEndpoints (endpoints: EndpointConfiguration list) =
             let env = this.ApplicationServices.GetRequiredService<IHostingEnvironment>()
             endpoints
+            |> List.choose (fun endpoint -> if env.IsProduction() && endpoint.Scheme = Https then None else Some(endpoint))
             |> List.iter (fun endpoint ->
                 let port =
                     match endpoint.Port with
