@@ -61,7 +61,8 @@ let private savePredictions: HttpHandler =
         let! result = Aggregate.Handlers.predictionHandler (id, Some(0L)) command
         match result with
         | Ok(_) -> return! Successful.ACCEPTED id next context
-        | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context
+        | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
+        | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
     })
 
 let predictScope = scope {

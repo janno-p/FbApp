@@ -13,21 +13,28 @@ type Aggregate<'Id, 'State, 'Command, 'Event, 'Error> =
         StreamId: 'Id -> Guid
     }
 
-type CommandHandler<'Id, 'Command, 'Error> = 'Id * int64 option -> 'Command -> Task<Result<int64, 'Error>>
+type AggregateError<'Error> =
+    | DomainError of 'Error
+    | WrongExpectedVersion
+    | Other of exn
+
+type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
+
+type CommandHandler<'Id, 'Command, 'Error> = 'Id * int64 option -> 'Command -> TaskResult<int64, AggregateError<'Error>>
+type LoadAggregateEvents<'Event> = Type * Guid -> Task<(int64 * 'Event seq)>
+type CommitAggregateEvents<'Event, 'Error> = Guid * int64 -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
 
 let makeHandler (aggregate: Aggregate<'Id, 'State, 'Command, 'Event, 'Error>)
-                (load: Type * Guid -> Task<(int64 * obj seq)>, commit: Guid * int64 -> 'Event list -> Task<int64>) : CommandHandler<'Id, 'Command, 'Error> =
+                (load: LoadAggregateEvents<'Event>, commit: CommitAggregateEvents<'Event, 'Error>) : CommandHandler<'Id, 'Command, 'Error> =
     fun (id, version) command -> task {
         let streamId = aggregate.StreamId id
         let! ver, events = load (typeof<'Event>, streamId)
-        let events = events |> Seq.cast<'Event>
         let state = events |> Seq.fold aggregate.Evolve aggregate.InitialState
         match aggregate.Decide state command with
         | Ok(events) ->
-            let! result = commit (streamId, version |> Option.defaultValue ver) events
-            return Ok(result)
+            return! commit (streamId, version |> Option.defaultValue ver) events
         | Error(err) ->
-            return Error(err)
+            return Error(DomainError(err))
     }
 
 module Handlers =

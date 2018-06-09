@@ -91,9 +91,9 @@ let app = application {
                 (EventStore.makeRepository eventStoreConnection "Competition" Serialization.serialize Serialization.deserialize)
 
         Aggregate.Handlers.predictionHandler <-
-                Aggregate.makeHandler
-                    { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
-                    (EventStore.makeRepository eventStoreConnection "Prediction" Serialization.serialize Serialization.deserialize)
+            Aggregate.makeHandler
+                { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
+                (EventStore.makeRepository eventStoreConnection "Prediction" Serialization.serialize Serialization.deserialize)
 
         app
     )

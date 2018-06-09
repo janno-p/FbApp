@@ -9,6 +9,7 @@ open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
 open System
 open System.Net
+open EventStore.ClientAPI.Exceptions
 
 let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
 
@@ -113,51 +114,63 @@ with
             BatchId = Guid.NewGuid()
         }
 
-let makeRepository (connection: IEventStoreConnection)
-                   (aggregateName: string)
-                   (serialize: obj -> string * byte array)
-                   (deserialize: Type * string * byte array -> obj) =
+let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
+                                   (aggregateName: string)
+                                   (serialize: obj -> string * byte array)
+                                   (deserialize: Type * string * byte array -> obj) =
     let streamId (id: Guid) = sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
-    let load (eventType, id) = task {
-        let streamId = streamId id
-        let rec readNextPage pages = task {
-            let! slice = connection.ReadStreamEventsForwardAsync(streamId, 1L, 4096, false)
-            let pages = slice.Events :: pages
-            if not slice.IsEndOfStream then return! readNextPage pages else return (slice.LastEventNumber, pages)
-        }
-        let! version, events = readNextPage []
-        let domainEvents = events |> List.rev |> Seq.concat |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data))
-        return (version, domainEvents)
-    }
+    let load: Aggregate.LoadAggregateEvents<'Event> =
+        (fun (eventType, id) ->
+            task {
+                let streamId = streamId id
+                let rec readNextPage pages = task {
+                    let! slice = connection.ReadStreamEventsForwardAsync(streamId, 1L, 4096, false)
+                    let pages = slice.Events :: pages
+                    if not slice.IsEndOfStream then return! readNextPage pages else return (slice.LastEventNumber, pages)
+                }
+                let! version, events = readNextPage []
+                let domainEvents = events |> List.rev |> Seq.concat |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
+                return (version, domainEvents)
+            }
+        )
 
-    let commit (id, expectedVersion) (events: 'Event list) = task {
-        let streamId = streamId id
-        let batchMetadata = Metadata.Create(aggregateName, id)
+    let commit: Aggregate.CommitAggregateEvents<'Event, 'Error> =
+        (fun (id, expectedVersion) (events: 'Event list) ->
+            task {
+                let streamId = streamId id
+                let batchMetadata = Metadata.Create(aggregateName, id)
 
-        let eventDatas =
-            events |> List.mapi (fun i e ->
-                let guid = Guid.NewGuid()
-                let eventType, data = serialize e
-                let metadata =
-                    { batchMetadata with
-                        Guid = guid
-                        EventType = eventType
-                        AggregateSequenceNumber = expectedVersion + 1L + (int64 i)
-                    }
-                let _, metadata = serialize metadata
-                EventData(guid, eventType, true, data, metadata)
-            )
+                let eventDatas =
+                    events |> List.mapi (fun i e ->
+                        let guid = Guid.NewGuid()
+                        let eventType, data = serialize e
+                        let metadata =
+                            { batchMetadata with
+                                Guid = guid
+                                EventType = eventType
+                                AggregateSequenceNumber = expectedVersion + 1L + (int64 i)
+                            }
+                        let _, metadata = serialize metadata
+                        EventData(guid, eventType, true, data, metadata)
+                    )
 
-        let expectedVersion =
-            match expectedVersion with 0L -> ExpectedVersion.NoStream | v -> v - 1L
+                let expectedVersion =
+                    match expectedVersion with 0L -> ExpectedVersion.NoStream | v -> v - 1L
 
-        use! transaction = connection.StartTransactionAsync(streamId, expectedVersion)
-        do! transaction.WriteAsync(eventDatas)
-        let! writeResult = transaction.CommitAsync()
+                try
+                    use! transaction = connection.StartTransactionAsync(streamId, expectedVersion)
+                    do! transaction.WriteAsync(eventDatas)
+                    let! writeResult = transaction.CommitAsync()
 
-        return writeResult.NextExpectedVersion + 1L
-    }
+                    return Ok(writeResult.NextExpectedVersion + 1L)
+                with
+                | :? WrongExpectedVersionException ->
+                    return Error(Aggregate.WrongExpectedVersion)
+                | ex ->
+                    return Error(Aggregate.Other ex)
+            }
+        )
 
     (load, commit)
 
