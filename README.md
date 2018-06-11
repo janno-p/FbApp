@@ -25,7 +25,7 @@ Playground application for trying out new technologies, libraries, frameworks, p
 Make sure EventStore and MongoDB instances are running:
 
 ```
-EventStore.ClusterNode.exe --db ./db --log ./logs --run-projections=all --start-standard-projections=true
+EventStore.ClusterNode.exe --db ./db --log ./logs --run-projections=all
 "C:\Program Files\MongoDB\Server\3.6\bin\mongod.exe"
 ```
 

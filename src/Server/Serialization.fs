@@ -23,7 +23,7 @@ module Converters =
         override __.ReadJson (reader, typ, _, serializer) =
             let itemType = typ.GetGenericArguments().[0]
             let collectionType = typedefof<IEnumerable<_>>.MakeGenericType(itemType)
-            let collection = serializer.Deserialize(reader, collectionType) |> unbox<obj seq>
+            let collection = serializer.Deserialize(reader, collectionType) :?> System.Collections.IEnumerable |> Seq.cast
             let listType = typedefof<list<_>>.MakeGenericType(itemType)
             let cases = FSharpType.GetUnionCases(listType)
             let rec make = function
@@ -130,8 +130,11 @@ module Converters =
 
             let args =
                 match fields.Length with
-                | 0 -> [||]
-                | 1 -> [|serializer.Deserialize(reader, fields.[0].PropertyType)|]
+                | 0 ->
+                    read JsonToken.Null |> require |> ignore
+                    [||]
+                | 1 ->
+                    [|serializer.Deserialize(reader, fields.[0].PropertyType)|]
                 | _ ->
                     let tupleType = FSharpType.MakeTupleType(fields |> Seq.map (fun f -> f.PropertyType) |> Seq.toArray)
                     let tuple = serializer.Deserialize(reader, tupleType)

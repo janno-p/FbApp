@@ -56,7 +56,7 @@ let setupEventStore (connection: IEventStoreConnection, options: EventStoreOptio
         do! projectionsManager.CreateContinuousAsync(DomainEventsStreamName, query, options.UserCredentials)
     })
 
-    let settings = PersistentSubscriptionSettings.Create().ResolveLinkTos().Build()
+    let settings = PersistentSubscriptionSettings.Create().ResolveLinkTos().StartFromBeginning().Build()
 
     do! withExceptionLogging (fun () -> task {
         do! connection.CreatePersistentSubscriptionAsync(DomainEventsStreamName, ProjectionsSubscriptionGroup, settings, null)

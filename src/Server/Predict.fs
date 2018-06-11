@@ -31,10 +31,14 @@ type FixturesDto =
         Groups: IDictionary<string, int64[]>
     }
 
+let private getActiveCompetition () = task {
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalSource), 467L)
+    return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
+}
+
 let private getFixtures: HttpHandler =
     (fun next context -> task {
-        let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalSource), 467L)
-        let! activeCompetition = competitions.Find(f).Limit(Nullable(1)).SingleAsync()
+        let! activeCompetition = getActiveCompetition ()
         let fixtures =
             {
                 CompetitionId =
@@ -65,7 +69,19 @@ let private savePredictions: HttpHandler =
         | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
     })
 
+let private getCurrentPrediction: HttpHandler =
+    (fun next context -> task {
+        let! activeCompetition = getActiveCompetition ()
+        let user = Auth.createUser context.User context
+        let predictionId = Prediction.Id (activeCompetition.Id, Prediction.Email user.Email) |> Prediction.streamId
+        let f = Builders<Projections.Prediction>.Filter.Eq((fun x -> x.Id), predictionId)
+        let! prediction = predictions.Find(f).SingleOrDefaultAsync()
+        if prediction |> box |> isNull then return! RequestErrors.NOT_FOUND "Prediction does not exist" next context else
+        return! Successful.OK prediction next context
+    })
+
 let predictScope = scope {
     post "/" (Auth.authPipe >=> Auth.validateXsrfToken >=> savePredictions)
     get "/fixtures" getFixtures
+    get "/current" (Auth.authPipe >=> Auth.validateXsrfToken >=> getCurrentPrediction)
 }
