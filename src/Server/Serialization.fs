@@ -8,7 +8,7 @@ open Newtonsoft.Json.Serialization
 open System.IO
 open System.Text
 
-module private Converters =
+module Converters =
     open Giraffe.Common
     open System
     open System.Collections.Generic

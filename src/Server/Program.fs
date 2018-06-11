@@ -80,10 +80,8 @@ let app = application {
         let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
         let eventStoreConnection = app.ApplicationServices.GetService<IEventStoreConnection>()
 
-        FootballData.footballDataToken <- authOptions.FootballDataToken
-
         Projection.connectSubscription eventStoreConnection loggerFactory
-        ProcessManager.connectSubscription eventStoreConnection loggerFactory
+        ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
 
         Aggregate.Handlers.competitionHandler <-
             Aggregate.makeHandler

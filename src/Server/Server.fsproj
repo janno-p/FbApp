@@ -20,7 +20,7 @@
     <Compile Include="Predict.fs" />
     <Compile Include="Program.fs" />
     <None Include="appsettings.Development.json" />
-    <None Include="appsettings.json" CopyToPublishDirectory="Always" />
+    <None Include="appsettings.json" />
     <None Include="paket.references" />
   </ItemGroup>
   <Target Name="PublishQuasarApplication" BeforeTargets="_IncludePrePublishGeneratedContent">
