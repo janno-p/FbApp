@@ -1,6 +1,8 @@
 namespace FbApp.Server
 
+open Giraffe
 open Microsoft.Extensions.DependencyInjection
+open MongoDB.Driver
 
 module XsrfToken =
     open Microsoft.AspNetCore.Antiforgery
@@ -89,3 +91,9 @@ module HttpsConfig =
                             |> ignore
                         | Http -> ()))
             )
+
+module FindFluent =
+    let trySingleAsync (x: IFindFluent<_,_>) = task {
+        let! result = x.SingleOrDefaultAsync()
+        return (if result |> box |> isNull then None else Some(result))
+    }

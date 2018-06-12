@@ -31,10 +31,37 @@ type FixturesDto =
         Groups: IDictionary<string, int64[]>
     }
 
+[<CLIMutable>]
+type PredictionFixtureDto =
+    {
+        Fixture: int64
+        HomeTeam: int64
+        AwayTeam: int64
+        Result: string
+    }
+
+[<CLIMutable>]
+type PredictionDto =
+    {
+        CompetitionId: Guid
+        Teams: IDictionary<int64, TeamDto>
+        Fixtures: PredictionFixtureDto[]
+        RoundOf16: int64[]
+        RoundOf8: int64[]
+        RoundOf4: int64[]
+        RoundOf2: int64[]
+        Winner: int64
+    }
+
 let private getActiveCompetition () = task {
     let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalSource), 467L)
     return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
 }
+
+let private mapTeams (competition: Projections.Competition) =
+    competition.Teams
+    |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))
+    |> dict
 
 let private getFixtures: HttpHandler =
     (fun next context -> task {
@@ -44,9 +71,7 @@ let private getFixtures: HttpHandler =
                 CompetitionId =
                     activeCompetition.Id
                 Teams =
-                    activeCompetition.Teams
-                    |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))
-                    |> dict
+                    (activeCompetition |> mapTeams)
                 Fixtures =
                     activeCompetition.Fixtures
                     |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
@@ -75,9 +100,30 @@ let private getCurrentPrediction: HttpHandler =
         let user = Auth.createUser context.User context
         let predictionId = Prediction.Id (activeCompetition.Id, Prediction.Email user.Email) |> Prediction.streamId
         let f = Builders<Projections.Prediction>.Filter.Eq((fun x -> x.Id), predictionId)
-        let! prediction = predictions.Find(f).SingleOrDefaultAsync()
-        if prediction |> box |> isNull then return! RequestErrors.NOT_FOUND "Prediction does not exist" next context else
-        return! Successful.OK prediction next context
+        let! prediction = predictions.Find(f) |> FindFluent.trySingleAsync
+        match prediction with
+        | Some(prediction) ->
+            let mapFixture (fixture: Projections.FixtureResult) : PredictionFixtureDto =
+                let x = activeCompetition.Fixtures |> Array.find (fun n -> n.ExternalId = fixture.FixtureId)
+                {
+                    Fixture = fixture.FixtureId
+                    HomeTeam = x.HomeTeamId
+                    AwayTeam = x.AwayTeamId
+                    Result = fixture.Result
+                }
+            let dto: PredictionDto =
+                {
+                    CompetitionId = activeCompetition.Id
+                    Teams = (activeCompetition |> mapTeams)
+                    Fixtures = prediction.Fixtures |> Array.map mapFixture
+                    RoundOf16 = prediction.QualifiersRoundOf16
+                    RoundOf8 = prediction.QualifiersRoundOf8
+                    RoundOf4 = prediction.QualifiersRoundOf4
+                    RoundOf2 = prediction.QualifiersRoundOf2
+                    Winner = prediction.Winner
+                }
+            return! Successful.OK dto next context
+        | None -> return! RequestErrors.NOT_FOUND "Prediction does not exist" next context
     })
 
 let predictScope = scope {
