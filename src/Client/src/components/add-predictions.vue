@@ -116,8 +116,32 @@ class QualifierList {
         this.selectedCount += team.selected ? 1 : -1
     }
 
-    randomize () {
-        const teams = _(this.teams).values().flatten().filter((x) => !x.selected || !x.isManual).value()
+    resetRandom () {
+        _(this.teams).values().flatten().filter((x) => !x.selected || !x.isManual).each((x) => x.setSelected(false, true))
+    }
+
+    randomizePots () {
+        this.resetRandom()
+        while (!this.isFull) {
+            const teams = _(this.teams).values().map((x) => {
+                const r = _(x).filter((u) => !u.selected).value()
+                return r.length > 2 ? r : []
+            }).flatten().value()
+            const i = Math.floor(teams.length * Math.random())
+            teams[i].setSelected(true, true)
+        }
+    }
+
+    randomize (prev) {
+        if (!prev) {
+            this.randomizePots()
+            return
+        }
+        const prevTeams = prev ? _(prev.teams).values().flatten().filter((x) => x.selected).value() : []
+        const prevContains = (t) => {
+            return prevTeams.length === 0 || !!_(prevTeams).find((x) => x.team === t.team)
+        }
+        const teams = _(this.teams).values().flatten().filter((x) => prevContains(x) && (!x.selected || !x.isManual)).value()
         _(teams).each((x) => x.setSelected(false, true))
         const r = () => {
             return Math.floor(teams.length * Math.random())
@@ -267,7 +291,7 @@ export default {
             if (this.currentStep === 1) {
                 this.randomizeFixtures()
             } else {
-                this.qualifiers[this.currentStep].randomize()
+                this.qualifiers[this.currentStep].randomize(this.qualifiers[this.currentStep - 1])
             }
         },
 
