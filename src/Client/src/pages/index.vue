@@ -1,5 +1,11 @@
 <template>
-    <component :is="activeComponent" :predictions="predictions" @prediction-added="predictionAdded" @prediction-exists="loadPredictions" />
+    <component
+        :is="activeComponent"
+        :predictions="predictions"
+        @before-prediction-added="isPredictionAdded = true"
+        @prediction-added="predictionAdded"
+        @prediction-exists="loadPredictions">
+    </component>
 </template>
 
 <script>
@@ -35,6 +41,7 @@ export default {
 
     data () {
         return {
+            isPredictionAdded: false,
             isLoading: true,
             predictions: null
         }
@@ -55,6 +62,7 @@ export default {
         },
 
         predictionAdded (prediction) {
+            this.isPredictionAdded = false
             this.$set(this, "predictions", prediction)
         }
     },
@@ -73,6 +81,8 @@ export default {
         async isSignedIn (value) {
             if (!value) {
                 this.$set(this, "predictions", null)
+            } else if (!this.isPredictionAdded) {
+                await this.loadPredictions()
             }
         }
     }

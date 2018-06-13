@@ -1,3 +1,4 @@
+import { Notify } from "quasar"
 import Vue from "vue"
 import Vuex from "vuex"
 
@@ -26,8 +27,21 @@ const store = new Vuex.Store({
                     idToken: googleUser.getAuthResponse().id_token
                 })
                 context.commit(SET_USER, response.data)
-            } catch (e) {
-                console.error(e)
+            } catch (error) {
+                let message = JSON.stringify(error)
+                if (error.response) {
+                    message = `(${error.response.statusText}) ${JSON.stringify(error.response.data)}`
+                }
+                Notify.create({
+                    message: `Google kontoga sisselogimine ebaõnnestus: ${message}`,
+                    position: "bottom",
+                    type: "negative",
+                    actions: [
+                        {
+                            label: "Sulge"
+                        }
+                    ]
+                })
             }
         },
 

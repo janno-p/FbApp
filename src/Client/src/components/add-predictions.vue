@@ -322,6 +322,7 @@ export default {
         async registerPrediction () {
             this.isSaveInProgress = true
             try {
+                this.$emit("before-prediction-added")
                 if (!this.isSignedIn) {
                     await this.googleSignIn()
                 }
