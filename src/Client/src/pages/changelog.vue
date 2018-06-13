@@ -24,7 +24,8 @@ export default {
                     changes: [
                         "Enda tehtud ennustuste vaade",
                         "Peale ennustuse registreerimisel oma ennustuse vaate avamine",
-                        "Olemasoleva ennustuse korral oma ennustuse vaate avamine"
+                        "Olemasoleva ennustuse korral oma ennustuse vaate avamine",
+                        "Juhusliku valiku tegemise võimalus"
                     ]
                 },
                 {

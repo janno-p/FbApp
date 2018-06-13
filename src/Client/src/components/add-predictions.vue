@@ -19,11 +19,11 @@
                 <template v-if="!!fixtures">
                     <div class="row q-pa-md">
                         <div v-for="(f, i) in fixtures" :key="i" class="q-py-md col-2 col-lg-3 col-md-4 col-sm-6 col-xs-12">
-                            <q-btn :color="f.result === 'HOME' ? 'positive' : undefined" round glossy :title="f.homeTeam.name" @click="f.result = 'HOME'"><img :src="f.homeTeam.flagUrl" height="16" /></q-btn>
+                            <q-btn :color="f.result === 'HOME' ? (f.isManual ? 'positive' : 'info') : undefined" round glossy :title="f.homeTeam.name" @click="setFixtureResult(f, 'HOME')"><img :src="f.homeTeam.flagUrl" height="16" /></q-btn>
                             &nbsp;
-                            <q-btn :color="f.result === 'TIE' ? 'positive' : undefined" round title="Jääb viiki" @click="f.result = 'TIE'">=</q-btn>
+                            <q-btn :color="f.result === 'TIE' ? (f.isManual ? 'positive' : 'info') : undefined" round title="Jääb viiki" @click="setFixtureResult(f, 'TIE')">=</q-btn>
                             &nbsp;
-                            <q-btn :color="f.result === 'AWAY' ? 'positive' : undefined" round glossy :title="f.awayTeam.name" @click="f.result = 'AWAY'"><img :src="f.awayTeam.flagUrl" height="16" /></q-btn>
+                            <q-btn :color="f.result === 'AWAY' ? (f.isManual ? 'positive' : 'info') : undefined" round glossy :title="f.awayTeam.name" @click="setFixtureResult(f, 'AWAY')"><img :src="f.awayTeam.flagUrl" height="16" /></q-btn>
                         </div>
                     </div>
 
@@ -67,8 +67,9 @@
             </q-inner-loading>
         </q-stepper>
 
-        <q-page-sticky position="bottom" :offset="[18, 18]" v-if="displayCounter">
-            <q-rating readonly :max="counterValue" :value="counterValue" color="positive" />
+        <q-page-sticky class="text-center" position="bottom" :offset="[18, 18]" v-if="displayRandomizer">
+            <div v-if="displayCounter" class="q-mb-sm"><q-rating readonly :max="counterValue" :value="counterValue" color="positive" /></div>
+            <div><q-btn icon="mdi-dice-multiple" color="teal" label="Vali suvaliselt" @click="randomize" /></div>
         </q-page-sticky>
     </q-page>
 </template>
@@ -84,11 +85,15 @@ class SelectedTeam {
         this.team = team
         this.qual = qual
         this.cb = cb
+        this.isManual = false
     }
 
-    setSelected (value) {
-        this.selected = value
-        this.cb(this)
+    setSelected (value, isRandom = false) {
+        if (this.selected !== value) {
+            this.selected = value
+            this.isManual = !isRandom
+            this.cb(this)
+        }
     }
 }
 
@@ -109,6 +114,19 @@ class QualifierList {
 
     updateCount (team) {
         this.selectedCount += team.selected ? 1 : -1
+    }
+
+    randomize () {
+        const teams = _(this.teams).values().flatten().filter((x) => !x.selected || !x.isManual).value()
+        _(teams).each((x) => x.setSelected(false, true))
+        const r = () => {
+            return Math.floor(teams.length * Math.random())
+        }
+        while (!this.isFull) {
+            const i = r()
+            teams[i].setSelected(true, true)
+            teams.splice(i, 1)
+        }
     }
 }
 
@@ -135,6 +153,10 @@ export default {
 
         displayCounter () {
             return this.currentStep >= 2 && this.currentStep <= 6
+        },
+
+        displayRandomizer () {
+            return this.currentStep >= 1 && this.currentStep <= 6
         },
 
         ...mapState([
@@ -195,7 +217,8 @@ export default {
                     id: f.id,
                     homeTeam: teams[f.homeTeamId],
                     awayTeam: teams[f.awayTeamId],
-                    result: null
+                    result: null,
+                    isManual: false
                 }))
                 .filter((f) => !!f.homeTeam && !!f.awayTeam)
                 .value()
@@ -217,6 +240,37 @@ export default {
             this.$refs.stepper.next()
         },
 
+        setFixtureResult (f, result) {
+            f.result = result
+            f.isManual = true
+        },
+
+        randomizeFixtures () {
+            const randomize = () => {
+                const v = Math.floor(Math.random() * 3)
+                if (v === 0) {
+                    return "HOME"
+                } else if (v === 1) {
+                    return "TIE"
+                } else {
+                    return "AWAY"
+                }
+            }
+            _(this.fixtures).each((f) => {
+                if (!f.isManual) {
+                    f.result = randomize()
+                }
+            })
+        },
+
+        randomize () {
+            if (this.currentStep === 1) {
+                this.randomizeFixtures()
+            } else {
+                this.qualifiers[this.currentStep].randomize()
+            }
+        },
+
         moveToNextQualRound () {
             this.$refs.stepper.next()
         },
@@ -233,7 +287,7 @@ export default {
 
         getColor (item) {
             if (item.selected) {
-                return "positive"
+                return item.isManual ? "positive" : "info"
             } else if (item.qual.isFull) {
                 return "negative"
             } else {
