@@ -1,5 +1,5 @@
 <template>
-    <component :is="activeComponent" :predictions="predictions" />
+    <component :is="activeComponent" :predictions="predictions" @prediction-added="predictionAdded" @prediction-exists="loadPredictions" />
 </template>
 
 <script>
@@ -42,6 +42,9 @@ export default {
 
     methods: {
         async loadPredictions () {
+            if (this.predictions) {
+                return
+            }
             this.isLoading = true
             try {
                 const response = await this.$axios.get("/predict/current")
@@ -49,6 +52,10 @@ export default {
             } finally {
                 this.isLoading = false
             }
+        },
+
+        predictionAdded (prediction) {
+            this.$set(this, "predictions", prediction)
         }
     },
 
@@ -64,9 +71,7 @@ export default {
 
     watch: {
         async isSignedIn (value) {
-            if (value) {
-                await this.loadPredictions()
-            } else {
+            if (!value) {
                 this.$set(this, "predictions", null)
             }
         }

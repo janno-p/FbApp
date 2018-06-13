@@ -112,6 +112,15 @@ class QualifierList {
     }
 }
 
+function mapResult (r) {
+    switch (r) {
+    case "HOME": return "HomeWin"
+    case "AWAY": return "AwayWin"
+    case "TIE": return "Tie"
+    default: return null
+    }
+}
+
 export default {
     name: "AppAddPredictions",
 
@@ -135,6 +144,7 @@ export default {
 
     data () {
         return {
+            teams: null,
             isSaveInProgress: false,
             competitionId: null,
             currentStep: 0,
@@ -178,6 +188,7 @@ export default {
             this.isLoadingStep = true
             const response = await this.$axios.get("/predict/fixtures")
             const teams = _(response.data.teams).mapValues((t, k) => ({ id: k, ...t })).value()
+            this.$set(this, "teams", teams)
             this.competitionId = response.data.competitionId
             const fixtures = _(response.data.fixtures)
                 .map((f) => ({
@@ -237,7 +248,7 @@ export default {
                     await this.googleSignIn()
                 }
                 const mapQualifiers = (i) => _(this.qualifiers[i].teams).values().flatten().filter((x) => x.selected).map((x) => x.team.id).value()
-                await this.$axios.post("/predict/", {
+                const payload = {
                     competitionId: this.competitionId,
                     fixtures: _(this.fixtures).map((x) => ({ id: x.id, result: x.result })).value(),
                     qualifiers: {
@@ -247,9 +258,26 @@ export default {
                         roundOf2: mapQualifiers(5)
                     },
                     winner: mapQualifiers(6)[0]
-                })
+                }
+                await this.$axios.post("/predict/", payload)
+                const predictions = {
+                    competitionId: payload.competitionId,
+                    teams: this.teams,
+                    fixtures: _(this.fixtures).map((f) => ({
+                        fixture: f.id,
+                        homeTeam: f.homeTeam.id,
+                        awayTeam: f.awayTeam.id,
+                        result: mapResult(f.result)
+                    })).value(),
+                    roundOf16: payload.qualifiers.roundOf16,
+                    roundOf8: payload.qualifiers.roundOf8,
+                    roundOf4: payload.qualifiers.roundOf4,
+                    roundOf2: payload.qualifiers.roundOf2,
+                    winner: payload.winner
+                }
+                this.$emit("prediction-added", predictions)
             } catch (error) {
-                if (error.response.status === 409) {
+                if (error.response && error.response.status === 409) {
                     Notify.create({
                         message: "Oled juba varasemalt oma ennustuse teinud!",
                         position: "bottom",
@@ -260,7 +288,10 @@ export default {
                             }
                         ]
                     })
+                    this.$emit("prediction-exists")
+                    return
                 }
+                throw error
             } finally {
                 this.isSaveInProgress = false
             }
