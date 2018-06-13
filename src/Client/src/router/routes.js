@@ -6,6 +6,10 @@ export default [
             {
                 path: "",
                 component: () => import("pages/index")
+            },
+            {
+                path: "changelog",
+                component: () => import("pages/changelog")
             }
         ]
     },

@@ -10,6 +10,8 @@
                 <div slot="subtitle">2018. aasta jalgpalli maailmameistrivõistlused</div>
             </q-toolbar-title>
 
+            <q-btn class="q-mr-sm" icon="mdi-playlist-check" flat label="Muudatuste logi" to="/changelog" />
+
             <template v-if="isGoogleReady">
                 <template v-if="isSignedIn">
                     <img :src="sizedImageUrl" />
