@@ -1,7 +1,7 @@
 <template>
     <q-layout-header>
         <q-toolbar color="primary" :glossy="true" :inverted="false">
-            <router-link to="/">
+            <router-link class="text-decoration-none" to="/">
                 <q-icon class="text-white" name="mdi-soccer" size="24pt" />
             </router-link>
 
@@ -64,3 +64,8 @@ export default {
     }
 }
 </script>
+
+<style lang="stylus">
+.text-decoration-none
+    text-decoration: none !important
+</style>
