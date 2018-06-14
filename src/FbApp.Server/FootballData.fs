@@ -1,6 +1,7 @@
 [<RequireQualifiedAccess>]
 module FbApp.Server.FootballData
 
+open FbApp.Core.Serialization.Converters
 open Giraffe
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
@@ -368,7 +369,7 @@ with
         | Venue v -> sprintf "venue=%s" (v.ToString())
 
 let serializer = JsonSerializer()
-serializer.Converters.Add(Serialization.Converters.OptionConverter())
+serializer.Converters.Add(OptionConverter())
 serializer.Converters.Add(CompetitionLeagueTableConverter())
 serializer.ContractResolver <- CamelCasePropertyNamesContractResolver()
 

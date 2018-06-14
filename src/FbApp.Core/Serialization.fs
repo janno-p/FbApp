@@ -1,15 +1,13 @@
-[<RequireQualifiedAccess>]
-module FbApp.Server.Serialization
+﻿module FbApp.Core.Serialization
 
 open FSharp.Reflection
-open Giraffe
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open System.IO
 open System.Text
 
 module Converters =
-    open Giraffe.Common
+    // open Giraffe.Common
     open System
     open System.Collections.Generic
 
@@ -83,7 +81,7 @@ module Converters =
     type UnionCaseNameConverter () =
         inherit JsonConverter()
         override __.CanConvert (typ) =
-            FSharpType.IsUnion(typ) || (typ.DeclaringType |> isNotNull && FSharpType.IsUnion(typ.DeclaringType))
+            FSharpType.IsUnion(typ) || (typ.DeclaringType |> isNull |> not && FSharpType.IsUnion(typ.DeclaringType))
         override __.WriteJson (writer, value, serializer) =
             let typ = value.GetType()
             let caseInfo, fieldValues = FSharpValue.GetUnionFields(value, typ)
@@ -153,7 +151,7 @@ let eventType o =
     let typ = o.GetType()
     let unionType =
         if FSharpType.IsUnion(typ) then Some(typ)
-        else if typ.DeclaringType |> isNotNull && FSharpType.IsUnion(typ.DeclaringType) then Some(typ.DeclaringType)
+        else if typ.DeclaringType |> isNull |> not && FSharpType.IsUnion(typ.DeclaringType) then Some(typ.DeclaringType)
         else None
     let typeName (typ: System.Type) =
         let name =

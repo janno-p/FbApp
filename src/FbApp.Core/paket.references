@@ -1,0 +1,4 @@
+group Server
+EventStore.ClientAPI.NetCore
+FSharp.Core
+TaskBuilder.fs

@@ -1,14 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Guid.fs" />
     <Compile Include="Competition.fs" />
     <Compile Include="Prediction.fs" />
     <Compile Include="Aggregate.fs" />
-    <Compile Include="Serialization.fs" />
     <Compile Include="FootballData.fs" />
     <Compile Include="Common.fs" />
     <Compile Include="EventStore.fs" />
@@ -22,6 +21,9 @@
     <None Include="appsettings.Development.json" />
     <None Include="appsettings.json" />
     <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FbApp.Core\FbApp.Core.fsproj" />
   </ItemGroup>
   <Target Name="PublishQuasarApplication" BeforeTargets="_IncludePrePublishGeneratedContent">
     <Exec Command="yarn quasar build" WorkingDirectory="$(ProjectDir)..\Client" />

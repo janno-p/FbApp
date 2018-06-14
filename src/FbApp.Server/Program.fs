@@ -1,5 +1,8 @@
 ﻿module FbApp.Server.Program
 
+open FbApp.Core.Aggregate
+open FbApp.Core.EventStore
+open FbApp.Core.Serialization
 open FbApp.Server
 open FbApp.Server.Common
 open FbApp.Server.HttpsConfig
@@ -17,6 +20,8 @@ open System.IO
 open Microsoft.AspNetCore.HttpOverrides
 open EventStore.ClientAPI
 open Microsoft.Extensions.Options
+open System
+open FbApp.Server
 
 let mainRouter = scope {
     get "/" (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
@@ -41,14 +46,21 @@ let endpoints = [
         FilePath = Some (Path.Combine(__SOURCE_DIRECTORY__, "..", "FbApp.pfx")) }
 ]
 
+let initializeEventStore (sp: IServiceProvider) = task {
+    let options = sp.GetService<IOptions<EventStoreOptions>>().Value
+    let! connection = createEventStoreConnection options
+    do! EventStore.initProjectionsAndSubscriptions (connection, options)
+    return connection
+}
+
 let configureServices (context: WebHostBuilderContext) (services: IServiceCollection) =
     services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
 
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
-    services.Configure<EventStore.EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
+    services.Configure<EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
 
-    services.AddSingleton<IEventStoreConnection>((fun sp -> EventStore.createEventStoreConnection(sp.GetService<IOptions<EventStore.EventStoreOptions>>().Value).Result)) |> ignore
+    services.AddSingleton<IEventStoreConnection>((fun sp -> (initializeEventStore sp).Result)) |> ignore
 
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)
@@ -83,15 +95,18 @@ let app = application {
         Projection.connectSubscription eventStoreConnection loggerFactory
         ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
 
+        let makeRepository' entityName =
+            makeRepository eventStoreConnection entityName serialize deserialize
+
         Aggregate.Handlers.competitionHandler <-
-            Aggregate.makeHandler
+            makeHandler
                 { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve; StreamId = id }
-                (EventStore.makeRepository eventStoreConnection "Competition" Serialization.serialize Serialization.deserialize)
+                (makeRepository' "Competition")
 
         Aggregate.Handlers.predictionHandler <-
-            Aggregate.makeHandler
+            makeHandler
                 { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
-                (EventStore.makeRepository eventStoreConnection "Prediction" Serialization.serialize Serialization.deserialize)
+                (makeRepository' "Prediction")
 
         app
     )

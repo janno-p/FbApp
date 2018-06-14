@@ -2,6 +2,8 @@ module FbApp.Server.ProcessManager
 
 open EventStore.ClientAPI
 open EventStore.ClientAPI.Exceptions
+open FbApp.Core.EventStore
+open FbApp.Core.Serialization
 open Giraffe
 open Microsoft.Extensions.Logging
 open FbApp.Server
@@ -14,9 +16,9 @@ module Result =
 
 let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
-        match EventStore.getMetadata e with
+        match getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
-            match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
+            match deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
             | Competition.Created args ->
                 try
                     let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalSource

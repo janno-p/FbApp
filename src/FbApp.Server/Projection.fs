@@ -1,8 +1,9 @@
 module FbApp.Server.Projection
 
 open EventStore.ClientAPI
+open FbApp.Core.EventStore
+open FbApp.Core.Serialization
 open FSharp.Control.Tasks.ContextInsensitive
-open Giraffe
 open Microsoft.Extensions.Logging
 open MongoDB.Bson.Serialization.Attributes
 open MongoDB.Driver
@@ -66,8 +67,8 @@ let predictions = db.GetCollection("predictions")
 let competitionIdFilter (id, ver) =
     Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
-let projectCompetitions (log: ILogger) (md: EventStore.Metadata) (e: ResolvedEvent) = task {
-    match Serialization.deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
+let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
     | Competition.Created args ->
         try
             let competitionModel: Projections.Competition =
@@ -127,8 +128,8 @@ let projectCompetitions (log: ILogger) (md: EventStore.Metadata) (e: ResolvedEve
         ()
 }
 
-let projectPredictions (log: ILogger) (md: EventStore.Metadata) (e: ResolvedEvent) = task {
-    match Serialization.deserializeOf<Prediction.Event> (e.Event.EventType, e.Event.Data) with
+let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Prediction.Event> (e.Event.EventType, e.Event.Data) with
     | Prediction.Registered args ->
         try
             let mapResult = function
@@ -158,7 +159,7 @@ let projectPredictions (log: ILogger) (md: EventStore.Metadata) (e: ResolvedEven
 
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
-        match EventStore.getMetadata e with
+        match getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
             do! projectCompetitions log md e
         | Some(md) when md.AggregateName = "Prediction" ->

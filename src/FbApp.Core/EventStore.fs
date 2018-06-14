@@ -1,25 +1,18 @@
-[<RequireQualifiedAccess>]
-module FbApp.Server.EventStore
+module FbApp.Core.EventStore
 
 open EventStore.ClientAPI
-open EventStore.ClientAPI.Common.Log
-open EventStore.ClientAPI.Projections
-open EventStore.ClientAPI.SystemData
-open FSharp.Control.Tasks.ContextInsensitive
-open Giraffe
-open System
-open System.Net
 open EventStore.ClientAPI.Exceptions
+open EventStore.ClientAPI.SystemData
+open FbApp.Core.Aggregate
+open FSharp.Control.Tasks.ContextInsensitive
+open System
+
+let [<Literal>] ApplicationName = "FbApp"
 
 let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
 
 let toUnixTime (dateTimeOffset: DateTimeOffset) =
     Convert.ToInt64((dateTimeOffset.UtcDateTime - epoch).TotalSeconds);
-
-let [<Literal>] ApplicationName = "FbApp"
-let [<Literal>] DomainEventsStreamName = "domain-events"
-let [<Literal>] ProjectionsSubscriptionGroup = "projections"
-let [<Literal>] ProcessManagerSubscriptionGroup = "process-manager"
 
 [<CLIMutable>]
 type EventStoreOptions =
@@ -32,41 +25,6 @@ with
     member this.UserCredentials =
         UserCredentials(this.UserName, this.Password)
 
-let setupEventStore (connection: IEventStoreConnection, options: EventStoreOptions) = task {
-    let logger = ConsoleLogger()
-
-    let projectionsManager = ProjectionsManager(logger, IPEndPoint(IPAddress.Loopback, 2113), TimeSpan.FromSeconds(5.0))
-
-    let query = (sprintf """fromAll()
-.when({
-    $any: function (state, ev) {
-        if (ev.metadata !== null && ev.metadata.applicationName === "%s") {
-            linkTo("%s", ev)
-        }
-    }
-})""" ApplicationName DomainEventsStreamName)
-
-    let withExceptionLogging f = task {
-        try
-            do! f()
-        with e -> logger.Info(e, e.Message)
-    }
-
-    do! withExceptionLogging (fun () -> task {
-        do! projectionsManager.CreateContinuousAsync(DomainEventsStreamName, query, options.UserCredentials)
-    })
-
-    let settings = PersistentSubscriptionSettings.Create().ResolveLinkTos().StartFromBeginning().Build()
-
-    do! withExceptionLogging (fun () -> task {
-        do! connection.CreatePersistentSubscriptionAsync(DomainEventsStreamName, ProjectionsSubscriptionGroup, settings, null)
-    })
-
-    do! withExceptionLogging (fun () -> task {
-        do! connection.CreatePersistentSubscriptionAsync(DomainEventsStreamName, ProcessManagerSubscriptionGroup, settings, null)
-    })
-}
-
 let createEventStoreConnection (options: EventStoreOptions) = task {
     let settings =
         ConnectionSettings
@@ -77,8 +35,6 @@ let createEventStoreConnection (options: EventStoreOptions) = task {
 
     let connection = EventStoreConnection.Create(settings, Uri(options.Uri))
     do! connection.ConnectAsync()
-
-    do! setupEventStore (connection, options)
 
     return connection
 }
@@ -114,13 +70,22 @@ with
             BatchId = Guid.NewGuid()
         }
 
+let getMetadata (e: ResolvedEvent) : Metadata option =
+    e.Event
+    |> Option.ofObj
+    |> Option.bind (fun x ->
+        match x.Metadata with
+        | null | [||] -> None
+        | arr -> Some(Serialization.deserializeType arr)
+    )
+
 let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
                                    (aggregateName: string)
                                    (serialize: obj -> string * byte array)
                                    (deserialize: Type * string * byte array -> obj) =
     let streamId (id: Guid) = sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
-    let load: Aggregate.LoadAggregateEvents<'Event> =
+    let load: LoadAggregateEvents<'Event> =
         (fun (eventType, id) ->
             task {
                 let streamId = streamId id
@@ -135,7 +100,7 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
             }
         )
 
-    let commit: Aggregate.CommitAggregateEvents<'Event, 'Error> =
+    let commit: CommitAggregateEvents<'Event, 'Error> =
         (fun (id, expectedVersion) (events: 'Event list) ->
             task {
                 let streamId = streamId id
@@ -166,9 +131,9 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
                     return Ok(writeResult.NextExpectedVersion + 1L)
                 with
                 | :? WrongExpectedVersionException ->
-                    return Error(Aggregate.WrongExpectedVersion)
+                    return Error(WrongExpectedVersion)
                 | ex ->
-                    return Error(Aggregate.Other ex)
+                    return Error(Other ex)
             }
         )
 
@@ -187,12 +152,3 @@ let makeReadModelGetter (connection: IEventStoreConnection)
             return Some(deserialize(ev.Event.Data))
         | _ -> return None
     }
-
-let getMetadata (e: ResolvedEvent) : Metadata option =
-    e.Event
-    |> Option.ofObj
-    |> Option.bind (fun x ->
-        match x.Metadata with
-        | null | [||] -> None
-        | arr -> Some(Serialization.deserializeType arr)
-    )

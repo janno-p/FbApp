@@ -1,7 +1,6 @@
-[<RequireQualifiedAccess>]
-module FbApp.Server.Aggregate
+﻿module FbApp.Core.Aggregate
 
-open Giraffe
+open FSharp.Control.Tasks.ContextInsensitive
 open System
 open System.Threading.Tasks
 
@@ -36,10 +35,3 @@ let makeHandler (aggregate: Aggregate<'Id, 'State, 'Command, 'Event, 'Error>)
         | Error(err) ->
             return Error(DomainError(err))
     }
-
-module Handlers =
-    type CompetitionHandler = CommandHandler<Competition.Id, Competition.Command, unit>
-    let mutable competitionHandler = Unchecked.defaultof<CompetitionHandler>
-
-    type PredictionHandler = CommandHandler<Prediction.Id, Prediction.Command, unit>
-    let mutable predictionHandler = Unchecked.defaultof<PredictionHandler>

@@ -28,7 +28,7 @@ let srcDir = __SOURCE_DIRECTORY__ </> "src"
 let certificatePath = srcDir </> (sprintf "%s.pfx" ApplicationName)
 
 let clientPath = "./src/Client" |> Path.getFullName
-let serverPath = "./src/Server" |> Path.getFullName
+let serverPath = "./src/FbApp.Server" |> Path.getFullName
 
 let dotnetCliVersion = DotNet.getSDKVersionFromGlobalJson()
 
