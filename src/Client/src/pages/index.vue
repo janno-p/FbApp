@@ -73,20 +73,17 @@ export default {
     },
 
     mounted () {
-        if (this.isSignedIn) {
-            this.$nextTick(async () => {
-                await this.loadPredictions()
-            })
-        } else {
-            this.$nextTick(async () => {
-                try {
-                    const response = await this.$axios.get("/predict/status")
-                    this.competitionStatus = response.data
-                } finally {
-                    this.isLoading = false
+        this.$nextTick(async () => {
+            try {
+                const response = await this.$axios.get("/predict/status")
+                this.competitionStatus = response.data
+                if (this.isSignedIn) {
+                    await this.loadPredictions()
                 }
-            })
-        }
+            } finally {
+                this.isLoading = false
+            }
+        })
     },
 
     watch: {

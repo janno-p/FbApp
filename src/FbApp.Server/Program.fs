@@ -22,13 +22,19 @@ open EventStore.ClientAPI
 open Microsoft.Extensions.Options
 open System
 
+let index : HttpHandler =
+    (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
+
 let mainRouter = scope {
-    get "/" (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
+    not_found_handler index
+    get "/" index
 
     forward "/api/auth" Auth.authScope
     forward "/api/predict" Predict.predictScope
 
     forward "/api" (scope {
+        not_found_handler (RequestErrors.NOT_FOUND "Not found")
+
         pipe_through Auth.authPipe
         pipe_through Auth.validateXsrfToken
 

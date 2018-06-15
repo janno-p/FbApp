@@ -133,7 +133,7 @@ let private getCurrentPrediction: HttpHandler =
 let private getCompetitionStatus : HttpHandler =
     (fun next context -> task {
         let! competition = getActiveCompetition ()
-        let status = if competition.Date > DateTimeOffset.Now then "competition-running" else "accept-predictions"
+        let status = if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
         return! Successful.OK status next context
     })
 

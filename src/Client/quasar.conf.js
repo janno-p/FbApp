@@ -35,7 +35,7 @@ module.exports = function (ctx) {
             env: {
                 API: JSON.stringify("/api")
             },
-            distDir: "../Server/wwwroot"
+            distDir: "../FbApp.Server/wwwroot"
         },
         devServer: {
             proxy: {
@@ -54,6 +54,7 @@ module.exports = function (ctx) {
             : {
                 components: [
                     "QBtn",
+                    "QDatetime",
                     "QField",
                     "QIcon",
                     "QInnerLoading",
