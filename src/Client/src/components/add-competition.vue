@@ -1,5 +1,5 @@
 <template>
-    <q-modal v-model="isOpen" no-backdrop-dismiss :content-css="{ minWidth: '500px', minHeight: '340px' }">
+    <q-modal v-model="isOpen" no-backdrop-dismiss :content-css="{ minWidth: '500px', minHeight: '360px' }">
         <q-modal-layout>
             <q-toolbar slot="header">
                 <q-toolbar-title>Võistluse lisamine</q-toolbar-title>
@@ -24,6 +24,9 @@
                     <q-spinner-puff v-if="isDataSourceLoading" color="primary" :size="30" />
                     <q-select v-else float-label="Tulemuste sisendvoog" v-model="competition.dataSource" :options="dataSourceOptions" />
                 </q-field>
+                <q-field icon="mdi-calendar-clock" class="q-mt-md">
+                    <q-datetime v-model="competition.date" type="datetime" :first-day-of-week="1" :format24h="true" float-label="Võistluste algus" format="DD.MM.YYYY HH:mm" :modal="true" />
+                </q-field>
             </div>
         </q-modal-layout>
     </q-modal>
@@ -36,7 +39,8 @@ function initCompetition () {
     return {
         description: "",
         season: 2018,
-        dataSource: null
+        dataSource: null,
+        date: null
     }
 }
 
@@ -71,7 +75,8 @@ export default {
             try {
                 const payload = {
                     description: this.competition.description,
-                    externalSource: this.competition.dataSource
+                    externalId: this.competition.dataSource,
+                    date: this.competition.date
                 }
                 const response = await this.$axios.post("/dashboard/competition/add", payload)
                 payload.id = response.data

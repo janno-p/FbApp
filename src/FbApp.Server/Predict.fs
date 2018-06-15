@@ -1,6 +1,7 @@
 module FbApp.Server.Predict
 
 open FbApp.Core
+open FbApp.Domain
 open FbApp.Server.Projection
 open Giraffe
 open MongoDB.Driver
@@ -55,7 +56,7 @@ type PredictionDto =
     }
 
 let private getActiveCompetition () = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalSource), 467L)
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalId), 467L)
     return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
 }
 
@@ -90,7 +91,7 @@ let private savePredictions: HttpHandler =
         let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
         let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
         match result with
-        | Ok(_) -> return! Successful.ACCEPTED id next context
+        | Ok(_) -> return! Successful.ACCEPTED (id |> Predictions.streamId |> Guid.toString) next context
         | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
         | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
     })

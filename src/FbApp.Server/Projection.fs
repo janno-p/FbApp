@@ -3,6 +3,7 @@ module FbApp.Server.Projection
 open EventStore.ClientAPI
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
+open FbApp.Domain
 open FSharp.Control.Tasks.ContextInsensitive
 open Microsoft.Extensions.Logging
 open MongoDB.Bson.Serialization.Attributes
@@ -31,7 +32,7 @@ module Projections =
         {
             [<BsonId>] Id: Guid
             Description: string
-            ExternalSource: int64
+            ExternalId: int64
             Teams: Team[]
             Fixtures: Fixture[]
             Groups: IDictionary<string, int64[]>
@@ -75,7 +76,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                 {
                     Id =  md.AggregateId
                     Description = args.Description
-                    ExternalSource = args.ExternalSource
+                    ExternalId = args.ExternalId
                     Teams = [||]
                     Fixtures = [||]
                     Groups = Dictionary<_,_>()
@@ -160,9 +161,9 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match getMetadata e with
-        | Some(md) when md.AggregateName = "Competition" ->
+        | Some(md) when md.AggregateName = Competitions.AggregateName ->
             do! projectCompetitions log md e
-        | Some(md) when md.AggregateName = "Prediction" ->
+        | Some(md) when md.AggregateName = Predictions.AggregateName ->
             do! projectPredictions log md e
         | _ -> ()
         subscription.Acknowledge(e)

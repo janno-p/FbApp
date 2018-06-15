@@ -19,15 +19,15 @@ module Result =
 let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match getMetadata e with
-        | Some(md) when md.AggregateName = "Competition" ->
+        | Some(md) when md.AggregateName = Competitions.AggregateName ->
             match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
             | Competitions.Created args ->
                 try
-                    let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalSource
+                    let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
                     let teams = teams |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
-                    let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalSource []
+                    let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
                     let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
-                    let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalSource []
+                    let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId []
                     let groups =
                         match (groups |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)).Standings with
                         | FootballData.Groups groups -> groups
@@ -37,7 +37,7 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventS
                             (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
                              fixtures.Fixtures |> Seq.map (fun x -> { HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
                              groups |> Seq.map (fun kvp -> kvp.Key, (kvp.Value |> Array.map (fun x -> x.TeamId))) |> Seq.toList)
-                    let! _ = CommandHandlers.competitionsHandler (md.AggregateId, Aggregate.Version md.AggregateSequenceNumber) command
+                    let! _ = CommandHandlers.competitionsHandler (args.ExternalId, Aggregate.Version md.AggregateSequenceNumber) command
                     ()
                 with :? WrongExpectedVersionException as ex ->
                     log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)

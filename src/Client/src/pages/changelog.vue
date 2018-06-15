@@ -22,15 +22,17 @@ export default {
                 {
                     version: "0.0.3",
                     changes: [
-                        "Parandatud iluviga Chromes"
+                        "Parandatud iluviga Chromes",
+                        "Võistluste alguskuupäeva registreerimine",
+                        "Mängutulemuste kontrollimine"
                     ]
                 },
                 {
                     version: "0.0.2",
                     changes: [
-                        "Enda tehtud ennustuste vaade",
-                        "Peale ennustuse registreerimisel oma ennustuse vaate avamine",
-                        "Olemasoleva ennustuse korral oma ennustuse vaate avamine",
+                        "Oma ennustuste vaade",
+                        "Peale ennustuste registreerimist oma ennustuste vaate avamine",
+                        "Olemasoleva ennustuste korral oma ennustuste vaate avamine",
                         "Juhusliku valiku tegemise võimalus"
                     ]
                 },

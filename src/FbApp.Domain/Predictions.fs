@@ -1,8 +1,9 @@
 [<RequireQualifiedAccess>]
-module FbApp.Server.Predictions
+module FbApp.Domain.Predictions
 
-open FbApp.Domain
 open System
+
+let [<Literal>] AggregateName = "Prediction"
 
 type Email = Email of string
 

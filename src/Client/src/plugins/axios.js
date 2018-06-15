@@ -20,6 +20,18 @@ $axios.interceptors.response.use(
                 ]
             })
         }
+        if (error.response.status === 409) {
+            Notify.create({
+                message: "Andmete vastuolu: juba olemas.",
+                position: "bottom",
+                type: "warning",
+                actions: [
+                    {
+                        label: "Sulge"
+                    }
+                ]
+            })
+        }
         return Promise.reject(error)
     }
 )

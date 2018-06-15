@@ -39,3 +39,6 @@ let createDeterministicGuid (namespaceId: Guid) (name: string) =
     if name |> isNull then failwith "Argument null exception 'name'"
     let nameBytes = Encoding.UTF8.GetBytes(name)
     createDeterministicGuidFromBytes namespaceId nameBytes
+
+let toString (g: Guid) =
+    g.ToString()

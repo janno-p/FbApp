@@ -2,13 +2,13 @@ module FbApp.Server.Dashboard
 
 open EventStore.ClientAPI
 open FbApp.Core
+open FbApp.Domain
 open FbApp.Server.Configuration
 open FbApp.Server
 open FbApp.Server.Projection
 open Giraffe
 open MongoDB.Driver
 open Saturn
-open System
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
 
@@ -16,12 +16,6 @@ type CompetitionItem =
     {
         Label: string
         Value: int64
-    }
-
-type CompetitionDto =
-    {
-        Description: string
-        ExternalSource: int64
     }
 
 let getCompetitionSources year: HttpHandler =
@@ -43,13 +37,12 @@ let getCompetitionSources year: HttpHandler =
 let addCompetition: HttpHandler =
     (fun next context ->
         task {
-            let! dto = context.BindJsonAsync<CompetitionDto>()
-            let command = Competitions.Create(dto.Description, dto.ExternalSource)
-            let id = Guid.NewGuid()
-            let! result = CommandHandlers.competitionsHandler (id, Aggregate.New) command
+            let! input = context.BindJsonAsync<Competitions.CreateInput>()
+            let command = Competitions.Create input
+            let! result = CommandHandlers.competitionsHandler (input.ExternalId, Aggregate.New) command
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
-            | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context
+            | Ok(_) -> return! Successful.ACCEPTED (input.ExternalId |> Competitions.streamId |> Guid.toString) next context
+            | Error(_) -> return! RequestErrors.CONFLICT "Competition already exists" next context
         })
 
 let getCompetitions: HttpHandler =
