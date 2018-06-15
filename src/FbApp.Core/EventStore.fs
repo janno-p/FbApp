@@ -83,12 +83,13 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
                                    (aggregateName: string)
                                    (serialize: obj -> string * byte array)
                                    (deserialize: Type * string * byte array -> obj) =
-    let streamId (id: Guid) = sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
+    let aggregateStreamId aggregateName (id: Guid) =
+        sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
     let load: LoadAggregateEvents<'Event> =
         (fun (eventType, id) ->
             task {
-                let streamId = streamId id
+                let streamId = aggregateStreamId aggregateName id
                 let rec readNextPage pages = task {
                     let! slice = connection.ReadStreamEventsForwardAsync(streamId, 1L, 4096, false)
                     let pages = slice.Events :: pages
@@ -103,7 +104,7 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
     let commit: CommitAggregateEvents<'Event, 'Error> =
         (fun (id, expectedVersion) (events: 'Event list) ->
             task {
-                let streamId = streamId id
+                let streamId = aggregateStreamId aggregateName id
                 let batchMetadata = Metadata.Create(aggregateName, id)
 
                 let eventDatas =
@@ -139,16 +140,5 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
 
     (load, commit)
 
-let makeReadModelGetter (connection: IEventStoreConnection)
-                        (deserialize: byte array -> obj) =
-    fun streamId -> task {
-        let! slice = connection.ReadStreamEventsBackwardAsync(streamId, -1L, 1, false)
-        match slice.Status, slice.Events with
-        | SliceReadStatus.Success, [||] ->
-            return None
-        | SliceReadStatus.Success, [|ev|] when ev.Event.EventNumber = 0L ->
-            return None
-        | SliceReadStatus.Success, [|ev|] ->
-            return Some(deserialize(ev.Event.Data))
-        | _ -> return None
-    }
+let makeDefaultRepository<'Event, 'Error> connection aggregateName =
+    makeRepository<'Event, 'Error> connection aggregateName Serialization.serialize Serialization.deserialize

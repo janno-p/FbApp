@@ -1,7 +1,8 @@
 module FbApp.Server.Dashboard
 
 open EventStore.ClientAPI
-open FbApp.Server.Common
+open FbApp.Core
+open FbApp.Server.Configuration
 open FbApp.Server
 open FbApp.Server.Projection
 open Giraffe
@@ -43,9 +44,9 @@ let addCompetition: HttpHandler =
     (fun next context ->
         task {
             let! dto = context.BindJsonAsync<CompetitionDto>()
-            let command = Competition.Create(dto.Description, dto.ExternalSource)
+            let command = Competitions.Create(dto.Description, dto.ExternalSource)
             let id = Guid.NewGuid()
-            let! result = Aggregate.Handlers.competitionHandler (id, Some(0L)) command
+            let! result = CommandHandlers.competitionHandler (id, Some(0L)) command
             match result with
             | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
             | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context

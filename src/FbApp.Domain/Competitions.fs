@@ -1,8 +1,7 @@
 [<RequireQualifiedAccess>]
-module FbApp.Server.Competition
+module FbApp.Server.Competitions
 
 open System
-open System.Collections.Generic
 
 type Id = Guid
 

@@ -1,3 +1,9 @@
 group Server
-EventStore.ClientAPI.NetCore
+Microsoft.Extensions.Configuration
 FSharp.Core
+Microsoft.Extensions.Configuration.FileExtensions
+Microsoft.Extensions.Configuration.Json
+Microsoft.Extensions.Logging
+Microsoft.Extensions.Logging.Console
+Microsoft.Extensions.Logging.Debug
+Microsoft.Extensions.Configuration.UserSecrets

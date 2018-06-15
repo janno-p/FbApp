@@ -2,9 +2,8 @@
 
 open FbApp.Core.Aggregate
 open FbApp.Core.EventStore
-open FbApp.Core.Serialization
 open FbApp.Server
-open FbApp.Server.Common
+open FbApp.Server.Configuration
 open FbApp.Server.HttpsConfig
 open Giraffe
 open Microsoft.AspNetCore.Builder
@@ -21,7 +20,6 @@ open Microsoft.AspNetCore.HttpOverrides
 open EventStore.ClientAPI
 open Microsoft.Extensions.Options
 open System
-open FbApp.Server
 
 let mainRouter = scope {
     get "/" (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
@@ -95,18 +93,15 @@ let app = application {
         Projection.connectSubscription eventStoreConnection loggerFactory
         ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
 
-        let makeRepository' entityName =
-            makeRepository eventStoreConnection entityName serialize deserialize
-
-        Aggregate.Handlers.competitionHandler <-
+        CommandHandlers.competitionHandler <-
             makeHandler
-                { InitialState = Competition.initialState; Decide = Competition.decide; Evolve = Competition.evolve; StreamId = id }
-                (makeRepository' "Competition")
+                { InitialState = Competitions.initialState; Decide = Competitions.decide; Evolve = Competitions.evolve; StreamId = id }
+                (makeDefaultRepository eventStoreConnection "Competition")
 
-        Aggregate.Handlers.predictionHandler <-
+        CommandHandlers.predictionHandler <-
             makeHandler
-                { InitialState = Prediction.initialState; Decide = Prediction.decide; Evolve = Prediction.evolve; StreamId = Prediction.streamId }
-                (makeRepository' "Prediction")
+                { InitialState = Predictions.initialState; Decide = Predictions.decide; Evolve = Predictions.evolve; StreamId = Predictions.streamId }
+                (makeDefaultRepository eventStoreConnection "Prediction")
 
         app
     )

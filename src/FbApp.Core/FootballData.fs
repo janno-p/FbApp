@@ -1,8 +1,8 @@
 [<RequireQualifiedAccess>]
-module FbApp.Server.FootballData
+module FbApp.Core.FootballData
 
 open FbApp.Core.Serialization.Converters
-open Giraffe
+open FSharp.Control.Tasks.ContextInsensitive
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open System
@@ -325,11 +325,13 @@ with
 
 type CompetitionFixtureFilter =
     | TimeFrame of TimeFrame
+    | TimeFrameRange of DateTime * DateTime
     | Matchday of int
 with
     override this.ToString() =
         match this with
         | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
+        | TimeFrameRange (s, e) -> sprintf "timeFrameStart=%s&timeFrameEnd=%s" (s.ToString("yyyy-MM-dd")) (e.ToString("yyyy-MM-dd"))
         | Matchday n -> sprintf "matchday=%d" n
 
 type FixturesFilter =

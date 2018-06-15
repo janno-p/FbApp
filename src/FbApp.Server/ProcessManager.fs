@@ -2,12 +2,14 @@ module FbApp.Server.ProcessManager
 
 open EventStore.ClientAPI
 open EventStore.ClientAPI.Exceptions
+open FbApp.Core
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
+open FbApp.Domain
 open Giraffe
 open Microsoft.Extensions.Logging
 open FbApp.Server
-open FbApp.Server.Common
+open FbApp.Server.Configuration
 
 module Result =
     let unwrap f = function
@@ -18,8 +20,8 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventS
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = "Competition" ->
-            match deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
-            | Competition.Created args ->
+            match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
+            | Competitions.Created args ->
                 try
                     let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalSource
                     let teams = teams |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
@@ -31,14 +33,30 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventS
                         | FootballData.Groups groups -> groups
                         | _ -> failwith "Leagues are not implemented"
                     let command =
-                        Competition.Command.AssignTeamsAndFixtures
-                            (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competition.TeamAssignment) |> Seq.toList,
-                             fixtures.Fixtures |> Seq.map (fun x -> { HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId; Date = x.Date; ExternalId = x.Id } : Competition.FixtureAssignment) |> Seq.toList,
+                        Competitions.Command.AssignTeamsAndFixtures
+                            (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
+                             fixtures.Fixtures |> Seq.map (fun x -> { HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
                              groups |> Seq.map (fun kvp -> kvp.Key, (kvp.Value |> Array.map (fun x -> x.TeamId))) |> Seq.toList)
-                    let! _ = Aggregate.Handlers.competitionHandler (md.AggregateId, Some(md.AggregateSequenceNumber)) command
+                    let! _ = CommandHandlers.competitionHandler (md.AggregateId, Some(md.AggregateSequenceNumber)) command
                     ()
                 with :? WrongExpectedVersionException as ex ->
                     log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
+            | Competitions.FixturesAssigned fixtures ->
+                for fixture in fixtures do
+                    try
+                        let fixtureId = Fixtures.Id (md.AggregateId, fixture.ExternalId)
+                        let input : Fixtures.FixtureScheduledInput =
+                            {
+                                CompetitionId = md.AggregateId
+                                ExternalId = fixture.ExternalId
+                                HomeTeamId = fixture.HomeTeamId
+                                AwayTeamId = fixture.AwayTeamId
+                                Date = fixture.Date
+                            }
+                        let! _ = CommandHandlers.fixturesHandler (fixtureId, None) (Fixtures.ScheduleFixture input)
+                        ()
+                    with :? WrongExpectedVersionException as ex ->
+                        log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
             | _ -> ()
         | _ -> ()
         subscription.Acknowledge(e)

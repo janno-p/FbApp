@@ -29,6 +29,7 @@ let certificatePath = srcDir </> (sprintf "%s.pfx" ApplicationName)
 
 let clientPath = "./src/Client" |> Path.getFullName
 let serverPath = "./src/FbApp.Server" |> Path.getFullName
+let liveUpdatePath = "./src/FbApp.LiveUpdate" |> Path.getFullName
 
 let dotnetCliVersion = DotNet.getSDKVersionFromGlobalJson()
 
@@ -40,16 +41,21 @@ let inline withWorkingDir wd =
     >> DotNet.Options.withWorkingDirectory wd
 
 Target.create "Run" (fun _ ->
+    Environment.setEnvironVar "ASPNETCORE_ENVIRONMENT" "Development"
     let client = async {
         Yarn.exec "quasar dev" (fun o -> { o with WorkingDirectory = clientPath })
     }
     let server = async {
-        Environment.setEnvironVar "ASPNETCORE_ENVIRONMENT" "Development"
         let result = DotNet.exec (withWorkingDir serverPath) "watch" "run"
         if not result.OK then
-            failwithf "'watch run' failed with errors %A." result.Errors
+            failwithf "'watch run' failed with errors (server) %A." result.Errors
     }
-    [ client; server ]
+    let liveUpdate = async {
+        let result = DotNet.exec (withWorkingDir liveUpdatePath) "watch" "run"
+        if not result.OK then
+            failwithf "'watch run' failed with errors (live-update) %A." result.Errors
+    }
+    [ client; server; liveUpdate ]
     |> Async.Parallel
     |> Async.RunSynchronously
     |> ignore

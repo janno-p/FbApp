@@ -1,4 +1,4 @@
-module FbApp.Server.Common
+namespace FbApp.Server.Configuration
 
 [<CLIMutable>]
 type AuthOptions =

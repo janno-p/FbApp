@@ -4,12 +4,8 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Guid.fs" />
-    <Compile Include="Competition.fs" />
-    <Compile Include="Prediction.fs" />
-    <Compile Include="Aggregate.fs" />
-    <Compile Include="FootballData.fs" />
-    <Compile Include="Common.fs" />
+    <Compile Include="Configuration.fs" />
+    <Compile Include="CommandHandlers.fs" />
     <Compile Include="EventStore.fs" />
     <Compile Include="Projection.fs" />
     <Compile Include="ProcessManager.fs" />
@@ -24,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FbApp.Core\FbApp.Core.fsproj" />
+    <ProjectReference Include="..\FbApp.Domain\FbApp.Domain.fsproj" />
   </ItemGroup>
   <Target Name="PublishQuasarApplication" BeforeTargets="_IncludePrePublishGeneratedContent">
     <Exec Command="yarn quasar build" WorkingDirectory="$(ProjectDir)..\Client" />

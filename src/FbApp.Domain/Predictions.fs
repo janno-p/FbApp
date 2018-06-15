@@ -1,6 +1,7 @@
 [<RequireQualifiedAccess>]
-module FbApp.Server.Prediction
+module FbApp.Server.Predictions
 
+open FbApp.Domain
 open System
 
 type Email = Email of string

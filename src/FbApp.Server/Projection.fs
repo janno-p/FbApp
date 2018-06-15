@@ -68,8 +68,8 @@ let competitionIdFilter (id, ver) =
     Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
 let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
-    match deserializeOf<Competition.Event> (e.Event.EventType, e.Event.Data) with
-    | Competition.Created args ->
+    match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
+    | Competitions.Created args ->
         try
             let competitionModel: Projections.Competition =
                 {
@@ -87,7 +87,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
             | :? MongoWriteException as ex ->
                 log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
-    | Competition.TeamsAssigned teams ->
+    | Competitions.TeamsAssigned teams ->
         let teamProjections =
                 teams |> List.map (fun t ->
                 {
@@ -103,7 +103,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
         let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
         ()
 
-    | Competition.FixturesAssigned fixtures ->
+    | Competitions.FixturesAssigned fixtures ->
         let fixtureProjections =
             fixtures |> List.map (fun t ->
                 {
@@ -119,7 +119,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
         let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
         ()
 
-    | Competition.GroupsAssigned groups ->
+    | Competitions.GroupsAssigned groups ->
         let groupProjections = groups |> dict
         let u = Builders<Projections.Competition>.Update
                     .Set((fun x -> x.Version), md.AggregateSequenceNumber)
@@ -129,13 +129,13 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
 }
 
 let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
-    match deserializeOf<Prediction.Event> (e.Event.EventType, e.Event.Data) with
-    | Prediction.Registered args ->
+    match deserializeOf<Predictions.Event> (e.Event.EventType, e.Event.Data) with
+    | Predictions.Registered args ->
         try
             let mapResult = function
-                | Prediction.HomeWin -> "HomeWin"
-                | Prediction.Tie -> "Tie"
-                | Prediction.AwayWin -> "AwayWin"
+                | Predictions.HomeWin -> "HomeWin"
+                | Predictions.Tie -> "Tie"
+                | Predictions.AwayWin -> "AwayWin"
             let predictionModel: Projections.Prediction =
                 {
                     Id = md.AggregateId

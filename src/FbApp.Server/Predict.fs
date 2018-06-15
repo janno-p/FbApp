@@ -84,11 +84,11 @@ let private getFixtures: HttpHandler =
 
 let private savePredictions: HttpHandler =
     (fun next context -> task {
-        let! dto = context.BindJsonAsync<Prediction.PredictionRegistrationInput>()
+        let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
         let user = Auth.createUser context.User context
-        let command = Prediction.Register (dto, user.Name, user.Email)
-        let id = Prediction.Id (dto.CompetitionId, Prediction.Email user.Email)
-        let! result = Aggregate.Handlers.predictionHandler (id, Some(0L)) command
+        let command = Predictions.Register (dto, user.Name, user.Email)
+        let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
+        let! result = CommandHandlers.predictionHandler (id, Some(0L)) command
         match result with
         | Ok(_) -> return! Successful.ACCEPTED id next context
         | Error(WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
@@ -99,7 +99,7 @@ let private getCurrentPrediction: HttpHandler =
     (fun next context -> task {
         let! activeCompetition = getActiveCompetition ()
         let user = Auth.createUser context.User context
-        let predictionId = Prediction.Id (activeCompetition.Id, Prediction.Email user.Email) |> Prediction.streamId
+        let predictionId = Predictions.Id (activeCompetition.Id, Predictions.Email user.Email) |> Predictions.streamId
         let f = Builders<Projections.Prediction>.Filter.Eq((fun x -> x.Id), predictionId)
         let! prediction = predictions.Find(f) |> FindFluent.trySingleAsync
         match prediction with

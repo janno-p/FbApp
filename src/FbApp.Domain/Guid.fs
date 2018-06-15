@@ -1,5 +1,5 @@
 [<RequireQualifiedAccess>]
-module FbApp.Server.Guid
+module FbApp.Domain.Guid
 
 open System
 open System.Security.Cryptography

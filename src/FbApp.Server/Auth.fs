@@ -2,7 +2,7 @@ module FbApp.Server.Auth
 
 open System.Net.Http
 open System.Security.Claims
-open FbApp.Server.Common
+open FbApp.Server.Configuration
 open FSharp.Control.Tasks.ContextInsensitive
 open Giraffe
 open Microsoft.AspNetCore.Antiforgery
