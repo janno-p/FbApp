@@ -8,9 +8,21 @@ const $axios = axios.create({
 $axios.interceptors.response.use(
     undefined,
     (error) => {
+        if (error.response.status === 400) {
+            Notify.create({
+                message: error.response.data || "Vigane päring!",
+                position: "bottom",
+                type: "negative",
+                actions: [
+                    {
+                        label: "Sulge"
+                    }
+                ]
+            })
+        }
         if (error.response.status === 403) {
             Notify.create({
-                message: "Juurdepääs keelatud!",
+                message: error.response.data || "Juurdepääs keelatud!",
                 position: "bottom",
                 type: "negative",
                 actions: [
@@ -22,7 +34,7 @@ $axios.interceptors.response.use(
         }
         if (error.response.status === 409) {
             Notify.create({
-                message: "Andmete vastuolu: juba olemas.",
+                message: error.response.data || "Andmete vastuolu: juba olemas!",
                 position: "bottom",
                 type: "warning",
                 actions: [

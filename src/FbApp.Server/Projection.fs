@@ -37,6 +37,7 @@ module Projections =
             Fixtures: Fixture[]
             Groups: IDictionary<string, int64[]>
             Version: int64
+            Date: DateTime
         }
 
     type FixtureResult =
@@ -81,6 +82,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                     Fixtures = [||]
                     Groups = Dictionary<_,_>()
                     Version = md.AggregateSequenceNumber
+                    Date = args.Date
                 }
             let! _ = competitions.InsertOneAsync(competitionModel)
             ()

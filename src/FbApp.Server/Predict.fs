@@ -60,6 +60,11 @@ let private getActiveCompetition () = task {
     return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
 }
 
+let private getCompetition (competitionId: Guid) = task {
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.Id), competitionId)
+    return! competitions.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
+}
+
 let private mapTeams (competition: Projections.Competition) =
     competition.Teams
     |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))
@@ -87,13 +92,20 @@ let private savePredictions: HttpHandler =
     (fun next context -> task {
         let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
         let user = Auth.createUser context.User context
-        let command = Predictions.Register (dto, user.Name, user.Email)
-        let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
-        let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
-        match result with
-        | Ok(_) -> return! Successful.ACCEPTED (id |> Predictions.streamId |> Guid.toString) next context
-        | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
-        | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
+        let! competition = getCompetition dto.CompetitionId
+        match competition with
+        | Some(competition) when competition.Date > DateTime.Now ->
+            let command = Predictions.Register (dto, user.Name, user.Email)
+            let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
+            let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
+            match result with
+            | Ok(_) -> return! Successful.ACCEPTED (id |> Predictions.streamId |> Guid.toString) next context
+            | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
+            | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
+        | Some(_) ->
+            return! RequestErrors.BAD_REQUEST "Competition has already begun" next context
+        | None ->
+            return! RequestErrors.BAD_REQUEST "Invalid competition id" next context
     })
 
 let private getCurrentPrediction: HttpHandler =

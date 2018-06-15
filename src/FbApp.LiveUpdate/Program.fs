@@ -20,21 +20,23 @@ type FixturesHandler = Aggregate.CommandHandler<Fixtures.Id, Fixtures.Command, F
 type Marker = class end
 
 let mutable lastFullUpdate = DateTime.MinValue
+let [<Literal>] competitionId = 467L
 
-let updateFixtures authToken competitionId (log: ILogger) (fixtureHandler: FixturesHandler) = task {
+let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = task {
     let filters, onSuccess =
         let now = DateTime.Now
         if lastFullUpdate.AddHours(1.0) < now then
             [], (fun () -> lastFullUpdate <- now)
         else
             [FootballData.TimeFrameRange(now.Date, now.Date)], (fun () -> ())
-    let! result = FootballData.getCompetitionFixtures authToken 467L filters
+    let! result = FootballData.getCompetitionFixtures authToken competitionId filters
     match result with
     | Ok(data) ->
         log.LogInformation("Loaded data of {0} fixtures.", data.Count)
         let mutable anyError = false
+        let competitionGuid = competitionId |> Competitions.streamId
         for fixture in data.Fixtures do
-            let id = Fixtures.Id (competitionId, fixture.Id)
+            let id = Fixtures.Id (competitionGuid, fixture.Id)
             let command =
                 Fixtures.UpdateFixture
                     {
@@ -92,7 +94,6 @@ let main _ =
 
     let authToken = authOptions.FootballDataToken
     let connection = (EventStore.createEventStoreConnection eventStoreOptions).Result
-    let competitionId = Guid.Parse(configuration.["CompetitionId"])
 
     let fixtureHandler =
         Aggregate.makeHandler
@@ -100,7 +101,7 @@ let main _ =
             (EventStore.makeDefaultRepository connection Fixtures.AggregateName)
 
     while true do
-        updateFixtures authToken competitionId log fixtureHandler
+        updateFixtures authToken log fixtureHandler
         |> Async.AwaitTask
         |> Async.RunSynchronously
 
