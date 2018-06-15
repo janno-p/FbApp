@@ -55,16 +55,6 @@ type PredictionDto =
         Winner: int64
     }
 
-let private getActiveCompetition () = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalId), 467L)
-    return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
-}
-
-let private getCompetition (competitionId: Guid) = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.Id), competitionId)
-    return! competitions.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
-}
-
 let private mapTeams (competition: Projections.Competition) =
     competition.Teams
     |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))

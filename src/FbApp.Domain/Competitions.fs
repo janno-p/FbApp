@@ -9,9 +9,6 @@ type Id = int64
 
 type State = unit
 
-let initialState =
-    ()
-
 type Created =
     {
         Description: string
@@ -54,7 +51,7 @@ type Event =
     | FixturesAssigned of FixtureAssignment list
     | GroupsAssigned of GroupAssignment list
 
-let decide: State -> Command -> Result<Event list,unit> =
+let decide: State option -> Command -> Result<Event list,unit> =
     (fun _ -> function
         | Create { Description = description; ExternalId = externalId; Date = date } ->
             Ok([Created { Description = description; ExternalId = externalId; Date = date }])
@@ -62,7 +59,7 @@ let decide: State -> Command -> Result<Event list,unit> =
             Ok([TeamsAssigned teams; FixturesAssigned fixtures; GroupsAssigned groups])
     )
 
-let evolve: State -> Event -> State =
+let evolve: State option -> Event -> State =
     (fun _ -> function
         | Created _ -> ()
         | TeamsAssigned _ -> ()

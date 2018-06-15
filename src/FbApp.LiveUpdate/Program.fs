@@ -97,7 +97,7 @@ let main _ =
 
     let fixtureHandler =
         Aggregate.makeHandler
-            { InitialState = Fixtures.initialState; Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
+            { Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
             (EventStore.makeDefaultRepository connection Fixtures.AggregateName)
 
     while true do

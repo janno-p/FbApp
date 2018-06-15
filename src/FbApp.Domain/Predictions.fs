@@ -9,10 +9,10 @@ type Email = Email of string
 
 type Id = Guid * Email
 
-type State = unit
-
-let initialState =
-    ()
+type State =
+    {
+        IsAccepted: bool
+    }
 
 [<CLIMutable>]
 type FixtureResultRegistrationInput =
@@ -70,11 +70,13 @@ type PredictionRegistration =
 
 type Command =
     | Register of PredictionRegistrationInput * string * string
+    | Decline
 
 type Event =
     | Registered of PredictionRegistration
+    | Declined
 
-let decide: State -> Command -> Result<Event list,unit> =
+let decide: State option -> Command -> Result<Event list,unit> =
     (fun _ -> function
         | Register (input, name, email) ->
             let mapResult = function
@@ -113,11 +115,13 @@ let decide: State -> Command -> Result<Event list,unit> =
                     Winner = input.Winner
                 }
             Ok([Registered registration])
+        | Decline -> Ok([Declined])
     )
 
-let evolve: State -> Event -> State =
-    (fun _ -> function
-        | Registered _ -> ()
+let evolve: State option -> Event -> State =
+    (fun state -> function
+        | Registered _ -> { IsAccepted = true }
+        | Declined -> { state.Value with IsAccepted = false }
     )
 
 let predictionsGuid = Guid.Parse("2945d861-0b2f-4783-914b-97988b98c76b")

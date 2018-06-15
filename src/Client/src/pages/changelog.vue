@@ -24,7 +24,8 @@ export default {
                     changes: [
                         "Parandatud iluviga Chromes",
                         "Võistluste alguskuupäeva registreerimine",
-                        "Mängutulemuste kontrollimine"
+                        "Mängutulemuste kontrollimine",
+                        "Võistluste alguskuupäeva kontrollimine ennustuste registreerimisel"
                     ]
                 },
                 {

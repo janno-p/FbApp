@@ -158,6 +158,10 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
         with
             | :? MongoWriteException as ex ->
                 log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
+    | Predictions.Declined ->
+        let f = Builders<Projections.Prediction>.Filter.Eq((fun x -> x.Id), md.AggregateId)
+        let! _ = predictions.DeleteOneAsync(f)
+        ()
 }
 
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
@@ -179,3 +183,19 @@ type private X = class end
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
     connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProjectionsSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore
+
+module FindFluent =
+    let trySingleAsync (x: IFindFluent<_,_>) = task {
+        let! result = x.SingleOrDefaultAsync()
+        return (if result |> box |> isNull then None else Some(result))
+    }
+
+let getActiveCompetition () = task {
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalId), 467L)
+    return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
+}
+
+let getCompetition (competitionId: Guid) = task {
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.Id), competitionId)
+    return! competitions.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
+}

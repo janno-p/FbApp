@@ -96,17 +96,17 @@ let app = application {
 
         CommandHandlers.competitionsHandler <-
             makeHandler
-                { InitialState = Competitions.initialState; Decide = Competitions.decide; Evolve = Competitions.evolve; StreamId = Competitions.streamId }
+                { Decide = Competitions.decide; Evolve = Competitions.evolve; StreamId = Competitions.streamId }
                 (makeDefaultRepository eventStoreConnection Competitions.AggregateName)
 
         CommandHandlers.predictionsHandler <-
             makeHandler
-                { InitialState = Predictions.initialState; Decide = Predictions.decide; Evolve = Predictions.evolve; StreamId = Predictions.streamId }
+                { Decide = Predictions.decide; Evolve = Predictions.evolve; StreamId = Predictions.streamId }
                 (makeDefaultRepository eventStoreConnection Predictions.AggregateName)
 
         CommandHandlers.fixturesHandler <-
             makeHandler
-                { InitialState = Fixtures.initialState; Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
+                { Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
                 (makeDefaultRepository eventStoreConnection Fixtures.AggregateName)
 
         app

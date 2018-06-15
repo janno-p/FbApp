@@ -30,16 +30,12 @@ with
         | "CANCELED" -> Canceled
         | status -> Unknown status
 
-type FixtureState =
+type State =
     {
         Date: DateTime
         Status: FixtureStatus
         Score: (int * int) option
     }
-
-type State = FixtureState option
-
-let initialState : State = None
 
 type AddFixtureInput =
     {
@@ -66,7 +62,7 @@ type Command =
     | AddFixture of AddFixtureInput
     | UpdateFixture of UpdateFixtureInput
 
-let decide : State -> Command -> Result<Event list, Error> =
+let decide : State option -> Command -> Result<Event list, Error> =
     (fun state -> function
         | AddFixture input ->
             match state with
@@ -88,11 +84,11 @@ let decide : State -> Command -> Result<Event list, Error> =
             | None -> Error(UnknownFixture)
     )
 
-let evolve : State -> Event -> State =
+let evolve : State option -> Event -> State =
     (fun state -> function
-        | Added input -> Some({ Date = input.Date; Status = FixtureStatus.FromString(input.Status); Score = None })
-        | StatusChanged status -> Some({ state.Value with Status = status })
-        | ScoreChanged (homeGoals, awayGoals) -> Some({ state.Value with Score = Some(homeGoals, awayGoals) })
+        | Added input -> { Date = input.Date; Status = FixtureStatus.FromString(input.Status); Score = None }
+        | StatusChanged status -> { state.Value with Status = status }
+        | ScoreChanged (homeGoals, awayGoals) -> { state.Value with Score = Some(homeGoals, awayGoals) }
     )
 
 let fixturesNamespace =

@@ -6,9 +6,8 @@ open System.Threading.Tasks
 
 type Aggregate<'Id, 'State, 'Command, 'Event, 'Error> =
     {
-        InitialState: 'State
-        Decide: 'State -> 'Command -> Result<'Event list, 'Error>
-        Evolve: 'State -> 'Event -> 'State
+        Decide: 'State option -> 'Command -> Result<'Event list, 'Error>
+        Evolve: 'State option -> 'Event -> 'State
         StreamId: 'Id -> Guid
     }
 
@@ -37,7 +36,7 @@ let makeHandler (aggregate: Aggregate<'Id, 'State, 'Command, 'Event, 'Error>)
     fun (id, expectedVersion) command -> task {
         let streamId = aggregate.StreamId id
         let! ver, events = load (typeof<'Event>, streamId)
-        let state = events |> Seq.fold aggregate.Evolve aggregate.InitialState
+        let state = events |> Seq.fold (fun state event -> Some(aggregate.Evolve state event)) Option<'State>.None
         match aggregate.Decide state command with
         | Ok(events) ->
             let expectedCommitVersion =
