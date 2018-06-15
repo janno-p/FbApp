@@ -19,23 +19,24 @@ do ()
 type FixturesHandler = Aggregate.CommandHandler<Fixtures.Id, Fixtures.Command, Fixtures.Error>
 type Marker = class end
 
-let mutable lastFullUpdate = DateTime.MinValue
+let mutable lastFullUpdate = DateTimeOffset.MinValue
 let [<Literal>] competitionId = 467L
 
 let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = task {
     let filters, onSuccess =
-        let now = DateTime.Now
+        let now = DateTimeOffset.UtcNow
         if lastFullUpdate.AddHours(1.0) < now then
             [], (fun () -> lastFullUpdate <- now)
         else
-            [FootballData.TimeFrameRange(now.Date, now.Date)], (fun () -> ())
+            let today = DateTimeOffset(now.Date, TimeSpan.Zero)
+            [FootballData.TimeFrameRange(today, today)], (fun () -> ())
     let! result = FootballData.getCompetitionFixtures authToken competitionId filters
     match result with
     | Ok(data) ->
         log.LogInformation("Loaded data of {0} fixtures.", data.Count)
         let mutable anyError = false
         let competitionGuid = competitionId |> Competitions.streamId
-        for fixture in data.Fixtures do
+        for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday < 4) do
             let id = Fixtures.Id (competitionGuid, fixture.Id)
             let command =
                 Fixtures.UpdateFixture
@@ -101,9 +102,11 @@ let main _ =
             (EventStore.makeDefaultRepository connection Fixtures.AggregateName)
 
     while true do
-        updateFixtures authToken log fixtureHandler
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
+        try
+            updateFixtures authToken log fixtureHandler
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+        with e -> log.LogError(e, "Exception occured while updating fixtures.")
 
         Thread.Sleep(TimeSpan.FromMinutes(1.0))
 

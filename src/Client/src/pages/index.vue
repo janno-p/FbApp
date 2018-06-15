@@ -12,6 +12,7 @@
 import AddPredictions from "../components/add-predictions"
 import MyPredictions from "../components/my-predictions"
 import PredictionsLoading from "../components/predictions-loading"
+import CompetitionView from "../components/competition-view"
 import { mapState } from "vuex"
 
 export default {
@@ -20,7 +21,8 @@ export default {
     components: {
         AddPredictions,
         MyPredictions,
-        PredictionsLoading
+        PredictionsLoading,
+        CompetitionView
     },
 
     computed: {
@@ -29,8 +31,10 @@ export default {
                 return "predictions-loading"
             } else if (this.isSignedIn && this.predictions) {
                 return "my-predictions"
-            } else {
+            } else if (this.competitionStatus === "accept-predictions") {
                 return "add-predictions"
+            } else {
+                return "competition-view"
             }
         },
 
@@ -43,7 +47,8 @@ export default {
         return {
             isPredictionAdded: false,
             isLoading: true,
-            predictions: null
+            predictions: null,
+            competitionStatus: "accept-predictions"
         }
     },
 
@@ -73,7 +78,14 @@ export default {
                 await this.loadPredictions()
             })
         } else {
-            this.isLoading = false
+            this.$nextTick(async () => {
+                try {
+                    const response = await this.$axios.get("/predict/status")
+                    this.competitionStatus = response.data
+                } finally {
+                    this.isLoading = false
+                }
+            })
         }
     },
 

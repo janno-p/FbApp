@@ -163,7 +163,7 @@ type Competition =
         NumberOfMatchdays: int
         NumberOfTeams: int
         NumberOfGames: int
-        LastUpdated: DateTime
+        LastUpdated: DateTimeOffset
     }
 
 [<CLIMutable>]
@@ -215,7 +215,7 @@ type FixtureResult =
 type CompetitionFixture =
     {
         [<JsonProperty("_links")>] Links: CompetitionFixtureLinks
-        Date: DateTime
+        Date: DateTimeOffset
         Status: string
         Matchday: int
         HomeTeamName: string
@@ -242,8 +242,8 @@ type CompetitionFixtures =
 [<CLIMutable>]
 type Fixtures =
     {
-        TimeFrameStart: DateTime
-        TimeFrameEnd: DateTime
+        TimeFrameStart: DateTimeOffset
+        TimeFrameEnd: DateTimeOffset
         Count: int
         Fixtures: CompetitionFixture array
     }
@@ -252,8 +252,8 @@ type Fixtures =
 type HeadToHead =
     {
         Count: int
-        TimeFrameStart: DateTime
-        TimeFrameEnd: DateTime
+        TimeFrameStart: DateTimeOffset
+        TimeFrameEnd: DateTimeOffset
         HomeTeamWins: int
         AwayTeamWins: int
         Draws: int
@@ -286,9 +286,9 @@ type TeamPlayer =
         Name: string
         Position: string
         JerseyNumber: int
-        DateOfBirth: DateTime
+        DateOfBirth: DateTimeOffset
         Nationality: string
-        ContractUntil: DateTime option
+        ContractUntil: DateTimeOffset option
         MarketValue: string
     }
 
@@ -325,7 +325,7 @@ with
 
 type CompetitionFixtureFilter =
     | TimeFrame of TimeFrame
-    | TimeFrameRange of DateTime * DateTime
+    | TimeFrameRange of DateTimeOffset * DateTimeOffset
     | Matchday of int
 with
     override this.ToString() =

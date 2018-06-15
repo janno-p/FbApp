@@ -84,7 +84,7 @@ let private savePredictions: HttpHandler =
         let user = Auth.createUser context.User context
         let! competition = getCompetition dto.CompetitionId
         match competition with
-        | Some(competition) when competition.Date > DateTime.Now ->
+        | Some(competition) when competition.Date > DateTimeOffset.Now ->
             let command = Predictions.Register (dto, user.Name, user.Email)
             let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
             let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
@@ -130,8 +130,22 @@ let private getCurrentPrediction: HttpHandler =
         | None -> return! RequestErrors.NOT_FOUND "Prediction does not exist" next context
     })
 
+let private getCompetitionStatus : HttpHandler =
+    (fun next context -> task {
+        let! competition = getActiveCompetition ()
+        let status = if competition.Date > DateTimeOffset.Now then "competition-running" else "accept-predictions"
+        return! Successful.OK status next context
+    })
+
+let private getTimelyFixtures : HttpHandler =
+    (fun next context -> task {
+        return! Successful.OK [] next context
+    })
+
 let predictScope = scope {
     post "/" (Auth.authPipe >=> Auth.validateXsrfToken >=> savePredictions)
     get "/fixtures" getFixtures
     get "/current" (Auth.authPipe >=> Auth.validateXsrfToken >=> getCurrentPrediction)
+    get "/status" getCompetitionStatus
+    get "/timely" getTimelyFixtures
 }

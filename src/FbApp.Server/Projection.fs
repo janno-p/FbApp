@@ -20,11 +20,11 @@ module Projections =
             ExternalId: int64
         }
 
-    type Fixture =
+    type CompetitionFixture =
         {
             HomeTeamId: int64
             AwayTeamId: int64
-            Date: DateTime
+            Date: DateTimeOffset
             ExternalId: int64
         }
 
@@ -34,10 +34,10 @@ module Projections =
             Description: string
             ExternalId: int64
             Teams: Team[]
-            Fixtures: Fixture[]
+            Fixtures: CompetitionFixture[]
             Groups: IDictionary<string, int64[]>
             Version: int64
-            Date: DateTime
+            Date: DateTimeOffset
         }
 
     type FixtureResult =
@@ -61,13 +61,51 @@ module Projections =
             Version: int64
         }
 
+    type FixturePrediction =
+        {
+            PredictionId: Guid
+            Name: string
+            Result: string
+        }
+
+    type Fixture =
+        {
+            Id: Guid
+            CompetitionId: Guid
+            Date: DateTimeOffset
+            HomeTeam: Team
+            AwayTeam: Team
+            Status: string
+            HomeGoals: Nullable<int>
+            AwayGoals: Nullable<int>
+            Predictions: FixturePrediction[]
+            Version: int64
+        }
+
 let mongo = MongoClient()
 let db = mongo.GetDatabase("fbapp")
-let competitions = db.GetCollection("competitions")
-let predictions = db.GetCollection("predictions")
+let competitions = db.GetCollection<Projections.Competition>("competitions")
+let predictions = db.GetCollection<Projections.Prediction>("predictions")
+let fixtures = db.GetCollection<Projections.Fixture>("fixtures")
 
 let competitionIdFilter (id, ver) =
     Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
+
+module FindFluent =
+    let trySingleAsync (x: IFindFluent<_,_>) = task {
+        let! result = x.SingleOrDefaultAsync()
+        return (if result |> box |> isNull then None else Some(result))
+    }
+
+let getActiveCompetition () = task {
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalId), 467L)
+    return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
+}
+
+let getCompetition (competitionId: Guid) = task {
+    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.Id), competitionId)
+    return! competitions.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
+}
 
 let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
@@ -114,7 +152,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                     AwayTeamId = t.AwayTeamId
                     Date = t.Date
                     ExternalId = t.ExternalId
-                } : Projections.Fixture
+                } : Projections.CompetitionFixture
             ) |> List.toArray
         let u = Builders<Projections.Competition>.Update
                     .Set((fun x -> x.Version), md.AggregateSequenceNumber)
@@ -164,6 +202,50 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
         ()
 }
 
+let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
+    | Fixtures.Added input ->
+        try
+            let! competition = getCompetition input.CompetitionId
+            let competition = competition |> Option.get
+
+            let homeTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.HomeTeamId)
+            let awayTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.AwayTeamId)
+
+            let fixtureModel: Projections.Fixture =
+                {
+                    Id = md.AggregateId
+                    CompetitionId = input.CompetitionId
+                    Date = input.Date
+                    HomeTeam = homeTeam
+                    AwayTeam = awayTeam
+                    Status = input.Status
+                    HomeGoals = Nullable()
+                    AwayGoals = Nullable()
+                    Predictions = [||]
+                    Version = md.AggregateSequenceNumber
+                }
+            let! _ = fixtures.InsertOneAsync(fixtureModel)
+            ()
+        with :? MongoWriteException as ex ->
+            log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
+    | Fixtures.ScoreChanged (homeGoals, awayGoals) ->
+        let f = Builders<Projections.Fixture>.Filter.Eq((fun x -> x.Id), md.AggregateId)
+        let u = Builders<Projections.Fixture>.Update
+                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
+                    .Set((fun x -> x.HomeGoals), Nullable(homeGoals))
+                    .Set((fun x -> x.AwayGoals), Nullable(awayGoals))
+        let! _ = fixtures.UpdateOneAsync(f, u)
+        ()
+    | Fixtures.StatusChanged status ->
+        let f = Builders<Projections.Fixture>.Filter.Eq((fun x -> x.Id), md.AggregateId)
+        let u = Builders<Projections.Fixture>.Update
+                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
+                    .Set((fun x -> x.Status), status.ToString())
+        let! _ = fixtures.UpdateOneAsync(f, u)
+        ()
+}
+
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match getMetadata e with
@@ -171,6 +253,8 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
             do! projectCompetitions log md e
         | Some(md) when md.AggregateName = Predictions.AggregateName ->
             do! projectPredictions log md e
+        | Some(md) when md.AggregateName = Fixtures.AggregateName ->
+            do! projectFixtures log md e
         | _ -> ()
         subscription.Acknowledge(e)
     with ex ->
@@ -183,19 +267,3 @@ type private X = class end
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
     connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProjectionsSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore
-
-module FindFluent =
-    let trySingleAsync (x: IFindFluent<_,_>) = task {
-        let! result = x.SingleOrDefaultAsync()
-        return (if result |> box |> isNull then None else Some(result))
-    }
-
-let getActiveCompetition () = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalId), 467L)
-    return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
-}
-
-let getCompetition (competitionId: Guid) = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.Id), competitionId)
-    return! competitions.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
-}

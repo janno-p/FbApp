@@ -29,10 +29,19 @@ with
         | "POSTPONED" -> Postponed
         | "CANCELED" -> Canceled
         | status -> Unknown status
+    override this.ToString() =
+        match this with
+        | Scheduled -> "SCHEDULED"
+        | Timed -> "TIMED"
+        | InPlay -> "IN_PLAY"
+        | Finished -> "FINISHED"
+        | Postponed -> "POSTPONED"
+        | Canceled -> "CANCELED"
+        | Unknown x -> x
 
 type State =
     {
-        Date: DateTime
+        Date: DateTimeOffset
         Status: FixtureStatus
         Score: (int * int) option
     }
@@ -43,7 +52,7 @@ type AddFixtureInput =
         ExternalId: int64
         HomeTeamId: int64
         AwayTeamId: int64
-        Date: DateTime
+        Date: DateTimeOffset
         Status: string
     }
 

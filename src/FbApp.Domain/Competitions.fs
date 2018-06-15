@@ -13,7 +13,7 @@ type Created =
     {
         Description: string
         ExternalId: int64
-        Date: DateTime
+        Date: DateTimeOffset
     }
 
 type TeamAssignment =
@@ -28,7 +28,7 @@ type FixtureAssignment =
     {
         HomeTeamId: int64
         AwayTeamId: int64
-        Date: DateTime
+        Date: DateTimeOffset
         ExternalId: int64
     }
 
@@ -38,7 +38,7 @@ type CreateInput =
     {
         Description: string
         ExternalId: int64
-        Date: DateTime
+        Date: DateTimeOffset
     }
 
 type Command =
