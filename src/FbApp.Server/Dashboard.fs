@@ -46,7 +46,7 @@ let addCompetition: HttpHandler =
             let! dto = context.BindJsonAsync<CompetitionDto>()
             let command = Competitions.Create(dto.Description, dto.ExternalSource)
             let id = Guid.NewGuid()
-            let! result = CommandHandlers.competitionHandler (id, Some(0L)) command
+            let! result = CommandHandlers.competitionsHandler (id, Aggregate.New) command
             match result with
             | Ok(_) -> return! Successful.ACCEPTED (id.ToString("N")) next context
             | Error(_) -> return! RequestErrors.BAD_REQUEST "" next context

@@ -16,14 +16,23 @@ open Microsoft.Extensions.Configuration.UserSecrets
 [<assembly: UserSecretsIdAttribute("d6072641-6e1a-4bbc-bbb6-d355f0e38db4")>]
 do ()
 
-type FixturesHandler = Aggregate.CommandHandler<Fixtures.Id, Fixtures.Command, unit>
+type FixturesHandler = Aggregate.CommandHandler<Fixtures.Id, Fixtures.Command, Fixtures.Error>
 type Marker = class end
 
-let updateFixtures authToken competitionId (log: ILogger) filters (fixtureHandler: FixturesHandler) = task {
+let mutable lastFullUpdate = DateTime.MinValue
+
+let updateFixtures authToken competitionId (log: ILogger) (fixtureHandler: FixturesHandler) = task {
+    let filters, onSuccess =
+        let now = DateTime.Now
+        if lastFullUpdate.AddHours(1.0) < now then
+            [], (fun () -> lastFullUpdate <- now)
+        else
+            [FootballData.TimeFrameRange(now.Date, now.Date)], (fun () -> ())
     let! result = FootballData.getCompetitionFixtures authToken 467L filters
     match result with
     | Ok(data) ->
         log.LogInformation("Loaded data of {0} fixtures.", data.Count)
+        let mutable anyError = false
         for fixture in data.Fixtures do
             let id = Fixtures.Id (competitionId, fixture.Id)
             let command =
@@ -39,8 +48,13 @@ let updateFixtures authToken competitionId (log: ILogger) filters (fixtureHandle
                                 | _ -> None
                             )
                     }
-            let! _ = fixtureHandler (id, None) command
-            ()
+            let! updateResult = fixtureHandler (id, Aggregate.Any) command
+            match updateResult with
+            | Ok(_) -> ()
+            | Error(err) ->
+                anyError <- true
+                log.LogError(sprintf "Could not update fixture %A: %A" id err)
+        if not anyError then onSuccess ()
     | Error(statusCode, statusText, error) ->
         log.LogWarning("Failed to load fixture data: ({0}: {1}) - {2}", statusCode, statusText, error.Error)
 }
@@ -85,17 +99,8 @@ let main _ =
             { InitialState = Fixtures.initialState; Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
             (EventStore.makeDefaultRepository connection Fixtures.AggregateName)
 
-    let mutable lastFullUpdate = DateTime.MinValue
-
     while true do
-        let filters =
-            let now = DateTime.Now
-            if lastFullUpdate.AddHours(1.0) < now then
-                lastFullUpdate <- now
-                []
-            else [FootballData.TimeFrameRange(now.Date, now.Date)]
-
-        updateFixtures authToken competitionId log filters fixtureHandler
+        updateFixtures authToken competitionId log fixtureHandler
         |> Async.AwaitTask
         |> Async.RunSynchronously
 

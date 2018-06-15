@@ -51,6 +51,7 @@ Target.create "Run" (fun _ ->
             failwithf "'watch run' failed with errors (server) %A." result.Errors
     }
     let liveUpdate = async {
+        System.Threading.Thread.Sleep(System.TimeSpan.FromSeconds(2.0))
         let result = DotNet.exec (withWorkingDir liveUpdatePath) "watch" "run"
         if not result.OK then
             failwithf "'watch run' failed with errors (live-update) %A." result.Errors

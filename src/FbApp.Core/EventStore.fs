@@ -90,12 +90,12 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
         (fun (eventType, id) ->
             task {
                 let streamId = aggregateStreamId aggregateName id
-                let rec readNextPage pages = task {
-                    let! slice = connection.ReadStreamEventsForwardAsync(streamId, 1L, 4096, false)
+                let rec readNextPage startFrom pages = task {
+                    let! slice = connection.ReadStreamEventsForwardAsync(streamId, startFrom, 4096, false)
                     let pages = slice.Events :: pages
-                    if not slice.IsEndOfStream then return! readNextPage pages else return (slice.LastEventNumber, pages)
+                    if not slice.IsEndOfStream then return! readNextPage slice.NextEventNumber pages else return (slice.LastEventNumber, pages)
                 }
-                let! version, events = readNextPage []
+                let! version, events = readNextPage 0L []
                 let domainEvents = events |> List.rev |> Seq.concat |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
                 return (version, domainEvents)
             }
@@ -107,6 +107,11 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
                 let streamId = aggregateStreamId aggregateName id
                 let batchMetadata = Metadata.Create(aggregateName, id)
 
+                let aggregateSequenceNumber =
+                    match expectedVersion with
+                    | NewStream -> -1L
+                    | Value num -> num
+
                 let eventDatas =
                     events |> List.mapi (fun i e ->
                         let guid = Guid.NewGuid()
@@ -115,21 +120,23 @@ let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
                             { batchMetadata with
                                 Guid = guid
                                 EventType = eventType
-                                AggregateSequenceNumber = expectedVersion + 1L + (int64 i)
+                                AggregateSequenceNumber = aggregateSequenceNumber + 1L + (int64 i)
                             }
                         let _, metadata = serialize metadata
                         EventData(guid, eventType, true, data, metadata)
                     )
 
                 let expectedVersion =
-                    match expectedVersion with 0L -> ExpectedVersion.NoStream | v -> v - 1L
+                    match expectedVersion with
+                    | NewStream -> ExpectedVersion.NoStream
+                    | Value v -> v
 
                 try
                     use! transaction = connection.StartTransactionAsync(streamId, expectedVersion)
                     do! transaction.WriteAsync(eventDatas)
                     let! writeResult = transaction.CommitAsync()
 
-                    return Ok(writeResult.NextExpectedVersion + 1L)
+                    return Ok(writeResult.NextExpectedVersion)
                 with
                 | :? WrongExpectedVersionException ->
                     return Error(WrongExpectedVersion)

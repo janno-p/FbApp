@@ -2,6 +2,7 @@
 
 open FbApp.Core.Aggregate
 open FbApp.Core.EventStore
+open FbApp.Domain
 open FbApp.Server
 open FbApp.Server.Configuration
 open FbApp.Server.HttpsConfig
@@ -93,15 +94,20 @@ let app = application {
         Projection.connectSubscription eventStoreConnection loggerFactory
         ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
 
-        CommandHandlers.competitionHandler <-
+        CommandHandlers.competitionsHandler <-
             makeHandler
                 { InitialState = Competitions.initialState; Decide = Competitions.decide; Evolve = Competitions.evolve; StreamId = id }
                 (makeDefaultRepository eventStoreConnection "Competition")
 
-        CommandHandlers.predictionHandler <-
+        CommandHandlers.predictionsHandler <-
             makeHandler
                 { InitialState = Predictions.initialState; Decide = Predictions.decide; Evolve = Predictions.evolve; StreamId = Predictions.streamId }
                 (makeDefaultRepository eventStoreConnection "Prediction")
+
+        CommandHandlers.fixturesHandler <-
+            makeHandler
+                { InitialState = Fixtures.initialState; Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
+                (makeDefaultRepository eventStoreConnection Fixtures.AggregateName)
 
         app
     )

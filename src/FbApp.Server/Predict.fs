@@ -1,6 +1,6 @@
 module FbApp.Server.Predict
 
-open FbApp.Core.Aggregate
+open FbApp.Core
 open FbApp.Server.Projection
 open Giraffe
 open MongoDB.Driver
@@ -88,10 +88,10 @@ let private savePredictions: HttpHandler =
         let user = Auth.createUser context.User context
         let command = Predictions.Register (dto, user.Name, user.Email)
         let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
-        let! result = CommandHandlers.predictionHandler (id, Some(0L)) command
+        let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
         match result with
         | Ok(_) -> return! Successful.ACCEPTED id next context
-        | Error(WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
+        | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
         | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
     })
 

@@ -7,32 +7,48 @@ let [<Literal>] AggregateName = "Fixture"
 
 type Id = Guid * int64
 
+type Error =
+    | FixtureAlreadyAdded
+    | UnknownFixture
+
 type FixtureStatus =
     | Scheduled
+    | Timed
     | InPlay
     | Finished
+    | Postponed
+    | Canceled
+    | Unknown of string
+with
+    static member FromString (value) =
+        match value with
+        | "SCHEDULED" -> Scheduled
+        | "TIMED" -> Timed
+        | "IN_PLAY" -> InPlay
+        | "FINISHED" -> Finished
+        | "POSTPONED" -> Postponed
+        | "CANCELED" -> Canceled
+        | status -> Unknown status
 
-type State =
+type FixtureState =
     {
         Date: DateTime
         Status: FixtureStatus
         Score: (int * int) option
     }
 
-let initialState : State =
-    {
-        Date = Unchecked.defaultof<DateTime>
-        Status = FixtureStatus.Scheduled
-        Score = None
-    }
+type State = FixtureState option
 
-type FixtureScheduledInput =
+let initialState : State = None
+
+type AddFixtureInput =
     {
         CompetitionId: Guid
         ExternalId: int64
         HomeTeamId: int64
         AwayTeamId: int64
         Date: DateTime
+        Status: string
     }
 
 type UpdateFixtureInput =
@@ -42,41 +58,41 @@ type UpdateFixtureInput =
     }
 
 type Event =
-    | Scheduled of FixtureScheduledInput
-    | Started
+    | Added of AddFixtureInput
+    | StatusChanged of FixtureStatus
     | ScoreChanged of int * int
-    | Completed
 
 type Command =
-    | ScheduleFixture of FixtureScheduledInput
+    | AddFixture of AddFixtureInput
     | UpdateFixture of UpdateFixtureInput
 
-let decide : State -> Command -> Result<Event list, unit> =
+let decide : State -> Command -> Result<Event list, Error> =
     (fun state -> function
-        | ScheduleFixture input ->
-            Ok([Scheduled input])
+        | AddFixture input ->
+            match state with
+            | Some(_) -> Error(FixtureAlreadyAdded)
+            | None -> Ok([Added input])
         | UpdateFixture input ->
-            Ok([
-                match input.Status with
-                | "IN_PLAY" when state.Status <> InPlay ->
-                    yield Started
-                | "FINISHED" when state.Status <> Finished ->
-                    yield Completed
-                | _ -> ()
+            match state with
+            | Some(state) ->
+                Ok([
+                    let status = FixtureStatus.FromString(input.Status)
+                    if status <> state.Status then
+                        yield StatusChanged status
 
-                match input.Result with
-                | Some(score) when input.Result <> state.Score ->
-                    yield ScoreChanged score
-                | _ -> ()
-            ])
+                    match input.Result with
+                    | Some(score) when input.Result <> state.Score ->
+                        yield ScoreChanged score
+                    | _ -> ()
+                ])
+            | None -> Error(UnknownFixture)
     )
 
 let evolve : State -> Event -> State =
     (fun state -> function
-        | Scheduled input -> { state with Date = input.Date; Status = FixtureStatus.Scheduled }
-        | Started -> { state with Status = InPlay; Score = Some(0, 0) }
-        | ScoreChanged (homeGoals, awayGoals) -> { state with Score = Some(homeGoals, awayGoals) }
-        | Completed -> { state with Status = Finished }
+        | Added input -> Some({ Date = input.Date; Status = FixtureStatus.FromString(input.Status); Score = None })
+        | StatusChanged status -> Some({ state.Value with Status = status })
+        | ScoreChanged (homeGoals, awayGoals) -> Some({ state.Value with Score = Some(homeGoals, awayGoals) })
     )
 
 let fixturesNamespace =
