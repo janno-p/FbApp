@@ -68,6 +68,7 @@ module Projections =
             Result: string
         }
 
+    [<CLIMutable>]
     type Fixture =
         {
             Id: Guid
@@ -120,7 +121,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                     Fixtures = [||]
                     Groups = Dictionary<_,_>()
                     Version = md.AggregateSequenceNumber
-                    Date = args.Date
+                    Date = args.Date.ToOffset(TimeSpan.Zero)
                 }
             let! _ = competitions.InsertOneAsync(competitionModel)
             ()
@@ -150,7 +151,7 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                 {
                     HomeTeamId = t.HomeTeamId
                     AwayTeamId = t.AwayTeamId
-                    Date = t.Date
+                    Date = t.Date.ToOffset(TimeSpan.Zero)
                     ExternalId = t.ExternalId
                 } : Projections.CompetitionFixture
             ) |> List.toArray
@@ -216,7 +217,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 {
                     Id = md.AggregateId
                     CompetitionId = input.CompetitionId
-                    Date = input.Date
+                    Date = input.Date.ToOffset(TimeSpan.Zero)
                     HomeTeam = homeTeam
                     AwayTeam = awayTeam
                     Status = input.Status

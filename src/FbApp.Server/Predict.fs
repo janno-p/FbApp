@@ -55,6 +55,17 @@ type PredictionDto =
         Winner: int64
     }
 
+[<CLIMutable>]
+type FixtureDetailsDto =
+    {
+        Date: DateTimeOffset
+        HomeTeam: TeamDto
+        AwayTeam: TeamDto
+        Status: string
+        HomeGoals: Nullable<int>
+        AwayGoals: Nullable<int>
+    }
+
 let private mapTeams (competition: Projections.Competition) =
     competition.Teams
     |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))
@@ -137,9 +148,45 @@ let private getCompetitionStatus : HttpHandler =
         return! Successful.OK status next context
     })
 
+open MongoDB.Bson
+
 let private getTimelyFixtures : HttpHandler =
     (fun next context -> task {
-        return! Successful.OK [] next context
+        let pipelines =
+            PipelineDefinition<_,Projections.Fixture>.Create(
+                (sprintf """{
+                    $addFields: {
+                        rank: {
+                            $let: {
+                                vars: { diff: { $abs: { $subtract: [ %d, { $arrayElemAt: [ "$Date", 0 ] } ] } } },
+                                in: { $cond: { if: { $eq: [ "$Status", "IN_PLAY" ] }, then: 0, else: { $multiply: [ 1, "$$diff" ] } } }
+                            }
+                        }
+                    }
+                }""" System.DateTimeOffset.UtcNow.Ticks),
+                """{ $sort: { rank: 1 } }""",
+                """{ $limit: 2 }""",
+                """{ $addFields: { rank: "$$REMOVE" } }"""
+            )
+        let! timelyFixtures = fixtures.Aggregate(pipelines).ToListAsync()
+        if timelyFixtures.Count > 1 && timelyFixtures.[0].Date <> timelyFixtures.[1].Date then
+            timelyFixtures.RemoveAt(1)
+        let result =
+            let mapTeam (t: Projections.Team) =
+                { Name = t.Name; FlagUrl = t.FlagUrl }
+            timelyFixtures
+            |> Seq.map
+                (fun x ->
+                    {
+                        Date = x.Date.ToLocalTime()
+                        HomeTeam = mapTeam x.HomeTeam
+                        AwayTeam = mapTeam x.AwayTeam
+                        Status = x.Status
+                        HomeGoals = x.HomeGoals
+                        AwayGoals = x.AwayGoals
+                    } : FixtureDetailsDto)
+            |> Seq.toArray
+        return! Successful.OK result next context
     })
 
 let predictScope = scope {
