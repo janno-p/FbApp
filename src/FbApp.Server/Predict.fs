@@ -56,14 +56,23 @@ type PredictionDto =
     }
 
 [<CLIMutable>]
+type FixturePredictionDto =
+    {
+        Name: string
+        Result: string
+    }
+
+[<CLIMutable>]
 type FixtureDetailsDto =
     {
+        Id: Guid
         Date: DateTimeOffset
         HomeTeam: TeamDto
         AwayTeam: TeamDto
         Status: string
         HomeGoals: Nullable<int>
         AwayGoals: Nullable<int>
+        Predictions: FixturePredictionDto[]
     }
 
 let private mapTeams (competition: Projections.Competition) =
@@ -148,8 +157,6 @@ let private getCompetitionStatus : HttpHandler =
         return! Successful.OK status next context
     })
 
-open MongoDB.Bson
-
 let private getTimelyFixtures : HttpHandler =
     (fun next context -> task {
         let pipelines =
@@ -171,6 +178,8 @@ let private getTimelyFixtures : HttpHandler =
         let! timelyFixtures = fixtures.Aggregate(pipelines).ToListAsync()
         if timelyFixtures.Count > 1 && timelyFixtures.[0].Date <> timelyFixtures.[1].Date then
             timelyFixtures.RemoveAt(1)
+        let fixName (name: string) =
+            name.Split([|' '|], 2).[0]
         let result =
             let mapTeam (t: Projections.Team) =
                 { Name = t.Name; FlagUrl = t.FlagUrl }
@@ -178,12 +187,14 @@ let private getTimelyFixtures : HttpHandler =
             |> Seq.map
                 (fun x ->
                     {
+                        Id = x.Id
                         Date = x.Date.ToLocalTime()
                         HomeTeam = mapTeam x.HomeTeam
                         AwayTeam = mapTeam x.AwayTeam
                         Status = x.Status
                         HomeGoals = x.HomeGoals
                         AwayGoals = x.AwayGoals
+                        Predictions = x.Predictions |> Array.map (fun u -> { Name = fixName u.Name; Result = u.Result }) |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
                     } : FixtureDetailsDto)
             |> Seq.toArray
         return! Successful.OK result next context

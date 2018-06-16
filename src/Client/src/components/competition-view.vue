@@ -33,7 +33,17 @@
                             </q-item-side>
                         </q-item>
                         <q-item-separator />
-                        <q-item>tere</q-item>
+                        <q-item v-for="(prediction, j) in fixture.predictions" :key="j">
+                            <q-item-side v-if="isPreFixture(fixture)" icon="remove" />
+                            <q-item-side v-else-if="isCorrectPrediction(fixture, prediction)" icon="done" color="positive" />
+                            <q-item-side v-else icon="close" color="negative" />
+                            <q-item-main>
+                                <q-item-tile>{{ prediction.name }}</q-item-tile>
+                            </q-item-main>
+                            <q-item-side>
+                                <q-item-tile>{{ predictionText(fixture, prediction) }}</q-item-tile>
+                            </q-item-side>
+                        </q-item>
                     </q-list>
                 </div>
             </div>
@@ -87,6 +97,37 @@ export default {
 
         formatDate (d) {
             return moment(d).format("DD.MM.YYYY HH:mm")
+        },
+
+        isPreFixture (fixture) {
+            return fixture.homeGoals === null || fixture.awayGoals === null
+        },
+
+        getFixtureStatus (fixture) {
+            if (fixture.homeGoals === null || fixture.awayGoals === null) {
+                return "None"
+            } else if (fixture.homeGoals > fixture.awayGoals) {
+                return "HomeWin"
+            } else if (fixture.homeGoals < fixture.awayGoals) {
+                return "AwayWin"
+            } else {
+                return "Tie"
+            }
+        },
+
+        isCorrectPrediction (fixture, prediction) {
+            return this.getFixtureStatus(fixture) === prediction.result
+        },
+
+        predictionText (fixture, prediction) {
+            switch (prediction.result) {
+            case "HomeWin":
+                return fixture.homeTeam.name
+            case "AwayWin":
+                return fixture.awayTeam.name
+            case "Tie":
+                return "Draw"
+            }
         }
     },
 
