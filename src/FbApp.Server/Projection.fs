@@ -46,6 +46,13 @@ module Projections =
             Result: string
         }
 
+    type PredictionFixtures =
+        {
+            Id: Guid
+            Name: string
+            Fixtures: FixtureResult[]
+        }
+
     type Prediction =
         {
             [<BsonId>] Id: Guid
@@ -82,6 +89,8 @@ module Projections =
             Predictions: FixturePrediction[]
             Version: int64
         }
+
+MongoDB.Bson.BsonDefaults.GuidRepresentation <- MongoDB.Bson.GuidRepresentation.Standard
 
 let mongo = MongoClient()
 let db = mongo.GetDatabase("fbapp")
@@ -178,13 +187,37 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 | Predictions.HomeWin -> "HomeWin"
                 | Predictions.Tie -> "Tie"
                 | Predictions.AwayWin -> "AwayWin"
+
+            let fs = args.Fixtures |> Seq.map (fun x -> { FixtureId = x.Id; Result = (mapResult x.Result) } : Projections.FixtureResult) |> Seq.toArray
+
+            let updates =
+                fs
+                |> Array.map
+                    (fun fixture ->
+                        let d: Projections.FixturePrediction =
+                            {
+                                PredictionId = md.AggregateId
+                                Name = args.Name
+                                Result = fixture.Result
+                            }
+                        let id = Fixtures.Id (args.CompetitionId, fixture.FixtureId) |> Fixtures.streamId
+                        let fid = Builders<Projections.Fixture>.Filter.Eq((fun x -> x.Id), id)
+                        let u = Builders<Projections.Fixture>.Update
+                                    .Push(FieldDefinition<Projections.Fixture>.op_Implicit "Predictions", d)
+                        (fid, u)
+                    )
+
+            for (f, u) in updates do
+                let! _ = fixtures.UpdateOneAsync(f, u)
+                ()
+
             let predictionModel: Projections.Prediction =
                 {
                     Id = md.AggregateId
                     Name = args.Name
                     Email = args.Email
                     CompetitionId = args.CompetitionId
-                    Fixtures = args.Fixtures |> Seq.map (fun x -> { FixtureId = x.Id; Result = (mapResult x.Result) } : Projections.FixtureResult) |> Seq.toArray
+                    Fixtures = fs
                     QualifiersRoundOf16 = args.Qualifiers.RoundOf16 |> List.toArray
                     QualifiersRoundOf8 = args.Qualifiers.RoundOf8 |> List.toArray
                     QualifiersRoundOf4 = args.Qualifiers.RoundOf4 |> List.toArray
@@ -213,6 +246,29 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             let homeTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.HomeTeamId)
             let awayTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.AwayTeamId)
 
+            let pipelines =
+                PipelineDefinition<_,Projections.PredictionFixtures>.Create(
+                    (sprintf
+                        """{ $match: { CompetitionId: { $eq: new BinData(4, "%s") }, "Fixtures.FixtureId": { $eq: %d } } }"""
+                        (Convert.ToBase64String(competition.Id.ToByteArray()))
+                        input.ExternalId),
+                    (sprintf
+                        """{ $project: { Name: 1, Fixtures: { $filter: { input: "$Fixtures", as: "fixture", cond: { $eq: ["$$fixture.FixtureId", %d] } } } } }"""
+                        input.ExternalId)
+                )
+            let! predictions = predictions.Aggregate(pipelines).ToListAsync()
+
+            let predictions =
+                predictions
+                |> Seq.map
+                    (fun x ->
+                        {
+                            PredictionId = x.Id
+                            Name = x.Name
+                            Result = x.Fixtures.[0].Result
+                        } : Projections.FixturePrediction)
+                |> Seq.toArray
+
             let fixtureModel: Projections.Fixture =
                 {
                     Id = md.AggregateId
@@ -223,7 +279,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Status = input.Status
                     HomeGoals = Nullable()
                     AwayGoals = Nullable()
-                    Predictions = [||]
+                    Predictions = predictions
                     Version = md.AggregateSequenceNumber
                 }
             let! _ = fixtures.InsertOneAsync(fixtureModel)

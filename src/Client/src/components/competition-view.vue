@@ -57,7 +57,7 @@ export default {
     methods: {
         title (fixture) {
             switch (fixture.status) {
-            case "IN_GAME":
+            case "IN_PLAY":
                 return "Käimasolev mäng"
             case "FINISHED":
                 return "Lõppenud mäng"
