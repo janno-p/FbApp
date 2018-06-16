@@ -9,7 +9,24 @@
             <div class="row">
                 <div class="col-12 col-md-6" v-for="(fixture, i) in fixtures" :key="i">
                     <q-list class="q-mx-sm">
-                        <q-list-header class="text-center">{{ title(fixture) }}</q-list-header>
+                        <q-item>
+                            <q-item-side>
+                                <q-item-tile>
+                                    <q-btn round icon="arrow_back" title="Eelmine mäng" />
+                                </q-item-tile>
+                            </q-item-side>
+                            <q-item-main>
+                                <q-item-tile class="text-center">
+                                    <div class="q-subtitle text-faded">{{ title(fixture) }}</div>
+                                </q-item-tile>
+                            </q-item-main>
+                            <q-item-side>
+                                <q-item-tile>
+                                    <q-btn round icon="arrow_forward" title="Järgmine mäng" />
+                                </q-item-tile>
+                            </q-item-side>
+                        </q-item>
+                        <q-item-separator />
                         <q-item>
                             <q-item-side>
                                 <q-item-tile class="text-center q-pa-lg">
@@ -21,7 +38,7 @@
                                 <q-item-tile class="text-center">
                                     <h3>{{ goals(fixture.homeGoals) }} : {{ goals(fixture.awayGoals) }}</h3>
                                 </q-item-tile>
-                                <q-item-tile class="text-center">
+                                <q-item-tile class="text-center text-faded q-caption">
                                     {{ formatDate(fixture.date) }}
                                 </q-item-tile>
                             </q-item-main>
@@ -34,13 +51,13 @@
                         </q-item>
                         <q-item-separator />
                         <q-item v-for="(prediction, j) in fixture.predictions" :key="j">
-                            <q-item-side v-if="isPreFixture(fixture)" icon="remove" />
-                            <q-item-side v-else-if="isCorrectPrediction(fixture, prediction)" icon="done" color="positive" />
-                            <q-item-side v-else icon="close" color="negative" />
+                            <q-item-side v-if="isPreFixture(fixture)" icon="remove" class="q-px-md" />
+                            <q-item-side v-else-if="isCorrectPrediction(fixture, prediction)" icon="done" color="positive" class="q-px-md" />
+                            <q-item-side v-else icon="close" color="negative" class="q-px-md" />
                             <q-item-main>
                                 <q-item-tile>{{ prediction.name }}</q-item-tile>
                             </q-item-main>
-                            <q-item-side>
+                            <q-item-side class="q-px-md">
                                 <q-item-tile>{{ predictionText(fixture, prediction) }}</q-item-tile>
                             </q-item-side>
                         </q-item>
@@ -72,7 +89,7 @@ export default {
             case "FINISHED":
                 return "Lõppenud mäng"
             default:
-                return "Järgmine mäng"
+                return "Toimumata mäng"
             }
         },
 
