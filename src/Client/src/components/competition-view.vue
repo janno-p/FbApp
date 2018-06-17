@@ -26,7 +26,7 @@
                             </q-item-side>
                         </q-item>
                         <q-item-separator />
-                        <q-item v-if="isLoadingFixture">
+                        <q-item v-if="isLoadingFixture" key="loading">
                             <q-item-main>
                                 <q-item-tile>
                                     <q-inner-loading :visible="true">
@@ -37,7 +37,7 @@
                             </q-item-main>
                         </q-item>
                         <template v-else>
-                            <q-item>
+                            <q-item key="fixture">
                                 <q-item-side>
                                     <q-item-tile class="text-center q-pa-lg">
                                         <img :src="fixture.homeTeam.flagUrl" height="32" :title="fixture.homeTeam.name" />
@@ -116,6 +116,7 @@ export default {
 
     data () {
         return {
+            isDestroyed: false,
             isInitializing: true,
             fixture: null,
             isLoadingFixture: false
@@ -141,7 +142,9 @@ export default {
                 try {
                     await this.updateFixture()
                 } finally {
-                    this.runUpdate()
+                    if (!this.isDestroyed) {
+                        this.runUpdate()
+                    }
                 }
             }, 30000)
         },
@@ -194,6 +197,10 @@ export default {
                 this.isInitializing = false
             }
         })
+    },
+
+    beforeDestroy () {
+        this.isDestroyed = true
     }
 }
 </script>

@@ -243,25 +243,7 @@ let toBsonGuid (guid: Guid) =
 
 type FixturesBuilder = Builders<Projections.Fixture>
 
-let setPreviousFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
-    let filters =
-        FixturesBuilder.Filter.And(
-            FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
-            FixturesBuilder.Filter.Lte((fun x -> x.Date), date),
-            FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
-        )
-    let sort =
-        FixturesBuilder.Sort.Descending(FieldDefinition<_>.op_Implicit "Date")
-    let! previousFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
-    if previousFixture |> box |> isNull |> not then
-        let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), previousFixture.Id)
-        let update = FixturesBuilder.Update.Set((fun x -> x.NextId), Nullable(fixtureId))
-        let! _ = fixtures.UpdateOneAsync(idFilter, update)
-        return Nullable(previousFixture.Id)
-    else return Nullable()
-}
-
-let setNextFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
+let trySetNextFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
     let filters =
         FixturesBuilder.Filter.And(
             FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
@@ -269,14 +251,38 @@ let setNextFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset
             FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
         )
     let sort =
-        FixturesBuilder.Sort.Ascending(FieldDefinition<_>.op_Implicit "Date")
+        FixturesBuilder.Sort
+            .Ascending(FieldDefinition<_>.op_Implicit "Date")
+            .Ascending(FieldDefinition<_>.op_Implicit "Id")
     let! nextFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
     if nextFixture |> box |> isNull |> not then
         let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), nextFixture.Id)
         let update = FixturesBuilder.Update.Set((fun x -> x.PreviousId), Nullable(fixtureId))
         let! _ = fixtures.UpdateOneAsync(idFilter, update)
-        return Nullable(nextFixture.Id)
-    else return Nullable()
+        return nextFixture.PreviousId, Nullable(nextFixture.Id)
+    else
+        return Nullable(), Nullable()
+}
+
+let trySetPreviousFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
+    let filters =
+        FixturesBuilder.Filter.And(
+            FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
+            FixturesBuilder.Filter.Lte((fun x -> x.Date), date),
+            FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
+        )
+    let sort =
+        FixturesBuilder.Sort
+            .Descending(FieldDefinition<_>.op_Implicit "Date")
+            .Descending(FieldDefinition<_>.op_Implicit "Id")
+    let! previousFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
+    if previousFixture |> box |> isNull |> not then
+        let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), previousFixture.Id)
+        let update = FixturesBuilder.Update.Set((fun x -> x.NextId), Nullable(fixtureId))
+        let! _ = fixtures.UpdateOneAsync(idFilter, update)
+        return Nullable(previousFixture.Id), previousFixture.NextId
+    else
+        return! trySetNextFixture competitionId fixtureId date
 }
 
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
@@ -313,8 +319,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 |> Seq.toArray
 
             let date = input.Date.ToOffset(TimeSpan.Zero)
-            let! previousFixture = setPreviousFixture input.CompetitionId md.AggregateId date
-            let! nextFixture = setNextFixture input.CompetitionId md.AggregateId date
+            let! previousFixture, nextFixture = trySetPreviousFixture input.CompetitionId md.AggregateId date
 
             let fixtureModel: Projections.Fixture =
                 {
