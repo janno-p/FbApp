@@ -5,62 +5,73 @@
             <p class="q-mt-lg">Võistluste hetkeseisu küsimine &hellip;</p>
         </q-inner-loading>
         <template v-else>
-            <!--<h4 class="q-mt-none">Aktuaalsed mängud</h4>-->
             <div class="row">
-                <div class="col-12 col-md-6" v-for="(fixture, i) in fixtures" :key="i">
+                <div class="col-12 col-md-6">
                     <q-list class="q-mx-sm">
                         <q-item>
                             <q-item-side>
                                 <q-item-tile>
-                                    <q-btn round icon="arrow_back" title="Eelmine mäng" />
+                                    <q-btn round icon="arrow_back" title="Eelmine mäng" @click="openPrevious" :disabled="!fixture.previousFixtureId" />
                                 </q-item-tile>
                             </q-item-side>
                             <q-item-main>
                                 <q-item-tile class="text-center">
-                                    <div class="q-subtitle text-faded">{{ title(fixture) }}</div>
+                                    <div class="q-subtitle text-faded">{{ fixtureTitle }}</div>
                                 </q-item-tile>
                             </q-item-main>
                             <q-item-side>
                                 <q-item-tile>
-                                    <q-btn round icon="arrow_forward" title="Järgmine mäng" />
+                                    <q-btn round icon="arrow_forward" title="Järgmine mäng" @click="openNext" :disabled="!fixture.nextFixtureId" />
                                 </q-item-tile>
                             </q-item-side>
                         </q-item>
                         <q-item-separator />
-                        <q-item>
-                            <q-item-side>
-                                <q-item-tile class="text-center q-pa-lg">
-                                    <img :src="fixture.homeTeam.flagUrl" height="32" :title="fixture.homeTeam.name" />
-                                </q-item-tile>
-                                <q-item-tile class="text-center">{{ fixture.homeTeam.name }}</q-item-tile>
-                            </q-item-side>
+                        <q-item v-if="isLoadingFixture">
                             <q-item-main>
-                                <q-item-tile class="text-center">
-                                    <h3>{{ goals(fixture.homeGoals) }} : {{ goals(fixture.awayGoals) }}</h3>
-                                </q-item-tile>
-                                <q-item-tile class="text-center text-faded q-caption">
-                                    {{ formatDate(fixture.date) }}
+                                <q-item-tile>
+                                    <q-inner-loading :visible="true">
+                                        <q-spinner-puff size="100px" color="primary" />
+                                        <p class="q-mt-lg">Mängu andmete laadimine &hellip;</p>
+                                    </q-inner-loading>
                                 </q-item-tile>
                             </q-item-main>
-                            <q-item-side>
-                                <q-item-tile class="text-center q-pa-lg">
-                                    <img :src="fixture.awayTeam.flagUrl" height="32" :title="fixture.awayTeam.name" />
-                                </q-item-tile>
-                                <q-item-tile class="text-center">{{ fixture.awayTeam.name }}</q-item-tile>
-                            </q-item-side>
                         </q-item>
-                        <q-item-separator />
-                        <q-item v-for="(prediction, j) in fixture.predictions" :key="j">
-                            <q-item-side v-if="isPreFixture(fixture)" icon="remove" class="q-px-md" />
-                            <q-item-side v-else-if="isCorrectPrediction(fixture, prediction)" icon="done" color="positive" class="q-px-md" />
-                            <q-item-side v-else icon="close" color="negative" class="q-px-md" />
-                            <q-item-main>
-                                <q-item-tile>{{ prediction.name }}</q-item-tile>
-                            </q-item-main>
-                            <q-item-side class="q-px-md">
-                                <q-item-tile>{{ predictionText(fixture, prediction) }}</q-item-tile>
-                            </q-item-side>
-                        </q-item>
+                        <template v-else>
+                            <q-item>
+                                <q-item-side>
+                                    <q-item-tile class="text-center q-pa-lg">
+                                        <img :src="fixture.homeTeam.flagUrl" height="32" :title="fixture.homeTeam.name" />
+                                    </q-item-tile>
+                                    <q-item-tile class="text-center">{{ fixture.homeTeam.name }}</q-item-tile>
+                                </q-item-side>
+                                <q-item-main>
+                                    <q-item-tile class="text-center">
+                                        <h3>{{ goals(fixture.homeGoals) }} : {{ goals(fixture.awayGoals) }}</h3>
+                                    </q-item-tile>
+                                    <q-item-tile class="text-center text-faded q-caption">
+                                        {{ formatDate(fixture.date) }}
+                                    </q-item-tile>
+                                </q-item-main>
+                                <q-item-side>
+                                    <q-item-tile class="text-center q-pa-lg">
+                                        <img :src="fixture.awayTeam.flagUrl" height="32" :title="fixture.awayTeam.name" />
+                                    </q-item-tile>
+                                    <q-item-tile class="text-center">{{ fixture.awayTeam.name }}</q-item-tile>
+                                </q-item-side>
+                            </q-item>
+                            <q-item-separator />
+                            <q-item v-for="(prediction, j) in fixture.predictions" :key="j">
+                                <q-item-side v-if="isPreFixture" icon="remove" class="q-px-md" />
+                                <q-item-side v-else-if="isCorrectPrediction(prediction)" icon="done" color="positive" class="q-px-md" />
+                                <q-item-side v-else icon="close" color="negative" class="q-px-md" />
+                                <q-item-main>
+                                    <q-item-tile>{{ prediction.name }}</q-item-tile>
+                                </q-item-main>
+                                <q-item-side class="q-px-md">
+                                    <q-item-tile>{{ predictionText(prediction) }}</q-item-tile>
+                                </q-item-side>
+                            </q-item>
+                        </template>
                     </q-list>
                 </div>
             </div>
@@ -74,16 +85,21 @@ import moment from "moment"
 export default {
     name: "AppCompetitionView",
 
-    data () {
-        return {
-            isInitializing: true,
-            fixtures: []
-        }
-    },
+    computed: {
+        fixtureStatus () {
+            if (this.fixture.homeGoals === null || this.fixture.awayGoals === null) {
+                return "None"
+            } else if (this.fixture.homeGoals > this.fixture.awayGoals) {
+                return "HomeWin"
+            } else if (this.fixture.homeGoals < this.fixture.awayGoals) {
+                return "AwayWin"
+            } else {
+                return "Tie"
+            }
+        },
 
-    methods: {
-        title (fixture) {
-            switch (fixture.status) {
+        fixtureTitle () {
+            switch (this.fixture.status) {
             case "IN_PLAY":
                 return "Käimasolev mäng"
             case "FINISHED":
@@ -93,19 +109,37 @@ export default {
             }
         },
 
+        isPreFixture () {
+            return this.fixture.homeGoals === null || this.fixture.awayGoals === null
+        }
+    },
+
+    data () {
+        return {
+            isInitializing: true,
+            fixture: null,
+            isLoadingFixture: false
+        }
+    },
+
+    methods: {
         goals (value) {
             return value === null ? "-" : value
         },
 
-        async updateFixtures () {
-            const response = await this.$axios.get("/predict/timely")
-            this.$set(this, "fixtures", response.data)
+        async updateFixture () {
+            const response = await this.$axios.get(`/fixtures/${this.fixture.id}/status`)
+            if (response.data) {
+                this.fixture.status = response.data.status
+                this.fixture.homeGoals = response.data.homeGoals
+                this.fixture.awayGoals = response.data.awayGoals
+            }
         },
 
         runUpdate () {
             setTimeout(async () => {
                 try {
-                    await this.updateFixtures()
+                    await this.updateFixture()
                 } finally {
                     this.runUpdate()
                 }
@@ -116,42 +150,45 @@ export default {
             return moment(d).format("DD.MM.YYYY HH:mm")
         },
 
-        isPreFixture (fixture) {
-            return fixture.homeGoals === null || fixture.awayGoals === null
+        isCorrectPrediction (prediction) {
+            return this.fixtureStatus === prediction.result
         },
 
-        getFixtureStatus (fixture) {
-            if (fixture.homeGoals === null || fixture.awayGoals === null) {
-                return "None"
-            } else if (fixture.homeGoals > fixture.awayGoals) {
-                return "HomeWin"
-            } else if (fixture.homeGoals < fixture.awayGoals) {
-                return "AwayWin"
-            } else {
-                return "Tie"
-            }
-        },
-
-        isCorrectPrediction (fixture, prediction) {
-            return this.getFixtureStatus(fixture) === prediction.result
-        },
-
-        predictionText (fixture, prediction) {
+        predictionText (prediction) {
             switch (prediction.result) {
             case "HomeWin":
-                return fixture.homeTeam.name
+                return this.fixture.homeTeam.name
             case "AwayWin":
-                return fixture.awayTeam.name
+                return this.fixture.awayTeam.name
             case "Tie":
                 return "Draw"
             }
+        },
+
+        async loadFixture (id) {
+            try {
+                this.isLoadingFixture = true
+                const response = await this.$axios.get(`/fixtures/${id}`)
+                this.$set(this, "fixture", response.data)
+            } finally {
+                this.isLoadingFixture = false
+            }
+        },
+
+        openPrevious () {
+            return this.loadFixture(this.fixture.previousFixtureId)
+        },
+
+        openNext () {
+            return this.loadFixture(this.fixture.nextFixtureId)
         }
     },
 
     mounted () {
         this.$nextTick(async () => {
             try {
-                await this.updateFixtures()
+                const response = await this.$axios.get("/fixtures/timely")
+                this.$set(this, "fixture", response.data)
             } finally {
                 this.runUpdate()
                 this.isInitializing = false

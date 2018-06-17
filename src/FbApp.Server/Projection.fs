@@ -81,6 +81,8 @@ module Projections =
             Id: Guid
             CompetitionId: Guid
             Date: DateTimeOffset
+            PreviousId: Nullable<Guid>
+            NextId: Nullable<Guid>
             HomeTeam: Team
             AwayTeam: Team
             Status: string
@@ -236,6 +238,47 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
         ()
 }
 
+let toBsonGuid (guid: Guid) =
+    Convert.ToBase64String(guid.ToByteArray())
+
+type FixturesBuilder = Builders<Projections.Fixture>
+
+let setPreviousFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
+    let filters =
+        FixturesBuilder.Filter.And(
+            FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
+            FixturesBuilder.Filter.Lte((fun x -> x.Date), date),
+            FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
+        )
+    let sort =
+        FixturesBuilder.Sort.Descending(FieldDefinition<_>.op_Implicit "Date")
+    let! previousFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
+    if previousFixture |> box |> isNull |> not then
+        let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), previousFixture.Id)
+        let update = FixturesBuilder.Update.Set((fun x -> x.NextId), Nullable(fixtureId))
+        let! _ = fixtures.UpdateOneAsync(idFilter, update)
+        return Nullable(previousFixture.Id)
+    else return Nullable()
+}
+
+let setNextFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
+    let filters =
+        FixturesBuilder.Filter.And(
+            FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
+            FixturesBuilder.Filter.Gte((fun x -> x.Date), date),
+            FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
+        )
+    let sort =
+        FixturesBuilder.Sort.Ascending(FieldDefinition<_>.op_Implicit "Date")
+    let! nextFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
+    if nextFixture |> box |> isNull |> not then
+        let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), nextFixture.Id)
+        let update = FixturesBuilder.Update.Set((fun x -> x.PreviousId), Nullable(fixtureId))
+        let! _ = fixtures.UpdateOneAsync(idFilter, update)
+        return Nullable(nextFixture.Id)
+    else return Nullable()
+}
+
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
     | Fixtures.Added input ->
@@ -250,7 +293,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 PipelineDefinition<_,Projections.PredictionFixtures>.Create(
                     (sprintf
                         """{ $match: { CompetitionId: { $eq: new BinData(4, "%s") }, "Fixtures.FixtureId": { $eq: %d } } }"""
-                        (Convert.ToBase64String(competition.Id.ToByteArray()))
+                        (competition.Id |> toBsonGuid)
                         input.ExternalId),
                     (sprintf
                         """{ $project: { Name: 1, Fixtures: { $filter: { input: "$Fixtures", as: "fixture", cond: { $eq: ["$$fixture.FixtureId", %d] } } } } }"""
@@ -269,11 +312,17 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                         } : Projections.FixturePrediction)
                 |> Seq.toArray
 
+            let date = input.Date.ToOffset(TimeSpan.Zero)
+            let! previousFixture = setPreviousFixture input.CompetitionId md.AggregateId date
+            let! nextFixture = setNextFixture input.CompetitionId md.AggregateId date
+
             let fixtureModel: Projections.Fixture =
                 {
                     Id = md.AggregateId
                     CompetitionId = input.CompetitionId
                     Date = input.Date.ToOffset(TimeSpan.Zero)
+                    PreviousId = previousFixture
+                    NextId = nextFixture
                     HomeTeam = homeTeam
                     AwayTeam = awayTeam
                     Status = input.Status

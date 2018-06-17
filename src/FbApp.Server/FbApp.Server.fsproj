@@ -13,6 +13,7 @@
     <Compile Include="Auth.fs" />
     <Compile Include="Dashboard.fs" />
     <Compile Include="Predict.fs" />
+    <Compile Include="Fixtures.fs" />
     <Compile Include="Program.fs" />
     <None Include="appsettings.Development.json" />
     <None Include="appsettings.json" />

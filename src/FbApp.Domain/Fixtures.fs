@@ -95,9 +95,16 @@ let decide : State option -> Command -> Result<Event list, Error> =
 
 let evolve : State option -> Event -> State =
     (fun state -> function
-        | Added input -> { Date = input.Date; Status = FixtureStatus.FromString(input.Status); Score = None }
-        | StatusChanged status -> { state.Value with Status = status }
-        | ScoreChanged (homeGoals, awayGoals) -> { state.Value with Score = Some(homeGoals, awayGoals) }
+        | Added input ->
+            { Date = input.Date; Status = FixtureStatus.FromString(input.Status); Score = None }
+        | StatusChanged status ->
+            let score =
+                match status, state.Value.Score with
+                | InPlay, None -> Some(0, 0)
+                | _, score -> score
+            { state.Value with Status = status; Score = score }
+        | ScoreChanged (homeGoals, awayGoals) ->
+            { state.Value with Score = Some(homeGoals, awayGoals) }
     )
 
 let fixturesNamespace =
