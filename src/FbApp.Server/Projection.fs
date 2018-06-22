@@ -4,126 +4,18 @@ open EventStore.ClientAPI
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
 open FbApp.Domain
+open FbApp.Server.Repositories
 open FSharp.Control.Tasks.ContextInsensitive
 open Microsoft.Extensions.Logging
-open MongoDB.Bson.Serialization.Attributes
 open MongoDB.Driver
 open System
 open System.Collections.Generic
-
-module Projections =
-    type Team =
-        {
-            Name: string
-            Code: string
-            FlagUrl: string
-            ExternalId: int64
-        }
-
-    type CompetitionFixture =
-        {
-            HomeTeamId: int64
-            AwayTeamId: int64
-            Date: DateTimeOffset
-            ExternalId: int64
-        }
-
-    type Competition =
-        {
-            [<BsonId>] Id: Guid
-            Description: string
-            ExternalId: int64
-            Teams: Team[]
-            Fixtures: CompetitionFixture[]
-            Groups: IDictionary<string, int64[]>
-            Version: int64
-            Date: DateTimeOffset
-        }
-
-    type FixtureResult =
-        {
-            FixtureId: int64
-            Result: string
-        }
-
-    type PredictionFixtures =
-        {
-            Id: Guid
-            Name: string
-            Fixtures: FixtureResult[]
-        }
-
-    type Prediction =
-        {
-            [<BsonId>] Id: Guid
-            Name: string
-            Email: string
-            CompetitionId: Guid
-            Fixtures: FixtureResult[]
-            QualifiersRoundOf16: int64[]
-            QualifiersRoundOf8: int64[]
-            QualifiersRoundOf4: int64[]
-            QualifiersRoundOf2: int64[]
-            Winner: int64
-            Version: int64
-        }
-
-    type FixturePrediction =
-        {
-            PredictionId: Guid
-            Name: string
-            Result: string
-        }
-
-    [<CLIMutable>]
-    type Fixture =
-        {
-            Id: Guid
-            CompetitionId: Guid
-            Date: DateTimeOffset
-            PreviousId: Nullable<Guid>
-            NextId: Nullable<Guid>
-            HomeTeam: Team
-            AwayTeam: Team
-            Status: string
-            HomeGoals: Nullable<int>
-            AwayGoals: Nullable<int>
-            Predictions: FixturePrediction[]
-            Version: int64
-        }
-
-MongoDB.Bson.BsonDefaults.GuidRepresentation <- MongoDB.Bson.GuidRepresentation.Standard
-
-let mongo = MongoClient()
-let db = mongo.GetDatabase("fbapp")
-let competitions = db.GetCollection<Projections.Competition>("competitions")
-let predictions = db.GetCollection<Projections.Prediction>("predictions")
-let fixtures = db.GetCollection<Projections.Fixture>("fixtures")
-
-let competitionIdFilter (id, ver) =
-    Builders<Projections.Competition>.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
-
-module FindFluent =
-    let trySingleAsync (x: IFindFluent<_,_>) = task {
-        let! result = x.SingleOrDefaultAsync()
-        return (if result |> box |> isNull then None else Some(result))
-    }
-
-let getActiveCompetition () = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.ExternalId), 467L)
-    return! competitions.Find(f).Limit(Nullable(1)).SingleAsync()
-}
-
-let getCompetition (competitionId: Guid) = task {
-    let f = Builders<Projections.Competition>.Filter.Eq((fun x -> x.Id), competitionId)
-    return! competitions.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
-}
 
 let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
         try
-            let competitionModel: Projections.Competition =
+            let competitionModel: ReadModels.Competition =
                 {
                     Id =  md.AggregateId
                     Description = args.Description
@@ -134,27 +26,24 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                     Version = md.AggregateSequenceNumber
                     Date = args.Date.ToOffset(TimeSpan.Zero)
                 }
-            let! _ = competitions.InsertOneAsync(competitionModel)
-            ()
+            do! Competitions.insert competitionModel
         with
             | :? MongoWriteException as ex ->
                 log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
     | Competitions.TeamsAssigned teams ->
         let teamProjections =
-                teams |> List.map (fun t ->
-                {
-                    Name = t.Name
-                    Code = t.Code
-                    FlagUrl = t.FlagUrl
-                    ExternalId = t.ExternalId
-                } : Projections.Team
-                ) |> List.toArray
-        let u = Builders<Projections.Competition>.Update
-                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                    .Set((fun x -> x.Teams), teamProjections)
-        let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
-        ()
+            teams
+            |> List.map
+                (fun team ->
+                    {
+                        Name = team.Name
+                        Code = team.Code
+                        FlagUrl = team.FlagUrl
+                        ExternalId = team.ExternalId
+                    } : ReadModels.Team)
+            |> List.toArray
+        do! Competitions.updateTeams (md.AggregateId, md.AggregateSequenceNumber) teamProjections
 
     | Competitions.FixturesAssigned fixtures ->
         let fixtureProjections =
@@ -164,21 +53,12 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
                     AwayTeamId = t.AwayTeamId
                     Date = t.Date.ToOffset(TimeSpan.Zero)
                     ExternalId = t.ExternalId
-                } : Projections.CompetitionFixture
+                } : ReadModels.CompetitionFixture
             ) |> List.toArray
-        let u = Builders<Projections.Competition>.Update
-                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                    .Set((fun x -> x.Fixtures), fixtureProjections)
-        let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
-        ()
+        do! Competitions.updateFixtures (md.AggregateId, md.AggregateSequenceNumber) fixtureProjections
 
     | Competitions.GroupsAssigned groups ->
-        let groupProjections = groups |> dict
-        let u = Builders<Projections.Competition>.Update
-                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                    .Set((fun x -> x.Groups), groupProjections)
-        let! _ = competitions.UpdateOneAsync(competitionIdFilter (md.AggregateId, md.AggregateSequenceNumber), u)
-        ()
+        do! (dict groups) |> Competitions.updateGroups (md.AggregateId, md.AggregateSequenceNumber)
 }
 
 let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
@@ -190,36 +70,34 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 | Predictions.Tie -> "Tie"
                 | Predictions.AwayWin -> "AwayWin"
 
-            let fs = args.Fixtures |> Seq.map (fun x -> { FixtureId = x.Id; Result = (mapResult x.Result) } : Projections.FixtureResult) |> Seq.toArray
+            let fixtures =
+                args.Fixtures
+                |> Seq.map (fun x -> { FixtureId = x.Id; Result = (mapResult x.Result) } : ReadModels.PredictionFixtureResult)
+                |> Seq.toArray
 
             let updates =
-                fs
+                fixtures
                 |> Array.map
-                    (fun fixture ->
-                        let d: Projections.FixturePrediction =
+                    (fun fixture -> task {
+                        let prediction: ReadModels.FixturePrediction =
                             {
                                 PredictionId = md.AggregateId
                                 Name = args.Name
                                 Result = fixture.Result
                             }
                         let id = Fixtures.Id (args.CompetitionId, fixture.FixtureId) |> Fixtures.streamId
-                        let fid = Builders<Projections.Fixture>.Filter.Eq((fun x -> x.Id), id)
-                        let u = Builders<Projections.Fixture>.Update
-                                    .Push(FieldDefinition<Projections.Fixture>.op_Implicit "Predictions", d)
-                        (fid, u)
-                    )
+                        do! Fixtures.addPrediction id prediction
+                    })
 
-            for (f, u) in updates do
-                let! _ = fixtures.UpdateOneAsync(f, u)
-                ()
+            let! _ = System.Threading.Tasks.Task.WhenAll(updates)
 
-            let predictionModel: Projections.Prediction =
+            let prediction: ReadModels.Prediction =
                 {
                     Id = md.AggregateId
                     Name = args.Name
                     Email = args.Email
                     CompetitionId = args.CompetitionId
-                    Fixtures = fs
+                    Fixtures = fixtures
                     QualifiersRoundOf16 = args.Qualifiers.RoundOf16 |> List.toArray
                     QualifiersRoundOf8 = args.Qualifiers.RoundOf8 |> List.toArray
                     QualifiersRoundOf4 = args.Qualifiers.RoundOf4 |> List.toArray
@@ -227,61 +105,31 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Winner = args.Winner
                     Version = md.AggregateSequenceNumber
                 }
-            let! _ = predictions.InsertOneAsync(predictionModel)
-            ()
+            do! Predictions.insert prediction
         with
             | :? MongoWriteException as ex ->
                 log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Predictions.Declined ->
-        let f = Builders<Projections.Prediction>.Filter.Eq((fun x -> x.Id), md.AggregateId)
-        let! _ = predictions.DeleteOneAsync(f)
-        ()
+        do! Predictions.delete md.AggregateId
 }
 
-let toBsonGuid (guid: Guid) =
-    Convert.ToBase64String(guid.ToByteArray())
-
-type FixturesBuilder = Builders<Projections.Fixture>
-
 let trySetNextFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
-    let filters =
-        FixturesBuilder.Filter.And(
-            FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
-            FixturesBuilder.Filter.Gte((fun x -> x.Date), date),
-            FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
-        )
-    let sort =
-        FixturesBuilder.Sort
-            .Ascending(FieldDefinition<_>.op_Implicit "Date")
-            .Ascending(FieldDefinition<_>.op_Implicit "Id")
-    let! nextFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
-    if nextFixture |> box |> isNull |> not then
-        let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), nextFixture.Id)
-        let update = FixturesBuilder.Update.Set((fun x -> x.PreviousId), Nullable(fixtureId))
-        let! _ = fixtures.UpdateOneAsync(idFilter, update)
-        return nextFixture.PreviousId, Nullable(nextFixture.Id)
-    else
+    let! nextFixtures = Fixtures.findNext competitionId date
+    match nextFixtures |> Seq.toList with
+    | f1::f2::_ | _::f1::f2::_ when f1.Id = fixtureId ->
+        do! Fixtures.setPreviousFixture f2.Id fixtureId
+        return f2.PreviousId, Nullable(f2.Id)
+    | _ ->
         return Nullable(), Nullable()
 }
 
 let trySetPreviousFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
-    let filters =
-        FixturesBuilder.Filter.And(
-            FixturesBuilder.Filter.Eq((fun x -> x.CompetitionId), competitionId),
-            FixturesBuilder.Filter.Lte((fun x -> x.Date), date),
-            FixturesBuilder.Filter.Ne((fun x -> x.Id), fixtureId)
-        )
-    let sort =
-        FixturesBuilder.Sort
-            .Descending(FieldDefinition<_>.op_Implicit "Date")
-            .Descending(FieldDefinition<_>.op_Implicit "Id")
-    let! previousFixture = fixtures.Find(filters).Sort(sort).Limit(Nullable(1)).SingleOrDefaultAsync()
-    if previousFixture |> box |> isNull |> not then
-        let idFilter = FixturesBuilder.Filter.Eq((fun x -> x.Id), previousFixture.Id)
-        let update = FixturesBuilder.Update.Set((fun x -> x.NextId), Nullable(fixtureId))
-        let! _ = fixtures.UpdateOneAsync(idFilter, update)
-        return Nullable(previousFixture.Id), previousFixture.NextId
-    else
+    let! previousFixtures = Fixtures.findPrevious competitionId date
+    match previousFixtures |> Seq.toList with
+    | f1::f2::_ | _::f1::f2::_ when f1.Id = fixtureId ->
+        do! Fixtures.setNextFixture f2.Id fixtureId
+        return Nullable(f2.Id), f2.NextId
+    | _ ->
         return! trySetNextFixture competitionId fixtureId date
 }
 
@@ -289,24 +137,13 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
     | Fixtures.Added input ->
         try
-            let! competition = getCompetition input.CompetitionId
+            let! competition = Competitions.get input.CompetitionId
             let competition = competition |> Option.get
 
             let homeTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.HomeTeamId)
             let awayTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.AwayTeamId)
 
-            let pipelines =
-                PipelineDefinition<_,Projections.PredictionFixtures>.Create(
-                    (sprintf
-                        """{ $match: { CompetitionId: { $eq: new BinData(4, "%s") }, "Fixtures.FixtureId": { $eq: %d } } }"""
-                        (competition.Id |> toBsonGuid)
-                        input.ExternalId),
-                    (sprintf
-                        """{ $project: { Name: 1, Fixtures: { $filter: { input: "$Fixtures", as: "fixture", cond: { $eq: ["$$fixture.FixtureId", %d] } } } } }"""
-                        input.ExternalId)
-                )
-            let! predictions = predictions.Aggregate(pipelines).ToListAsync()
-
+            let! predictions = Predictions.ofFixture competition.Id input.ExternalId
             let predictions =
                 predictions
                 |> Seq.map
@@ -315,13 +152,15 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                             PredictionId = x.Id
                             Name = x.Name
                             Result = x.Fixtures.[0].Result
-                        } : Projections.FixturePrediction)
+                        } : ReadModels.FixturePrediction)
                 |> Seq.toArray
 
             let date = input.Date.ToOffset(TimeSpan.Zero)
-            let! previousFixture, nextFixture = trySetPreviousFixture input.CompetitionId md.AggregateId date
 
-            let fixtureModel: Projections.Fixture =
+            let! previousFixture, nextFixture =
+                trySetPreviousFixture input.CompetitionId md.AggregateId date
+
+            let fixtureModel: ReadModels.Fixture =
                 {
                     Id = md.AggregateId
                     CompetitionId = input.CompetitionId
@@ -336,25 +175,17 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Predictions = predictions
                     Version = md.AggregateSequenceNumber
                 }
-            let! _ = fixtures.InsertOneAsync(fixtureModel)
-            ()
+
+            do! Fixtures.insert fixtureModel
+
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
+
     | Fixtures.ScoreChanged (homeGoals, awayGoals) ->
-        let f = Builders<Projections.Fixture>.Filter.Eq((fun x -> x.Id), md.AggregateId)
-        let u = Builders<Projections.Fixture>.Update
-                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                    .Set((fun x -> x.HomeGoals), Nullable(homeGoals))
-                    .Set((fun x -> x.AwayGoals), Nullable(awayGoals))
-        let! _ = fixtures.UpdateOneAsync(f, u)
-        ()
+        do! Fixtures.updateScore (md.AggregateId, md.AggregateSequenceNumber) (homeGoals, awayGoals)
+
     | Fixtures.StatusChanged status ->
-        let f = Builders<Projections.Fixture>.Filter.Eq((fun x -> x.Id), md.AggregateId)
-        let u = Builders<Projections.Fixture>.Update
-                    .Set((fun x -> x.Version), md.AggregateSequenceNumber)
-                    .Set((fun x -> x.Status), status.ToString())
-        let! _ = fixtures.UpdateOneAsync(f, u)
-        ()
+        do! Fixtures.updateStatus (md.AggregateId, md.AggregateSequenceNumber) status
 }
 
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
@@ -373,8 +204,8 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
         subscription.Fail(e, PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured")
 }
 
-type private X = class end
+type private Marker = class end
 
 let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
-    let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
+    let log = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
     connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProjectionsSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore

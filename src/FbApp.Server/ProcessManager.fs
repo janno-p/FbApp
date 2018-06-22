@@ -6,6 +6,7 @@ open FbApp.Core
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
 open FbApp.Domain
+open FbApp.Server.Repositories
 open Giraffe
 open Microsoft.Extensions.Logging
 open FbApp.Server
@@ -61,7 +62,7 @@ let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata)
 let processPredictions (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Predictions.Event> (e.Event.EventType, e.Event.Data) with
     | Predictions.Registered args ->
-        let! competition = Projection.getCompetition(args.CompetitionId)
+        let! competition = Competitions.get args.CompetitionId
         if md.Timestamp > competition.Value.Date then
             let! _ = CommandHandlers.predictionsHandler (Predictions.Id(args.CompetitionId, Predictions.Email args.Email), Aggregate.Any) Predictions.Decline
             ()

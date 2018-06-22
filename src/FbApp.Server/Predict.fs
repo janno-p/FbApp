@@ -2,7 +2,7 @@ module FbApp.Server.Predict
 
 open FbApp.Core
 open FbApp.Domain
-open FbApp.Server.Projection
+open FbApp.Server.Repositories
 open Giraffe
 open MongoDB.Driver
 open Saturn
@@ -75,14 +75,14 @@ type FixtureDetailsDto =
         Predictions: FixturePredictionDto[]
     }
 
-let private mapTeams (competition: Projections.Competition) =
+let private mapTeams (competition: ReadModels.Competition) =
     competition.Teams
     |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))
     |> dict
 
 let private getFixtures: HttpHandler =
     (fun next context -> task {
-        let! activeCompetition = getActiveCompetition ()
+        let! activeCompetition = Competitions.getActive ()
         let fixtures =
             {
                 CompetitionId =
@@ -102,7 +102,7 @@ let private savePredictions: HttpHandler =
     (fun next context -> task {
         let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
         let user = Auth.createUser context.User context
-        let! competition = getCompetition dto.CompetitionId
+        let! competition = Competitions.get dto.CompetitionId
         match competition with
         | Some(competition) when competition.Date > DateTimeOffset.Now ->
             let command = Predictions.Register (dto, user.Name, user.Email)
@@ -120,14 +120,12 @@ let private savePredictions: HttpHandler =
 
 let private getCurrentPrediction: HttpHandler =
     (fun next context -> task {
-        let! activeCompetition = getActiveCompetition ()
+        let! activeCompetition = Competitions.getActive ()
         let user = Auth.createUser context.User context
-        let predictionId = Predictions.Id (activeCompetition.Id, Predictions.Email user.Email) |> Predictions.streamId
-        let f = Builders<Projections.Prediction>.Filter.Eq((fun x -> x.Id), predictionId)
-        let! prediction = predictions.Find(f) |> FindFluent.trySingleAsync
+        let! prediction = Predictions.get (activeCompetition.Id, user.Email)
         match prediction with
         | Some(prediction) ->
-            let mapFixture (fixture: Projections.FixtureResult) : PredictionFixtureDto =
+            let mapFixture (fixture: ReadModels.PredictionFixtureResult) : PredictionFixtureDto =
                 let x = activeCompetition.Fixtures |> Array.find (fun n -> n.ExternalId = fixture.FixtureId)
                 {
                     Fixture = fixture.FixtureId
@@ -152,7 +150,7 @@ let private getCurrentPrediction: HttpHandler =
 
 let private getCompetitionStatus : HttpHandler =
     (fun next context -> task {
-        let! competition = getActiveCompetition ()
+        let! competition = Competitions.getActive ()
         let status = if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
         return! Successful.OK status next context
     })

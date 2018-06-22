@@ -1,13 +1,10 @@
 module FbApp.Server.Dashboard
 
-open EventStore.ClientAPI
 open FbApp.Core
 open FbApp.Domain
 open FbApp.Server.Configuration
 open FbApp.Server
-open FbApp.Server.Projection
 open Giraffe
-open MongoDB.Driver
 open Saturn
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
@@ -48,9 +45,7 @@ let addCompetition: HttpHandler =
 let getCompetitions: HttpHandler =
     (fun next context ->
         task {
-            let sort = Builders<Projections.Competition>.Sort.Ascending(FieldDefinition<Projections.Competition>.op_Implicit("Description"))
-            let! competitions = competitions.FindAsync((fun _ -> true), FindOptions<_>(Sort = sort))
-            let! competitions = competitions.ToListAsync()
+            let! competitions = Repositories.Competitions.getAll ()
             return! Successful.OK competitions next context
         })
 

@@ -13,6 +13,8 @@ open Microsoft.Extensions.Options
 open Newtonsoft.Json
 open Saturn
 
+let [<Literal>] AdministratorRole = "Administrator"
+
 type User =
     {
         Email: string
@@ -101,7 +103,7 @@ let tokenSignIn: HttpHandler =
                     yield Claim(ClaimTypes.Email, tokenInfo.Email)
                     yield Claim("Picture", tokenInfo.Picture)
                     if authOptions.AdminEmails |> Array.contains tokenInfo.Email then
-                        yield Claim(ClaimTypes.Role, "Administrator")
+                        yield Claim(ClaimTypes.Role, AdministratorRole)
                 ]
                 let claimsIdentity = ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)
                 let claimsPrincipal = ClaimsPrincipal(claimsIdentity)
@@ -125,3 +127,11 @@ let authScope = scope {
 let authPipe = pipeline {
     requires_authentication notLoggedIn
 }
+
+let adminPipe: HttpHandler =
+    (fun next ctx ->
+        task {
+            let user = createUser ctx.User ctx
+            if user.Roles |> Array.exists ((=) AdministratorRole) then return! next ctx else
+            return! RequestErrors.FORBIDDEN (sprintf "This action requires '%s' role." AdministratorRole) next ctx
+        })

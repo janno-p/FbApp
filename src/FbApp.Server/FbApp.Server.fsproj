@@ -7,6 +7,7 @@
     <Compile Include="Configuration.fs" />
     <Compile Include="CommandHandlers.fs" />
     <Compile Include="EventStore.fs" />
+    <Compile Include="Repositories.fs" />
     <Compile Include="Projection.fs" />
     <Compile Include="ProcessManager.fs" />
     <Compile Include="HttpExtensions.fs" />
@@ -14,6 +15,7 @@
     <Compile Include="Dashboard.fs" />
     <Compile Include="Predict.fs" />
     <Compile Include="Fixtures.fs" />
+    <Compile Include="Leagues.fs" />
     <Compile Include="Program.fs" />
     <None Include="appsettings.Development.json" />
     <None Include="appsettings.json" />

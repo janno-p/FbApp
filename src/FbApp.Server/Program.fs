@@ -32,6 +32,7 @@ let mainRouter = scope {
     forward "/api/auth" Auth.authScope
     forward "/api/predict" Predict.predictScope
     forward "/api/fixtures" Fixtures.scope
+    forward "/api/leagues" Leagues.scope
 
     forward "/api" (scope {
         not_found_handler (RequestErrors.NOT_FOUND "Not found")
