@@ -112,6 +112,13 @@ module ReadModels =
             AwayGoals: Nullable<int>
         }
 
+    type FixtureOrder =
+        {
+            Id: Guid
+            PreviousId: Nullable<Guid>
+            NextId: Nullable<Guid>
+        }
+
 module Competitions =
     type Builders = Builders<ReadModels.Competition>
     type FieldDefinition = FieldDefinition<ReadModels.Competition>
@@ -198,46 +205,6 @@ module Fixtures =
         ()
     }
 
-    let findPrevious competitionId date = task {
-        let filters =
-            Builders.Filter.And(
-                Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId),
-                Builders.Filter.Lte((fun x -> x.Date), date)
-            )
-        let sort =
-            Builders.Sort
-                .Descending(FieldDefinition<_>.op_Implicit "Date")
-                .Descending(FieldDefinition<_>.op_Implicit "Id")
-        return! collection.Find(filters).Sort(sort).Limit(Nullable(3)).ToListAsync()
-    }
-
-    let findNext competitionId date = task {
-        let filters =
-            Builders.Filter.And(
-                Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId),
-                Builders.Filter.Gte((fun x -> x.Date), date)
-            )
-        let sort =
-            Builders.Sort
-                .Ascending(FieldDefinition<_>.op_Implicit "Date")
-                .Ascending(FieldDefinition<_>.op_Implicit "Id")
-        return! collection.Find(filters).Sort(sort).Limit(Nullable(3)).ToListAsync()
-    }
-
-    let setNextFixture id nextFixtureId = task {
-        let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let update = Builders.Update.Set((fun x -> x.NextId), Nullable(nextFixtureId))
-        let! _ = collection.UpdateOneAsync(idFilter, update)
-        ()
-    }
-
-    let setPreviousFixture id previousFixtureId = task {
-        let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let update = Builders.Update.Set((fun x -> x.PreviousId), Nullable(previousFixtureId))
-        let! _ = collection.UpdateOneAsync(idFilter, update)
-        ()
-    }
-
     let addPrediction id (prediction: ReadModels.FixturePrediction) = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
         let update = Builders.Update.Push(FieldDefinition.op_Implicit "Predictions", prediction)
@@ -278,6 +245,26 @@ module Fixtures =
                 """{ $addFields: { rank: "$$REMOVE" } }"""
             )
         return! collection.Aggregate(pipelines).SingleAsync()
+    }
+
+    let getFixtureOrder competitionId = task {
+        let filter = Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId)
+        let projection = ProjectionDefinition<ReadModels.FixtureOrder>.op_Implicit """{ Id: 1, PreviousId: 1, NextId: 1 }"""
+        let sort =
+            Builders.Sort.Combine(
+                Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Date.0"),
+                Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Id")
+            )
+        return! collection.Find(filter).Sort(sort).Project(projection).ToListAsync()
+    }
+
+    let setAdjacentFixtures id (previousId, nextId) = task {
+        let previousId = previousId |> Option.toNullable
+        let nextId = nextId |> Option.toNullable
+        let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
+        let update = Builders.Update.Set((fun x -> x.PreviousId), previousId).Set((fun x -> x.NextId), nextId)
+        let! _ = collection.UpdateOneAsync(idFilter, update)
+        ()
     }
 
 module Predictions =

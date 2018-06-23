@@ -113,24 +113,26 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
         do! Predictions.delete md.AggregateId
 }
 
-let trySetNextFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
-    let! nextFixtures = Fixtures.findNext competitionId date
-    match nextFixtures |> Seq.toList with
-    | f1::f2::_ | _::f1::f2::_ when f1.Id = fixtureId ->
-        do! Fixtures.setPreviousFixture f2.Id fixtureId
-        return f2.PreviousId, Nullable(f2.Id)
-    | _ ->
-        return Nullable(), Nullable()
-}
-
-let trySetPreviousFixture (competitionId: Guid) (fixtureId: Guid) (date: DateTimeOffset) = task {
-    let! previousFixtures = Fixtures.findPrevious competitionId date
-    match previousFixtures |> Seq.toList with
-    | f1::f2::_ | _::f1::f2::_ when f1.Id = fixtureId ->
-        do! Fixtures.setNextFixture f2.Id fixtureId
-        return Nullable(f2.Id), f2.NextId
-    | _ ->
-        return! trySetNextFixture competitionId fixtureId date
+let updateFixtureOrder competitionId = task {
+    let! fixtures = Fixtures.getFixtureOrder competitionId
+    match fixtures |> Seq.toList with
+    | [] | [_] -> ()
+    | [x;y] ->
+        if x.PreviousId.HasValue || x.NextId <> Nullable(y.Id) then
+            do! Fixtures.setAdjacentFixtures x.Id (None, Some(y.Id))
+        if y.PreviousId <> Nullable(x.Id) || y.NextId.HasValue then
+            do! Fixtures.setAdjacentFixtures y.Id (Some(x.Id), None)
+    | fixtures ->
+        let x, y = match fixtures with x::y::_ -> x, y | _ -> failwith "never"
+        if x.PreviousId.HasValue || x.NextId <> Nullable(y.Id) then
+            do! Fixtures.setAdjacentFixtures x.Id (None, Some(y.Id))
+        for w in fixtures |> List.windowed 3 do
+            let p, x, n = match w with [p; x; n] -> p, x, n | _ -> failwith "never"
+            if x.PreviousId <> Nullable(p.Id) || x.NextId <> Nullable(n.Id) then
+                do! Fixtures.setAdjacentFixtures x.Id (Some(p.Id), Some(n.Id))
+        let x, y = match fixtures |> List.rev with x::y::_ -> x, y | _ -> failwith "never"
+        if x.PreviousId <> Nullable(y.Id) || x.NextId.HasValue then
+            do! Fixtures.setAdjacentFixtures x.Id (Some(y.Id), None)
 }
 
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
@@ -155,18 +157,13 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                         } : ReadModels.FixturePrediction)
                 |> Seq.toArray
 
-            let date = input.Date.ToOffset(TimeSpan.Zero)
-
-            let! previousFixture, nextFixture =
-                trySetPreviousFixture input.CompetitionId md.AggregateId date
-
             let fixtureModel: ReadModels.Fixture =
                 {
                     Id = md.AggregateId
                     CompetitionId = input.CompetitionId
                     Date = input.Date.ToOffset(TimeSpan.Zero)
-                    PreviousId = previousFixture
-                    NextId = nextFixture
+                    PreviousId = Nullable()
+                    NextId = Nullable()
                     HomeTeam = homeTeam
                     AwayTeam = awayTeam
                     Status = input.Status
@@ -177,6 +174,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 }
 
             do! Fixtures.insert fixtureModel
+            do! updateFixtureOrder input.CompetitionId
 
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)

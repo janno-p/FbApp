@@ -70,7 +70,7 @@ let configureServices (context: WebHostBuilderContext) (services: IServiceCollec
     services.AddSingleton<IEventStoreConnection>((fun sp -> (initializeEventStore sp).Result)) |> ignore
 
 let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
-    config.AddJsonFile("appsettings.json", optional=false, reloadOnChange=true)
+    config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
           .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName, optional=true, reloadOnChange=true)
           .AddEnvironmentVariables()
           .AddUserSecrets<EndpointConfiguration>()
