@@ -9,6 +9,7 @@
     <Compile Include="Competitions.fs" />
     <Compile Include="Fixtures.fs" />
     <Compile Include="Predictions.fs" />
+    <Compile Include="Leagues.fs" />
   </ItemGroup>
 
 </Project>

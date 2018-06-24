@@ -7,8 +7,6 @@ let [<Literal>] AggregateName = "Prediction"
 
 type Email = Email of string
 
-type Id = Guid * Email
-
 type State =
     {
         IsAccepted: bool
@@ -126,6 +124,5 @@ let evolve: State option -> Event -> State =
 
 let predictionsGuid = Guid.Parse("2945d861-0b2f-4783-914b-97988b98c76b")
 
-let streamId (id: Id) =
-    let guid, Email email = id
-    Guid.createDeterministicGuid predictionsGuid (sprintf "%s-%s" (guid.ToString("N")) email)
+let createId (competitionId: Guid, Email email) =
+    Guid.createDeterministicGuid predictionsGuid (sprintf "%s-%s" (competitionId.ToString("N")) email)

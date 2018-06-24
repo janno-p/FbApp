@@ -178,13 +178,32 @@ export default {
             }
         },
 
-        openPrevious () {
-            return this.loadFixture(this.fixture.previousFixtureId)
+        async openPrevious () {
+            if (this.fixture.previousFixtureId) {
+                await this.loadFixture(this.fixture.previousFixtureId)
+            }
         },
 
-        openNext () {
-            return this.loadFixture(this.fixture.nextFixtureId)
+        async openNext () {
+            if (this.fixture.nextFixtureId) {
+                await this.loadFixture(this.fixture.nextFixtureId)
+            }
+        },
+
+        handleKeyboardInput (event) {
+            switch (event.which) {
+            case 37:
+                this.openPrevious()
+                break
+            case 39:
+                this.openNext()
+                break
+            }
         }
+    },
+
+    created () {
+        window.addEventListener("keyup", this.handleKeyboardInput)
     },
 
     mounted () {
@@ -200,6 +219,7 @@ export default {
     },
 
     beforeDestroy () {
+        window.removeEventListener("keyup", this.handleKeyboardInput)
         this.isDestroyed = true
     }
 }

@@ -4,11 +4,10 @@ open FSharp.Control.Tasks.ContextInsensitive
 open System
 open System.Threading.Tasks
 
-type Aggregate<'Id, 'State, 'Command, 'Event, 'Error> =
+type Aggregate<'State, 'Command, 'Event, 'Error> =
     {
         Decide: 'State option -> 'Command -> Result<'Event list, 'Error>
         Evolve: 'State option -> 'Event -> 'State
-        StreamId: 'Id -> Guid
     }
 
 type AggregateError<'Error> =
@@ -27,14 +26,13 @@ type ExpectedCommitVersion =
 
 type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 
-type CommandHandler<'Id, 'Command, 'Error> = 'Id * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
+type CommandHandler<'Command, 'Error> = Guid * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
 type LoadAggregateEvents<'Event> = Type * Guid -> Task<(int64 * 'Event seq)>
 type CommitAggregateEvents<'Event, 'Error> = Guid * ExpectedCommitVersion -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
 
-let makeHandler (aggregate: Aggregate<'Id, 'State, 'Command, 'Event, 'Error>)
-                (load: LoadAggregateEvents<'Event>, commit: CommitAggregateEvents<'Event, 'Error>) : CommandHandler<'Id, 'Command, 'Error> =
-    fun (id, expectedVersion) command -> task {
-        let streamId = aggregate.StreamId id
+let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
+                (load: LoadAggregateEvents<'Event>, commit: CommitAggregateEvents<'Event, 'Error>) : CommandHandler<'Command, 'Error> =
+    fun (streamId, expectedVersion) command -> task {
         let! ver, events = load (typeof<'Event>, streamId)
         let state = events |> Seq.fold (fun state event -> Some(aggregate.Evolve state event)) Option<'State>.None
         match aggregate.Decide state command with

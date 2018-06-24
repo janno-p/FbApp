@@ -39,6 +39,7 @@ let mainRouter = scope {
 
         pipe_through Auth.authPipe
         pipe_through Auth.validateXsrfToken
+        pipe_through Auth.adminPipe
 
         forward "/dashboard" Dashboard.dashboardScope
     })
@@ -103,19 +104,13 @@ let app = application {
         ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
 
         CommandHandlers.competitionsHandler <-
-            makeHandler
-                { Decide = Competitions.decide; Evolve = Competitions.evolve; StreamId = Competitions.streamId }
-                (makeDefaultRepository eventStoreConnection Competitions.AggregateName)
+            makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository eventStoreConnection Competitions.AggregateName)
 
         CommandHandlers.predictionsHandler <-
-            makeHandler
-                { Decide = Predictions.decide; Evolve = Predictions.evolve; StreamId = Predictions.streamId }
-                (makeDefaultRepository eventStoreConnection Predictions.AggregateName)
+            makeHandler { Decide = Predictions.decide; Evolve = Predictions.evolve } (makeDefaultRepository eventStoreConnection Predictions.AggregateName)
 
         CommandHandlers.fixturesHandler <-
-            makeHandler
-                { Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
-                (makeDefaultRepository eventStoreConnection Fixtures.AggregateName)
+            makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (makeDefaultRepository eventStoreConnection Fixtures.AggregateName)
 
         app
     )

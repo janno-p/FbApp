@@ -287,7 +287,7 @@ module Predictions =
     }
 
     let private idToGuid (competitionId, email) =
-        (competitionId, FbApp.Domain.Predictions.Email email) |> FbApp.Domain.Predictions.Id |> FbApp.Domain.Predictions.streamId
+        FbApp.Domain.Predictions.createId (competitionId, FbApp.Domain.Predictions.Email email)
 
     let delete id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)

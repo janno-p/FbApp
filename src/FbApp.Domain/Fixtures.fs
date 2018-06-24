@@ -5,8 +5,6 @@ open System
 
 let [<Literal>] AggregateName = "Fixture"
 
-type Id = Guid * int64
-
 type Error =
     | FixtureAlreadyAdded
     | UnknownFixture
@@ -110,6 +108,5 @@ let evolve : State option -> Event -> State =
 let fixturesNamespace =
     Guid.Parse("2130666a-7b4b-44c7-9d0a-da020138ffc0")
 
-let streamId (id: Id) =
-    let guid, externalId = id
-    Guid.createDeterministicGuid fixturesNamespace (sprintf "%s-%s" (guid.ToString("N")) (externalId.ToString()))
+let createId (competitionId: Guid, externalId: int64) =
+    Guid.createDeterministicGuid fixturesNamespace (sprintf "%s-%s" (competitionId.ToString("N")) (externalId.ToString()))

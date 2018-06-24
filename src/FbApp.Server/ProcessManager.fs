@@ -35,14 +35,15 @@ let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata)
                     (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
                         fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday < 4) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
                         groups |> Seq.map (fun kvp -> kvp.Key, (kvp.Value |> Array.map (fun x -> x.TeamId))) |> Seq.toList)
-            let! _ = CommandHandlers.competitionsHandler (args.ExternalId, Aggregate.Version md.AggregateSequenceNumber) command
+            let id = Competitions.createId args.ExternalId
+            let! _ = CommandHandlers.competitionsHandler (id, Aggregate.Version md.AggregateSequenceNumber) command
             ()
         with :? WrongExpectedVersionException as ex ->
             log.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Competitions.FixturesAssigned fixtures ->
         for fixture in fixtures do
             try
-                let fixtureId = Fixtures.Id (md.AggregateId, fixture.ExternalId)
+                let fixtureId = Fixtures.createId (md.AggregateId, fixture.ExternalId)
                 let input : Fixtures.AddFixtureInput =
                     {
                         CompetitionId = md.AggregateId
@@ -64,7 +65,8 @@ let processPredictions (md: Metadata) (e: ResolvedEvent) = task {
     | Predictions.Registered args ->
         let! competition = Competitions.get args.CompetitionId
         if md.Timestamp > competition.Value.Date then
-            let! _ = CommandHandlers.predictionsHandler (Predictions.Id(args.CompetitionId, Predictions.Email args.Email), Aggregate.Any) Predictions.Decline
+            let id = Predictions.createId (args.CompetitionId, Predictions.Email args.Email)
+            let! _ = CommandHandlers.predictionsHandler (id, Aggregate.Any) Predictions.Decline
             ()
     | _ -> ()
 }

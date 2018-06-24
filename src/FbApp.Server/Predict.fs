@@ -106,10 +106,10 @@ let private savePredictions: HttpHandler =
         match competition with
         | Some(competition) when competition.Date > DateTimeOffset.Now ->
             let command = Predictions.Register (dto, user.Name, user.Email)
-            let id = Predictions.Id (dto.CompetitionId, Predictions.Email user.Email)
+            let id = Predictions.createId (dto.CompetitionId, Predictions.Email user.Email)
             let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED (id |> Predictions.streamId |> Guid.toString) next context
+            | Ok(_) -> return! Successful.ACCEPTED id next context
             | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
             | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
         | Some(_) ->

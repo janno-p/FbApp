@@ -5,8 +5,6 @@ open System
 
 let [<Literal>] AggregateName = "Competition"
 
-type Id = int64
-
 type State = unit
 
 type Created =
@@ -70,5 +68,5 @@ let evolve: State option -> Event -> State =
 let competitionsNamespace =
     Guid.Parse("1dc53967-8c3b-49a9-9496-27a2267bbef7")
 
-let streamId (externalId: Id) =
+let createId (externalId: int64) =
     Guid.createDeterministicGuid competitionsNamespace (externalId.ToString())

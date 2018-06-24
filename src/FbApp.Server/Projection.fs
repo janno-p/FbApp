@@ -85,7 +85,7 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                                 Name = args.Name
                                 Result = fixture.Result
                             }
-                        let id = Fixtures.Id (args.CompetitionId, fixture.FixtureId) |> Fixtures.streamId
+                        let id = Fixtures.createId (args.CompetitionId, fixture.FixtureId)
                         do! Fixtures.addPrediction id prediction
                     })
 

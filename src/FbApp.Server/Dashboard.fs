@@ -36,9 +36,10 @@ let addCompetition: HttpHandler =
         task {
             let! input = context.BindJsonAsync<Competitions.CreateInput>()
             let command = Competitions.Create input
-            let! result = CommandHandlers.competitionsHandler (input.ExternalId, Aggregate.New) command
+            let id = Competitions.createId input.ExternalId
+            let! result = CommandHandlers.competitionsHandler (id, Aggregate.New) command
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED (input.ExternalId |> Competitions.streamId |> Guid.toString) next context
+            | Ok(_) -> return! Successful.ACCEPTED id next context
             | Error(_) -> return! RequestErrors.CONFLICT "Competition already exists" next context
         })
 

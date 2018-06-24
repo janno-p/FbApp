@@ -16,11 +16,11 @@ open Microsoft.Extensions.Configuration.UserSecrets
 [<assembly: UserSecretsIdAttribute("d6072641-6e1a-4bbc-bbb6-d355f0e38db4")>]
 do ()
 
-type FixturesHandler = Aggregate.CommandHandler<Fixtures.Id, Fixtures.Command, Fixtures.Error>
+type FixturesHandler = Aggregate.CommandHandler<Fixtures.Command, Fixtures.Error>
 type Marker = class end
 
 let mutable lastFullUpdate = DateTimeOffset.MinValue
-let [<Literal>] competitionId = 467L
+let [<Literal>] competitionExternalId = 467L
 
 let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = task {
     let filters, onSuccess =
@@ -30,14 +30,14 @@ let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = 
         else
             let today = DateTimeOffset(now.Date, TimeSpan.Zero)
             [FootballData.TimeFrameRange(today, today)], (fun () -> ())
-    let! result = FootballData.getCompetitionFixtures authToken competitionId filters
+    let! result = FootballData.getCompetitionFixtures authToken competitionExternalId filters
     match result with
     | Ok(data) ->
         log.LogInformation("Loaded data of {0} fixtures.", data.Count)
         let mutable anyError = false
-        let competitionGuid = competitionId |> Competitions.streamId
+        let competitionGuid = Competitions.createId competitionExternalId
         for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday < 4) do
-            let id = Fixtures.Id (competitionGuid, fixture.Id)
+            let id = Fixtures.createId (competitionGuid, fixture.Id)
             let command =
                 Fixtures.UpdateFixture
                     {
@@ -97,9 +97,7 @@ let main _ =
     let connection = (EventStore.createEventStoreConnection eventStoreOptions).Result
 
     let fixtureHandler =
-        Aggregate.makeHandler
-            { Decide = Fixtures.decide; Evolve = Fixtures.evolve; StreamId = Fixtures.streamId }
-            (EventStore.makeDefaultRepository connection Fixtures.AggregateName)
+        Aggregate.makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (EventStore.makeDefaultRepository connection Fixtures.AggregateName)
 
     while true do
         try
