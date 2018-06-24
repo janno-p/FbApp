@@ -36,12 +36,13 @@ let private addPrediction (leagueId: Guid, predictionId: Guid) : HttpHandler =
 
 let private getLeagues : HttpHandler =
     (fun next ctx -> task {
-        return! Successful.OK [] next ctx
+        let! leagues = Repositories.Leagues.getAll ()
+        return! Successful.OK leagues next ctx
     })
 
 let scope = scope {
     get "/" getDefaultLeague
-    getf "/%s" getLeague
+    getf "/league/%s" getLeague
 
     forward "/admin" (scope {
         pipe_through Auth.authPipe

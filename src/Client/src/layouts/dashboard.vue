@@ -9,6 +9,10 @@
                     <q-item-side icon="mdi-trophy" />
                     <q-item-main label="Võistlused" />
                 </q-item>
+                <q-item to="/dashboard/leagues">
+                    <q-item-side icon="mdi-view-list" />
+                    <q-item-main label="Ennustusliigad" />
+                </q-item>
                 <q-item>
                     <q-item-side icon="mdi-account-multiple" />
                     <q-item-main label="Meeskonnad" />

@@ -2,7 +2,7 @@
 
 open System
 
-let [<Literal>] AggregateName = "Leagues"
+let [<Literal>] AggregateName = "League"
 
 type State = unit
 

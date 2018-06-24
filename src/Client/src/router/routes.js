@@ -26,6 +26,11 @@ export default [
             {
                 path: "competitions",
                 component: () => import("pages/dashboard/competitions")
+            },
+
+            {
+                path: "leagues",
+                component: () => import("pages/dashboard/leagues")
             }
         ]
     },

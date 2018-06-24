@@ -103,6 +103,8 @@ module ReadModels =
     type League =
         {
             Id: Guid
+            Name: string
+            Code: string
         }
 
     type FixtureStatus =
@@ -307,3 +309,10 @@ module Predictions =
 
 module Leagues =
     let private collection = db.GetCollection<ReadModels.League>("leagues")
+
+    type FieldDefinition = FieldDefinition<ReadModels.League>
+
+    let getAll () = task {
+        let sort = Builders.Sort.Ascending(FieldDefinition.op_Implicit "Name")
+        return! collection.Find(Builders.Filter.Empty).Sort(sort).ToListAsync()
+    }

@@ -112,6 +112,9 @@ let app = application {
         CommandHandlers.fixturesHandler <-
             makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (makeDefaultRepository eventStoreConnection Fixtures.AggregateName)
 
+        CommandHandlers.leaguesHandler <-
+            makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository eventStoreConnection Leagues.AggregateName)
+
         app
     )
 

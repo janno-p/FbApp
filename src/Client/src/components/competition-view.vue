@@ -139,10 +139,10 @@ export default {
 
         runUpdate () {
             setTimeout(async () => {
-                try {
-                    await this.updateFixture()
-                } finally {
-                    if (!this.isDestroyed) {
+                if (!this.isDestroyed) {
+                    try {
+                        await this.updateFixture()
+                    } finally {
                         this.runUpdate()
                     }
                 }
