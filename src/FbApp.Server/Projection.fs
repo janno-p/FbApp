@@ -186,6 +186,27 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
         do! Fixtures.updateStatus (md.AggregateId, md.AggregateSequenceNumber) status
 }
 
+let projectLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Leagues.Event> (e.Event.EventType, e.Event.Data) with
+    | Leagues.Created input ->
+        try
+            let leagueModel : ReadModels.League =
+                {
+                    Id = md.AggregateId
+                    CompetitionId = input.CompetitionId
+                    Code = input.Code
+                    Name = input.Name
+                    Predictions = [||]
+                }
+            do! Leagues.insert leagueModel
+        with :? MongoWriteException as ex ->
+            log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
+
+    | Leagues.PredictionAdded predictionId ->
+        let! prediction = Predictions.getById predictionId
+        do! Leagues.addPrediction md.AggregateId prediction
+}
+
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match getMetadata e with
@@ -195,6 +216,8 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
             do! projectPredictions log md e
         | Some(md) when md.AggregateName = Fixtures.AggregateName ->
             do! projectFixtures log md e
+        | Some(md) when md.AggregateName = Leagues.AggregateName ->
+            do! projectLeagues log md e
         | _ -> ()
         subscription.Acknowledge(e)
     with ex ->

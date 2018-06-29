@@ -42,9 +42,9 @@ module ReadModels =
             Id: Guid
             Description: string
             ExternalId: int64
-            Teams: Team[]
-            Fixtures: CompetitionFixture[]
-            Groups: IDictionary<string, int64[]>
+            Teams: Team array
+            Fixtures: CompetitionFixture array
+            Groups: IDictionary<string, int64 array>
             Version: int64
             Date: DateTimeOffset
         }
@@ -68,7 +68,7 @@ module ReadModels =
             Status: string
             HomeGoals: Nullable<int>
             AwayGoals: Nullable<int>
-            Predictions: FixturePrediction[]
+            Predictions: FixturePrediction array
             Version: int64
         }
 
@@ -82,7 +82,7 @@ module ReadModels =
         {
             Id: Guid
             Name: string
-            Fixtures: PredictionFixtureResult[]
+            Fixtures: PredictionFixtureResult array
         }
 
     type Prediction =
@@ -91,11 +91,11 @@ module ReadModels =
             Name: string
             Email: string
             CompetitionId: Guid
-            Fixtures: PredictionFixtureResult[]
-            QualifiersRoundOf16: int64[]
-            QualifiersRoundOf8: int64[]
-            QualifiersRoundOf4: int64[]
-            QualifiersRoundOf2: int64[]
+            Fixtures: PredictionFixtureResult array
+            QualifiersRoundOf16: int64 array
+            QualifiersRoundOf8: int64 array
+            QualifiersRoundOf4: int64 array
+            QualifiersRoundOf2: int64 array
             Winner: int64
             Version: int64
         }
@@ -103,8 +103,10 @@ module ReadModels =
     type League =
         {
             Id: Guid
+            CompetitionId: Guid
             Name: string
             Code: string
+            Predictions: Prediction array
         }
 
     type FixtureStatus =
@@ -307,12 +309,30 @@ module Predictions =
         return! collection.Find(idFilter) |> FindFluent.trySingleAsync
     }
 
+    let getById id = task {
+        let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
+        return! collection.Find(idFilter).SingleAsync()
+    }
+
 module Leagues =
     let private collection = db.GetCollection<ReadModels.League>("leagues")
 
+    type Builders = Builders<ReadModels.League>
     type FieldDefinition = FieldDefinition<ReadModels.League>
 
     let getAll () = task {
         let sort = Builders.Sort.Ascending(FieldDefinition.op_Implicit "Name")
         return! collection.Find(Builders.Filter.Empty).Sort(sort).ToListAsync()
+    }
+
+    let insert league = task {
+        let! _ = collection.InsertOneAsync(league)
+        ()
+    }
+
+    let addPrediction id (prediction: ReadModels.Prediction) = task {
+        let filter = Builders.Filter.Eq((fun x -> x.Id), id)
+        let update = Builders.Update.AddToSet(FieldDefinition.op_Implicit "Predictions", prediction)
+        let! _ = collection.UpdateOneAsync(filter, update)
+        ()
     }
