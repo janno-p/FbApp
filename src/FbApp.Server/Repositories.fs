@@ -5,6 +5,7 @@ open MongoDB.Bson
 open MongoDB.Driver
 open System
 open System.Collections.Generic
+open System.Linq
 
 BsonDefaults.GuidRepresentation <- GuidRepresentation.Standard
 
@@ -69,13 +70,15 @@ module ReadModels =
             HomeGoals: Nullable<int>
             AwayGoals: Nullable<int>
             Predictions: FixturePrediction array
+            ExternalId: int64
             Version: int64
         }
 
     type PredictionFixtureResult =
         {
             FixtureId: int64
-            Result: string
+            PredictedResult: string
+            ActualResult: string
         }
 
     type PredictionFixture =
@@ -85,6 +88,12 @@ module ReadModels =
             Fixtures: PredictionFixtureResult array
         }
 
+    type QualifiersResult =
+        {
+            Id: int64
+            Score: Nullable<int>
+        }
+
     type Prediction =
         {
             Id: Guid
@@ -92,11 +101,12 @@ module ReadModels =
             Email: string
             CompetitionId: Guid
             Fixtures: PredictionFixtureResult array
-            QualifiersRoundOf16: int64 array
-            QualifiersRoundOf8: int64 array
-            QualifiersRoundOf4: int64 array
-            QualifiersRoundOf2: int64 array
-            Winner: int64
+            QualifiersRoundOf16: QualifiersResult array
+            QualifiersRoundOf8: QualifiersResult array
+            QualifiersRoundOf4: QualifiersResult array
+            QualifiersRoundOf2: QualifiersResult array
+            Winner: QualifiersResult
+            Leagues: Guid array
             Version: int64
         }
 
@@ -106,7 +116,6 @@ module ReadModels =
             CompetitionId: Guid
             Name: string
             Code: string
-            Predictions: Prediction array
         }
 
     type FixtureStatus =
@@ -121,6 +130,12 @@ module ReadModels =
             Id: Guid
             PreviousId: Nullable<Guid>
             NextId: Nullable<Guid>
+        }
+
+    type PredictionItem =
+        {
+            Id: Guid
+            Name: string
         }
 
 module Competitions =
@@ -273,6 +288,8 @@ module Fixtures =
 
 module Predictions =
     type Builders = Builders<ReadModels.Prediction>
+    type FieldDefinition = FieldDefinition<ReadModels.Prediction>
+    type ProjectionDefinition<'T> = ProjectionDefinition<ReadModels.Prediction, 'T>
 
     let private collection = db.GetCollection<ReadModels.Prediction>("predictions")
 
@@ -314,6 +331,33 @@ module Predictions =
         return! collection.Find(idFilter).SingleAsync()
     }
 
+    let find (competitionId: Guid) (term: string) = task {
+        let filter =
+            Builders.Filter.And(
+                Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId),
+                Builders.Filter.Regex(FieldDefinition.op_Implicit "Name", BsonRegularExpression(term, "i"))
+            )
+        let project =
+            ProjectionDefinition<ReadModels.PredictionItem>.op_Implicit """{ _id: 1, Name: 1 }"""
+        return! collection.Find(filter).Project(project).ToListAsync()
+    }
+
+    let addToLeague (predictionId, leagueId) = task {
+        let filter = Builders.Filter.Eq((fun x -> x.Id), predictionId)
+        let update = Builders.Update.AddToSet(FieldDefinition.op_Implicit "Leagues", leagueId)
+        let! _ = collection.UpdateOneAsync(filter, update)
+        ()
+    }
+
+    let updateResult (competitionId, fixtureId: int64, actualResult) = task {
+        let! _ = 
+            collection.UpdateManyAsync(
+                (fun x -> x.CompetitionId = competitionId && x.Fixtures.Any(fun y -> y.FixtureId = fixtureId)),
+                Builders.Update.Set((fun x -> x.Fixtures.ElementAt(-1).ActualResult), actualResult)
+            )
+        ()
+    }
+
 module Leagues =
     let private collection = db.GetCollection<ReadModels.League>("leagues")
 
@@ -327,12 +371,5 @@ module Leagues =
 
     let insert league = task {
         let! _ = collection.InsertOneAsync(league)
-        ()
-    }
-
-    let addPrediction id (prediction: ReadModels.Prediction) = task {
-        let filter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let update = Builders.Update.AddToSet(FieldDefinition.op_Implicit "Predictions", prediction)
-        let! _ = collection.UpdateOneAsync(filter, update)
         ()
     }

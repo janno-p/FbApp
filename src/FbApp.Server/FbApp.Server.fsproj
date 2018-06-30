@@ -16,6 +16,7 @@
     <Compile Include="Predict.fs" />
     <Compile Include="Fixtures.fs" />
     <Compile Include="Leagues.fs" />
+    <Compile Include="Predictions.fs" />
     <Compile Include="Program.fs" />
     <None Include="appsettings.Development.json" />
     <None Include="appsettings.json" />

@@ -10,6 +10,7 @@ open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open System
 open System.Collections.Generic
+open FbApp.Domain
 
 let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
@@ -61,19 +62,47 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
         do! (dict groups) |> Competitions.updateGroups (md.AggregateId, md.AggregateSequenceNumber)
 }
 
+let (|Nullable|_|) (x: Nullable<_>) = if x.HasValue then Some(x.Value) else None
+
+let private mapActualResult (status, homeGoals, awayGoals) =
+    match status, homeGoals, awayGoals with
+    | "FINISHED", Nullable(homeGoals), Nullable(awayGoals) ->
+        if homeGoals > awayGoals then "HomeWin"
+        elif homeGoals < awayGoals then "AwayWin"
+        else "Tie"
+    | _ -> null
+
+let private mapFixtureResult competitionId (x: Predictions.FixtureResultRegistration) = task {
+    let mapResult = function
+        | Predictions.HomeWin -> "HomeWin"
+        | Predictions.Tie -> "Tie"
+        | Predictions.AwayWin -> "AwayWin"
+
+    let fixtureId = Fixtures.createId (competitionId, x.Id)
+    let! result = Fixtures.getFixtureStatus fixtureId
+
+    let result = mapActualResult (result.Status, result.HomeGoals, result.AwayGoals)
+
+    let fixtureResult : ReadModels.PredictionFixtureResult =
+        {
+            FixtureId = x.Id
+            PredictedResult = mapResult x.Result
+            ActualResult = result
+        }
+
+    return fixtureResult
+}
+
 let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Predictions.Event> (e.Event.EventType, e.Event.Data) with
     | Predictions.Registered args ->
         try
-            let mapResult = function
-                | Predictions.HomeWin -> "HomeWin"
-                | Predictions.Tie -> "Tie"
-                | Predictions.AwayWin -> "AwayWin"
-
-            let fixtures =
+            let fixtureTasks =
                 args.Fixtures
-                |> Seq.map (fun x -> { FixtureId = x.Id; Result = (mapResult x.Result) } : ReadModels.PredictionFixtureResult)
+                |> Seq.map (mapFixtureResult args.CompetitionId)
                 |> Seq.toArray
+
+            let! fixtures = System.Threading.Tasks.Task.WhenAll(fixtureTasks)
 
             let updates =
                 fixtures
@@ -83,7 +112,7 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                             {
                                 PredictionId = md.AggregateId
                                 Name = args.Name
-                                Result = fixture.Result
+                                Result = fixture.PredictedResult
                             }
                         let id = Fixtures.createId (args.CompetitionId, fixture.FixtureId)
                         do! Fixtures.addPrediction id prediction
@@ -98,11 +127,12 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Email = args.Email
                     CompetitionId = args.CompetitionId
                     Fixtures = fixtures
-                    QualifiersRoundOf16 = args.Qualifiers.RoundOf16 |> List.toArray
-                    QualifiersRoundOf8 = args.Qualifiers.RoundOf8 |> List.toArray
-                    QualifiersRoundOf4 = args.Qualifiers.RoundOf4 |> List.toArray
-                    QualifiersRoundOf2 = args.Qualifiers.RoundOf2 |> List.toArray
-                    Winner = args.Winner
+                    QualifiersRoundOf16 = args.Qualifiers.RoundOf16 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    QualifiersRoundOf8 = args.Qualifiers.RoundOf8 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    QualifiersRoundOf4 = args.Qualifiers.RoundOf4 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    QualifiersRoundOf2 = args.Qualifiers.RoundOf2 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    Winner = { Id = args.Winner; Score = Nullable() }
+                    Leagues = [||]
                     Version = md.AggregateSequenceNumber
                 }
             do! Predictions.insert prediction
@@ -153,7 +183,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                         {
                             PredictionId = x.Id
                             Name = x.Name
-                            Result = x.Fixtures.[0].Result
+                            Result = x.Fixtures.[0].PredictedResult
                         } : ReadModels.FixturePrediction)
                 |> Seq.toArray
 
@@ -170,6 +200,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     HomeGoals = Nullable()
                     AwayGoals = Nullable()
                     Predictions = predictions
+                    ExternalId = input.ExternalId
                     Version = md.AggregateSequenceNumber
                 }
 
@@ -180,10 +211,18 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
     | Fixtures.ScoreChanged (homeGoals, awayGoals) ->
+        let! fixture = Fixtures.get md.AggregateId
         do! Fixtures.updateScore (md.AggregateId, md.AggregateSequenceNumber) (homeGoals, awayGoals)
+        let actualResult = mapActualResult (fixture.Status, Nullable(homeGoals), Nullable(awayGoals))
+        if actualResult |> isNull |> not then
+            do! Predictions.updateResult (fixture.CompetitionId, fixture.ExternalId, actualResult)
 
     | Fixtures.StatusChanged status ->
+        let! fixture = Fixtures.get md.AggregateId
         do! Fixtures.updateStatus (md.AggregateId, md.AggregateSequenceNumber) status
+        let actualResult = mapActualResult (status.ToString(), fixture.HomeGoals, fixture.AwayGoals)
+        if actualResult |> isNull |> not then
+            do! Predictions.updateResult (fixture.CompetitionId, fixture.ExternalId, actualResult)
 }
 
 let projectLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
@@ -196,15 +235,13 @@ let projectLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     CompetitionId = input.CompetitionId
                     Code = input.Code
                     Name = input.Name
-                    Predictions = [||]
                 }
             do! Leagues.insert leagueModel
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
     | Leagues.PredictionAdded predictionId ->
-        let! prediction = Predictions.getById predictionId
-        do! Leagues.addPrediction md.AggregateId prediction
+        do! Predictions.addToLeague (predictionId, md.AggregateId)
 }
 
 let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {

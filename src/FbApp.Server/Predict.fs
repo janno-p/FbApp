@@ -131,18 +131,18 @@ let private getCurrentPrediction: HttpHandler =
                     Fixture = fixture.FixtureId
                     HomeTeam = x.HomeTeamId
                     AwayTeam = x.AwayTeamId
-                    Result = fixture.Result
+                    Result = fixture.PredictedResult
                 }
             let dto: PredictionDto =
                 {
                     CompetitionId = activeCompetition.Id
                     Teams = (activeCompetition |> mapTeams)
                     Fixtures = prediction.Fixtures |> Array.map mapFixture
-                    RoundOf16 = prediction.QualifiersRoundOf16
-                    RoundOf8 = prediction.QualifiersRoundOf8
-                    RoundOf4 = prediction.QualifiersRoundOf4
-                    RoundOf2 = prediction.QualifiersRoundOf2
-                    Winner = prediction.Winner
+                    RoundOf16 = prediction.QualifiersRoundOf16 |> Array.map (fun x -> x.Id)
+                    RoundOf8 = prediction.QualifiersRoundOf8 |> Array.map (fun x -> x.Id)
+                    RoundOf4 = prediction.QualifiersRoundOf4 |> Array.map (fun x -> x.Id)
+                    RoundOf2 = prediction.QualifiersRoundOf2 |> Array.map (fun x -> x.Id)
+                    Winner = prediction.Winner.Id
                 }
             return! Successful.OK dto next context
         | None -> return! RequestErrors.NOT_FOUND "Prediction does not exist" next context

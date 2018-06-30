@@ -26,8 +26,10 @@ let private addLeague : HttpHandler =
         | Error(_) -> return! RequestErrors.CONFLICT "League already exists" next ctx
     })
 
-let private addPrediction (leagueId: Guid, predictionId: Guid) : HttpHandler =
+let private addPrediction (leagueId: string, predictionId: string) : HttpHandler =
     (fun next ctx -> task {
+        let leagueId = Guid.Parse(leagueId)
+        let predictionId = Guid.Parse(predictionId)
         let! result = CommandHandlers.leaguesHandler (leagueId, Aggregate.Any) (Leagues.AddPrediction predictionId)
         match result with
         | Ok(_) -> return! Successful.ACCEPTED predictionId next ctx
@@ -52,6 +54,6 @@ let scope = scope {
         get "/" getLeagues
 
         post "/" addLeague
-        postf "/%O/%O" addPrediction
+        postf "/%s/%s" addPrediction
     })
 }
