@@ -10,7 +10,6 @@ open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open System
 open System.Collections.Generic
-open FbApp.Domain
 
 let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
@@ -108,7 +107,7 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 fixtures
                 |> Array.map
                     (fun fixture -> task {
-                        let prediction: ReadModels.FixturePrediction =
+                        let prediction: ReadModels.FixtureResultPrediction =
                             {
                                 PredictionId = md.AggregateId
                                 Name = args.Name
@@ -165,21 +164,36 @@ let updateFixtureOrder competitionId = task {
             do! Fixtures.setAdjacentFixtures x.Id (Some(y.Id), None)
 }
 
-let getPredictionsForFixture (input: Fixtures.AddFixtureInput) = task {
-    if input.Matchday < 4 then
-        let! predictions = Predictions.ofFixture input.CompetitionId input.ExternalId
-        let predictions =
-            predictions
-            |> Seq.map
-                (fun x ->
-                    {
-                        PredictionId = x.Id
-                        Name = x.Name
-                        Result = x.Fixtures.[0].PredictedResult
-                    } : ReadModels.FixturePrediction)
-            |> Seq.toArray
-        return predictions
-    else return [||]
+let getResultPredictions (input: Fixtures.AddFixtureInput) = task {
+    if input.Matchday >= 4 then return [||] else
+    let! predictions = Predictions.ofFixture input.CompetitionId input.ExternalId
+    let predictions =
+        predictions
+        |> Seq.map
+            (fun x ->
+                {
+                    PredictionId = x.Id
+                    Name = x.Name
+                    Result = x.Fixtures.[0].PredictedResult
+                } : ReadModels.FixtureResultPrediction)
+        |> Seq.toArray
+    return predictions
+}
+
+let getQualificationPredictions (input: Fixtures.AddFixtureInput) = task {
+    if input.Matchday < 4 then return [||] else
+    let! predictions = Predictions.ofMatchday (input.CompetitionId, input.Matchday)
+    let result =
+        predictions
+        |> Seq.map (fun x ->
+            {
+                PredictionId = x.Id
+                Name = x.Name
+                HomeQualifies = x.Qualifiers |> Array.exists (fun z -> z.Id = input.HomeTeamId)
+                AwayQualifies = x.Qualifiers |> Array.exists (fun z -> z.Id = input.AwayTeamId)
+            } : ReadModels.QualificationPrediction)
+        |> Seq.toArray
+    return result
 }
 
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
@@ -192,7 +206,9 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             let homeTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.HomeTeamId)
             let awayTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.AwayTeamId)
 
-            let! predictions = getPredictionsForFixture input
+            let! resultPredictions = getResultPredictions input
+            let! qualificationPredictions = getQualificationPredictions input
+            log.LogCritical(sprintf "UUUU %A" qualificationPredictions)
 
             let fixtureModel: ReadModels.Fixture =
                 {
@@ -206,7 +222,8 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Status = input.Status
                     HomeGoals = Nullable()
                     AwayGoals = Nullable()
-                    Predictions = predictions
+                    ResultPredictions = resultPredictions
+                    QualificationPredictions = qualificationPredictions
                     ExternalId = input.ExternalId
                     Matchday = input.Matchday
                     Version = md.AggregateSequenceNumber

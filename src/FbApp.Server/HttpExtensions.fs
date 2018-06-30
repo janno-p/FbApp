@@ -1,8 +1,6 @@
 namespace FbApp.Server
 
-open Giraffe
 open Microsoft.Extensions.DependencyInjection
-open MongoDB.Driver
 
 module XsrfToken =
     open Microsoft.AspNetCore.Antiforgery

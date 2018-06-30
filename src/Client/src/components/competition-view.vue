@@ -60,17 +60,28 @@
                                 </q-item-side>
                             </q-item>
                             <q-item-separator />
-                            <q-item v-for="(prediction, j) in fixture.predictions" :key="j">
-                                <q-item-side v-if="isPreFixture" icon="remove" class="q-px-md" />
-                                <q-item-side v-else-if="isCorrectPrediction(prediction)" icon="done" color="positive" class="q-px-md" />
-                                <q-item-side v-else icon="close" color="negative" class="q-px-md" />
-                                <q-item-main>
-                                    <q-item-tile>{{ prediction.name }}</q-item-tile>
-                                </q-item-main>
-                                <q-item-side class="q-px-md">
-                                    <q-item-tile>{{ predictionText(prediction) }}</q-item-tile>
-                                </q-item-side>
-                            </q-item>
+                            <template v-if="fixture.resultPredictions.length > 0">
+                                <q-item v-for="(prediction, j) in fixture.resultPredictions" :key="j">
+                                    <q-item-side v-if="isPreFixture" icon="remove" class="q-px-md" />
+                                    <q-item-side v-else-if="isCorrectResultPrediction(prediction)" icon="done" color="positive" class="q-px-md" />
+                                    <q-item-side v-else icon="close" color="negative" class="q-px-md" />
+                                    <q-item-main>
+                                        <q-item-tile>{{ prediction.name }}</q-item-tile>
+                                    </q-item-main>
+                                    <q-item-side class="q-px-md">
+                                        <q-item-tile>{{ predictionText(prediction) }}</q-item-tile>
+                                    </q-item-side>
+                                </q-item>
+                            </template>
+                            <template v-if="fixture.qualifierPredictions.length > 0">
+                                <q-item v-for="(prediction, j) in fixture.qualifierPredictions" :key="j">
+                                    <q-item-side :icon="homeQualifiesIcon(prediction)" class="q-px-md" :color="homeQualifiesResultClass(prediction)" />
+                                    <q-item-main>
+                                        <q-item-tile class="text-center">{{ prediction.name }}</q-item-tile>
+                                    </q-item-main>
+                                    <q-item-side :icon="awayQualifiesIcon(prediction)" class="q-px-md" :color="awayQualifiesResultClass(prediction)" />
+                                </q-item>
+                            </template>
                         </template>
                     </q-list>
                 </div>
@@ -153,7 +164,7 @@ export default {
             return moment(d).format("DD.MM.YYYY HH:mm")
         },
 
-        isCorrectPrediction (prediction) {
+        isCorrectResultPrediction (prediction) {
             return this.fixtureStatus === prediction.result
         },
 
@@ -198,6 +209,38 @@ export default {
             case 39:
                 this.openNext()
                 break
+            }
+        },
+
+        awayQualifiesIcon (prediction) {
+            return prediction.awayQualifies ? "done" : "close"
+        },
+
+        homeQualifiesIcon (prediction) {
+            return prediction.homeQualifies ? "done" : "close"
+        },
+
+        awayQualifiesResultClass (prediction) {
+            if (this.isPreFixture) {
+                return undefined
+            } else if (this.fixture.homeGoals === this.fixture.awayGoals) {
+                return "warning"
+            } else if (this.fixture.homeGoals > this.fixture.awayGoals) {
+                return !prediction.awayQualifies ? "positive" : "negative"
+            } else {
+                return prediction.awayQualifies ? "positive" : "negative"
+            }
+        },
+
+        homeQualifiesResultClass (prediction) {
+            if (this.isPreFixture) {
+                return undefined
+            } else if (this.fixture.homeGoals === this.fixture.awayGoals) {
+                return "warning"
+            } else if (this.fixture.homeGoals < this.fixture.awayGoals) {
+                return !prediction.homeQualifies ? "positive" : "negative"
+            } else {
+                return prediction.homeQualifies ? "positive" : "negative"
             }
         }
     },

@@ -4,7 +4,6 @@ open FbApp.Core
 open FbApp.Domain
 open FbApp.Server.Repositories
 open Giraffe
-open MongoDB.Driver
 open Saturn
 open System
 open System.Collections.Generic

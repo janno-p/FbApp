@@ -7,13 +7,8 @@ open System
 open System.Collections.Generic
 open System.Linq
 
-BsonDefaults.GuidRepresentation <- GuidRepresentation.Standard
-
-let mongo = MongoClient()
-let db = mongo.GetDatabase("fbapp")
-
-let toBsonGuid (guid: Guid) =
-    Convert.ToBase64String(guid.ToByteArray())
+let private mongo = MongoClient(MongoClientSettings(GuidRepresentation = GuidRepresentation.Standard))
+let private db = mongo.GetDatabase("fbapp")
 
 module FindFluent =
     let trySingleAsync (x: IFindFluent<_,_>) = task {
@@ -50,11 +45,19 @@ module ReadModels =
             Date: DateTimeOffset
         }
 
-    type FixturePrediction =
+    type FixtureResultPrediction =
         {
             PredictionId: Guid
             Name: string
             Result: string
+        }
+
+    type QualificationPrediction =
+        {
+            PredictionId: Guid
+            Name: string
+            HomeQualifies: bool
+            AwayQualifies: bool
         }
 
     type Fixture =
@@ -69,7 +72,8 @@ module ReadModels =
             Status: string
             HomeGoals: Nullable<int>
             AwayGoals: Nullable<int>
-            Predictions: FixturePrediction array
+            ResultPredictions: FixtureResultPrediction array
+            QualificationPredictions: QualificationPrediction array
             ExternalId: int64
             Matchday: int
             Version: int64
@@ -93,6 +97,13 @@ module ReadModels =
         {
             Id: int64
             HasQualified: Nullable<bool>
+        }
+
+    type PredictionQualifier =
+        {
+            Id: Guid
+            Name: string
+            Qualifiers: QualifiersResult array
         }
 
     type Prediction =
@@ -225,9 +236,9 @@ module Fixtures =
         ()
     }
 
-    let addPrediction id (prediction: ReadModels.FixturePrediction) = task {
+    let addPrediction id (prediction: ReadModels.FixtureResultPrediction) = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let update = Builders.Update.Push(FieldDefinition.op_Implicit "Predictions", prediction)
+        let update = Builders.Update.Push(FieldDefinition.op_Implicit "ResultPredictions", prediction)
         let! _ = collection.UpdateOneAsync(idFilter, update)
         ()
     }
@@ -297,16 +308,41 @@ module Predictions =
     let ofFixture (competitionId: Guid) (externalFixtureId: int64) = task {
         let pipelines =
             PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionFixture>.Create(
-                (sprintf
-                    """{ $match: { CompetitionId: { $eq: new BinData(4, "%s") }, "Fixtures.FixtureId": { $eq: %d } } }"""
-                    (toBsonGuid competitionId)
-                    externalFixtureId),
-                (sprintf
-                    """{ $project: { Name: 1, Fixtures: { $filter: { input: "$Fixtures", as: "fixture", cond: { $eq: ["$$fixture.FixtureId", %d] } } } } }"""
-                    externalFixtureId)
+                (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") }, "Fixtures.FixtureId": { $eq: %d } } }""" competitionId externalFixtureId),
+                (sprintf """{ $project: { Name: 1, Fixtures: { $filter: { input: "$Fixtures", as: "fixture", cond: { $eq: ["$$fixture.FixtureId", %d] } } } } }""" externalFixtureId)
             )
         return! collection.Aggregate(pipelines).ToListAsync()
     }
+
+    let ofMatchday (competitionId: Guid, matchday: int) =
+        match matchday with
+        | 4 | 5 | 6 ->
+            task {
+                let qualName = if matchday = 4 then "QualifiersRoundOf8" elif matchday = 5 then "QualifiersRoundOf4" else "QualifiersRoundOf2"
+                let pipelines =
+                    PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
+                        (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
+                        (sprintf """{ $project: { Name: 1, Qualifiers: "$%s" } }""" qualName)
+                    )
+                return! collection.Aggregate(pipelines).ToListAsync()
+            }
+        | 7 ->
+            task {
+                return ResizeArray<_>()
+            }
+        | 8 ->
+            task {
+                let pipelines =
+                    PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
+                        (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
+                        """{ $project: { Name: 1, Qualifiers: ["$Winner"] } }"""
+                    )
+                return! collection.Aggregate(pipelines).ToListAsync()
+            }
+        | _ ->
+            task {
+                return ResizeArray<_>()
+            }
 
     let private idToGuid (competitionId, email) =
         FbApp.Domain.Predictions.createId (competitionId, FbApp.Domain.Predictions.Email email)

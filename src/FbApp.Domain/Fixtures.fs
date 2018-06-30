@@ -105,14 +105,22 @@ let decide : State option -> Command -> Result<Event list, Error> =
             | None -> Error(UnknownFixture)
         | UpdateQualifiers input ->
             match state with
-            | Some(state) when state.Score <> input.Result && input.Result.IsSome ->
-                Ok([ScoreChanged input.Result.Value])
+            | Some(state) ->
+                Ok([
+                    let status = FixtureStatus.FromString(input.Status)
+                    if status <> state.Status then
+                        yield StatusChanged status
+
+                    match input.Result with
+                    | Some(score) when input.Result <> state.Score ->
+                        yield ScoreChanged score
+                    | _ -> ()
+                ])
             | None ->
                 Ok([
                     yield Added { CompetitionId = input.CompetitionId; ExternalId = input.ExternalId; HomeTeamId = input.HomeTeamId; AwayTeamId = input.AwayTeamId; Date = input.Date; Status = input.Status; Matchday = input.Matchday }
                     if input.Result.IsSome then yield ScoreChanged input.Result.Value
                 ])
-            | _ -> Ok([])
     )
 
 let evolve : State option -> Event -> State =

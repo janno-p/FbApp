@@ -15,6 +15,9 @@ with
     static member FromProjection(team: ReadModels.Team) =
         { Name = team.Name; FlagUrl = team.FlagUrl }
 
+let private fixName (name: string) =
+    name.Split([|' '|], 2).[0]
+
 [<CLIMutable>]
 type FixturePredictionDto =
     {
@@ -22,10 +25,19 @@ type FixturePredictionDto =
         Result: string
     }
 with
-    static member FromProjection(prediction: ReadModels.FixturePrediction) =
-        let fixName (name: string) =
-            name.Split([|' '|], 2).[0]
+    static member FromProjection(prediction: ReadModels.FixtureResultPrediction) =
         { Name = fixName prediction.Name; Result = prediction.Result }
+
+[<CLIMutable>]
+type QualifierPredictionDto =
+    {
+        Name: string
+        HomeQualifies: bool
+        AwayQualifies: bool
+    }
+with
+    static member FromProjection(prediction: ReadModels.QualificationPrediction) =
+        { Name = fixName prediction.Name; HomeQualifies = prediction.HomeQualifies; AwayQualifies = prediction.AwayQualifies }
 
 [<CLIMutable>]
 type FixtureDto =
@@ -39,7 +51,8 @@ type FixtureDto =
         Status: string
         HomeGoals: Nullable<int>
         AwayGoals: Nullable<int>
-        Predictions: FixturePredictionDto[]
+        ResultPredictions: FixturePredictionDto array
+        QualifierPredictions: QualifierPredictionDto array
     }
 with
     static member FromProjection (fixture: ReadModels.Fixture) =
@@ -53,7 +66,8 @@ with
             Status = fixture.Status
             HomeGoals = fixture.HomeGoals
             AwayGoals = fixture.AwayGoals
-            Predictions = fixture.Predictions |> Array.map FixturePredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
+            ResultPredictions = fixture.ResultPredictions |> Array.map FixturePredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
+            QualifierPredictions = fixture.QualificationPredictions |> Array.map QualifierPredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
         }
 
 let getFixture (id: Guid) : HttpHandler =
