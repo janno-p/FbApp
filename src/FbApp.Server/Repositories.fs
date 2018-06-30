@@ -395,16 +395,46 @@ module Predictions =
         ()
     }
 
-    (*db.predictions.aggregate([
+    let updateQualifiers (competitionId: Guid, matchday: int, teamId: int64, hasQualified: bool) = task {
+        let colName =
+            match matchday with
+            | 3 -> "QualifiersRoundOf16"
+            | 4 -> "QualifiersRoundOf8"
+            | 5 -> "QualifiersRoundOf4"
+            | 6 -> "QualifiersRoundOf2"
+            | 8 -> "Winner"
+            | _ -> failwith "never"
+        let! _ =
+            collection.UpdateManyAsync(
+                FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), "%s._id": %d }""" competitionId colName teamId),
+                UpdateDefinition.op_Implicit (sprintf """{ $set: { "%s.$.HasQualified": %b } }""" colName hasQualified)
+            )
+        ()
+    }
+
+    (*
+    db.predictions.aggregate([
         { $addFields: {
-            points: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $eq: [ "$$f.PredictedResult", "$$f.ActualResult" ] }, then: 1, else: 0 } } } } }
+            q32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $eq: [ "$$f.PredictedResult", "$$f.ActualResult" ] }, then: 1, else: 0 } } } } },
+            q16: { $sum: { $map: { input: "$QualifiersRoundOf16", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 2, else: 0 } } } } },
+            q8: { $sum: { $map: { input: "$QualifiersRoundOf8", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 3, else: 0 } } } } },
+            q4: { $sum: { $map: { input: "$QualifiersRoundOf4", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 4, else: 0 } } } } },
+            q2: { $sum: { $map: { input: "$QualifiersRoundOf2", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 5, else: 0 } } } } },
+            q1: { $cond: { if: "$Winner.HasQualified", then: 6, else: 0 } },
         } },
         { $addFields: {
-            ppc: { $multiply: [ 100.0, { $divide: [ "$points", 48.0 ] } ] }
+            points: ["$q32", "$q16", "$q8", "$q4", "$q2", "$q1"]
         } },
-        { $sort: { points: -1 } },
-        { $project: { Name: 1, points: 1, ppc: 1 } }
-    ])*)
+        { $addFields: {
+            total: { $sum: "$points" }
+        } },
+        { $addFields: {
+            ppc: { $multiply: [ 100.0, { $divide: [ "$total", 136.0 ] } ] }
+        } },
+        { $sort: { total: -1 } },
+        { $project: { Name: 1, points: 1, total: 1, ppc: 1 } }
+    ])
+    *)
 
 module Leagues =
     let private collection = db.GetCollection<ReadModels.League>("leagues")
