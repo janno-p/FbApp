@@ -127,11 +127,11 @@ let projectPredictions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Email = args.Email
                     CompetitionId = args.CompetitionId
                     Fixtures = fixtures
-                    QualifiersRoundOf16 = args.Qualifiers.RoundOf16 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
-                    QualifiersRoundOf8 = args.Qualifiers.RoundOf8 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
-                    QualifiersRoundOf4 = args.Qualifiers.RoundOf4 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
-                    QualifiersRoundOf2 = args.Qualifiers.RoundOf2 |> List.map (fun x -> { Id = x; Score = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
-                    Winner = { Id = args.Winner; Score = Nullable() }
+                    QualifiersRoundOf16 = args.Qualifiers.RoundOf16 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    QualifiersRoundOf8 = args.Qualifiers.RoundOf8 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    QualifiersRoundOf4 = args.Qualifiers.RoundOf4 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    QualifiersRoundOf2 = args.Qualifiers.RoundOf2 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+                    Winner = { Id = args.Winner; HasQualified = Nullable() }
                     Leagues = [||]
                     Version = md.AggregateSequenceNumber
                 }
@@ -165,6 +165,23 @@ let updateFixtureOrder competitionId = task {
             do! Fixtures.setAdjacentFixtures x.Id (Some(y.Id), None)
 }
 
+let getPredictionsForFixture (input: Fixtures.AddFixtureInput) = task {
+    if input.Matchday < 4 then
+        let! predictions = Predictions.ofFixture input.CompetitionId input.ExternalId
+        let predictions =
+            predictions
+            |> Seq.map
+                (fun x ->
+                    {
+                        PredictionId = x.Id
+                        Name = x.Name
+                        Result = x.Fixtures.[0].PredictedResult
+                    } : ReadModels.FixturePrediction)
+            |> Seq.toArray
+        return predictions
+    else return [||]
+}
+
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
     | Fixtures.Added input ->
@@ -175,17 +192,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             let homeTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.HomeTeamId)
             let awayTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.AwayTeamId)
 
-            let! predictions = Predictions.ofFixture competition.Id input.ExternalId
-            let predictions =
-                predictions
-                |> Seq.map
-                    (fun x ->
-                        {
-                            PredictionId = x.Id
-                            Name = x.Name
-                            Result = x.Fixtures.[0].PredictedResult
-                        } : ReadModels.FixturePrediction)
-                |> Seq.toArray
+            let! predictions = getPredictionsForFixture input
 
             let fixtureModel: ReadModels.Fixture =
                 {
@@ -201,6 +208,7 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     AwayGoals = Nullable()
                     Predictions = predictions
                     ExternalId = input.ExternalId
+                    Matchday = input.Matchday
                     Version = md.AggregateSequenceNumber
                 }
 

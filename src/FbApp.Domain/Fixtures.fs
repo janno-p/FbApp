@@ -52,10 +52,23 @@ type AddFixtureInput =
         AwayTeamId: int64
         Date: DateTimeOffset
         Status: string
+        Matchday: int
     }
 
 type UpdateFixtureInput =
     {
+        Status: string
+        Result: (int * int) option
+    }
+
+type UpdateQualifiersInput =
+    {
+        CompetitionId: Guid
+        ExternalId: int64
+        HomeTeamId: int64
+        AwayTeamId: int64
+        Date: DateTimeOffset
+        Matchday: int
         Status: string
         Result: (int * int) option
     }
@@ -68,6 +81,7 @@ type Event =
 type Command =
     | AddFixture of AddFixtureInput
     | UpdateFixture of UpdateFixtureInput
+    | UpdateQualifiers of UpdateQualifiersInput
 
 let decide : State option -> Command -> Result<Event list, Error> =
     (fun state -> function
@@ -89,6 +103,16 @@ let decide : State option -> Command -> Result<Event list, Error> =
                     | _ -> ()
                 ])
             | None -> Error(UnknownFixture)
+        | UpdateQualifiers input ->
+            match state with
+            | Some(state) when state.Score <> input.Result && input.Result.IsSome ->
+                Ok([ScoreChanged input.Result.Value])
+            | None ->
+                Ok([
+                    yield Added { CompetitionId = input.CompetitionId; ExternalId = input.ExternalId; HomeTeamId = input.HomeTeamId; AwayTeamId = input.AwayTeamId; Date = input.Date; Status = input.Status; Matchday = input.Matchday }
+                    if input.Result.IsSome then yield ScoreChanged input.Result.Value
+                ])
+            | _ -> Ok([])
     )
 
 let evolve : State option -> Event -> State =

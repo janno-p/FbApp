@@ -71,6 +71,7 @@ module ReadModels =
             AwayGoals: Nullable<int>
             Predictions: FixturePrediction array
             ExternalId: int64
+            Matchday: int
             Version: int64
         }
 
@@ -91,7 +92,7 @@ module ReadModels =
     type QualifiersResult =
         {
             Id: int64
-            Score: Nullable<int>
+            HasQualified: Nullable<bool>
         }
 
     type Prediction =
@@ -357,6 +358,17 @@ module Predictions =
             )
         ()
     }
+
+    (*db.predictions.aggregate([
+        { $addFields: {
+            points: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $eq: [ "$$f.PredictedResult", "$$f.ActualResult" ] }, then: 1, else: 0 } } } } }
+        } },
+        { $addFields: {
+            ppc: { $multiply: [ 100.0, { $divide: [ "$points", 48.0 ] } ] }
+        } },
+        { $sort: { points: -1 } },
+        { $project: { Name: 1, points: 1, ppc: 1 } }
+    ])*)
 
 module Leagues =
     let private collection = db.GetCollection<ReadModels.League>("leagues")

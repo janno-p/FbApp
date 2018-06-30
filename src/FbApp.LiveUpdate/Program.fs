@@ -22,6 +22,14 @@ type Marker = class end
 let mutable lastFullUpdate = DateTimeOffset.MinValue
 let [<Literal>] competitionExternalId = 467L
 
+let mapResult (fixture: FootballData.CompetitionFixture) =
+    fixture.Result
+    |> Option.bind (fun x ->
+        match (x.GoalsHomeTeam, x.GoalsAwayTeam) with
+        | Some(x1), Some(x2) -> Some(x1, x2)
+        | _ -> None
+    )
+
 let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = task {
     let filters, onSuccess =
         let now = DateTimeOffset.UtcNow
@@ -38,25 +46,30 @@ let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = 
         let competitionGuid = Competitions.createId competitionExternalId
         for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday < 4) do
             let id = Fixtures.createId (competitionGuid, fixture.Id)
-            let command =
-                Fixtures.UpdateFixture
-                    {
-                        Status =
-                            fixture.Status
-                        Result =
-                            fixture.Result
-                            |> Option.bind (fun x ->
-                                match (x.GoalsHomeTeam, x.GoalsAwayTeam) with
-                                | Some(x1), Some(x2) -> Some(x1, x2)
-                                | _ -> None
-                            )
-                    }
+            let command = Fixtures.UpdateFixture { Status = fixture.Status; Result = mapResult fixture }
             let! updateResult = fixtureHandler (id, Aggregate.Any) command
             match updateResult with
             | Ok(_) -> ()
             | Error(err) ->
                 anyError <- true
                 log.LogError(sprintf "Could not update fixture %A: %A" id err)
+        for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday >= 4) do
+            if fixture.HomeTeamName |> String.IsNullOrEmpty || fixture.AwayTeamName |> String.IsNullOrEmpty then () else
+            let id = Fixtures.createId (competitionGuid, fixture.Id)
+            let command =
+                Fixtures.UpdateQualifiers
+                    {
+                        CompetitionId = competitionGuid
+                        ExternalId = fixture.Id
+                        HomeTeamId = fixture.HomeTeamId
+                        AwayTeamId = fixture.AwayTeamId
+                        Date = fixture.Date
+                        Matchday = fixture.Matchday
+                        Status = fixture.Status
+                        Result = mapResult fixture
+                    }
+            let! _ = fixtureHandler (id, Aggregate.Any) command
+            ()
         if not anyError then onSuccess ()
     | Error(statusCode, statusText, error) ->
         log.LogWarning("Failed to load fixture data: ({0}: {1}) - {2}", statusCode, statusText, error.Error)
