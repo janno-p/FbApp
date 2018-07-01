@@ -30,6 +30,14 @@ let mapResult (fixture: FootballData.CompetitionFixture) =
         | _ -> None
     )
 
+let mapPenalties (fixture: FootballData.CompetitionFixture) =
+    fixture.Result
+    |> Option.bind (fun x ->
+        match x.PenaltyShootout with
+        | Some(ps) -> Some(ps.GoalsHomeTeam, ps.GoalsAwayTeam)
+        | _ -> None
+    )
+
 let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = task {
     let filters, onSuccess =
         let now = DateTimeOffset.UtcNow
@@ -46,7 +54,7 @@ let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = 
         let competitionGuid = Competitions.createId competitionExternalId
         for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday < 4) do
             let id = Fixtures.createId (competitionGuid, fixture.Id)
-            let command = Fixtures.UpdateFixture { Status = fixture.Status; Result = mapResult fixture }
+            let command = Fixtures.UpdateFixture { Status = fixture.Status; Result = mapResult fixture; Penalties = mapPenalties fixture }
             let! updateResult = fixtureHandler (id, Aggregate.Any) command
             match updateResult with
             | Ok(_) -> ()
@@ -67,6 +75,7 @@ let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = 
                         Matchday = fixture.Matchday
                         Status = fixture.Status
                         Result = mapResult fixture
+                        Penalties = mapPenalties fixture
                     }
             let! _ = fixtureHandler (id, Aggregate.Any) command
             ()

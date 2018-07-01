@@ -70,8 +70,8 @@ module ReadModels =
             HomeTeam: Team
             AwayTeam: Team
             Status: string
-            HomeGoals: Nullable<int>
-            AwayGoals: Nullable<int>
+            Score: int array
+            Penalties: int array
             ResultPredictions: FixtureResultPrediction array
             QualificationPredictions: QualificationPrediction array
             ExternalId: int64
@@ -133,8 +133,8 @@ module ReadModels =
     type FixtureStatus =
         {
             Status: string
-            HomeGoals: Nullable<int>
-            AwayGoals: Nullable<int>
+            Score: int array
+            Penalties: int array
         }
 
     type FixtureOrder =
@@ -228,12 +228,12 @@ module Fixtures =
         ()
     }
 
-    let updateScore (id, version) (homeGoals, awayGoals) = task {
+    let updateScore (id, version) (homeGoals, awayGoals) penalties = task {
         let f = Builders.Filter.Eq((fun x -> x.Id), id)
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
-                    .Set((fun x -> x.HomeGoals), Nullable(homeGoals))
-                    .Set((fun x -> x.AwayGoals), Nullable(awayGoals))
+                    .Set((fun x -> x.Score), [|homeGoals; awayGoals|])
+                    .Set((fun x -> x.Penalties), penalties |> Option.fold (fun _ (a,b) -> [|a; b|]) null)
         let! _ = collection.UpdateOneAsync(f, u)
         ()
     }
@@ -261,7 +261,7 @@ module Fixtures =
 
     let getFixtureStatus id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let projection = ProjectionDefinition<ReadModels.FixtureStatus>.op_Implicit """{ Status: 1, HomeGoals: 1, AwayGoals: 1, _id: 0 }"""
+        let projection = ProjectionDefinition<ReadModels.FixtureStatus>.op_Implicit """{ Status: 1, Score: 1, Penalties: 1, _id: 0 }"""
         return! collection.Find(idFilter).Project(projection).SingleAsync()
     }
 

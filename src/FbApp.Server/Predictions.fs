@@ -4,10 +4,14 @@ open FbApp.Server.Repositories
 open Giraffe
 open Saturn
 
+let private fixName (name: string) =
+    name.Split([|' '|], 2).[0]
+
 let getScoreTable : HttpHandler =
     (fun next ctx -> task {
         let! competition = Competitions.getActive ()
         let! scoreTable = Predictions.getScoreTable competition.Id
+        let scoreTable = scoreTable |> Seq.map (fun x -> { x with Name = fixName x.Name }) |> Seq.toArray
         return! Successful.OK scoreTable next ctx
     })
 

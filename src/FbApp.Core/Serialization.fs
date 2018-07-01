@@ -76,6 +76,8 @@ module Converters =
             | JsonToken.StartArray ->
                 let values = readElements()
                 FSharpValue.MakeTuple(values |> List.toArray, typ)
+            | JsonToken.Null ->
+                null
             | _ -> failwith "invalid token"
 
     type UnionCaseNameConverter () =

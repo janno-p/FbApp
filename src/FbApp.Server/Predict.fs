@@ -69,8 +69,7 @@ type FixtureDetailsDto =
         HomeTeam: TeamDto
         AwayTeam: TeamDto
         Status: string
-        HomeGoals: Nullable<int>
-        AwayGoals: Nullable<int>
+        Score: int array
         Predictions: FixturePredictionDto[]
     }
 

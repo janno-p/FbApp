@@ -45,8 +45,9 @@
                                     <q-item-tile class="text-center">{{ fixture.homeTeam.name }}</q-item-tile>
                                 </q-item-side>
                                 <q-item-main>
-                                    <q-item-tile class="text-center">
-                                        <h3>{{ goals(fixture.homeGoals) }} : {{ goals(fixture.awayGoals) }}</h3>
+                                    <q-item-tile class="text-center q-py-lg">
+                                        <h3 class="q-my-none q-mb-sm">{{ goals(homeGoals) }} : {{ goals(awayGoals) }}</h3>
+                                        <p v-if="this.fixture.penalties" class="q-body-2 text-faded">( {{ this.fixture.penalties[0] }} : {{ this.fixture.penalties[1] }} )</p>
                                     </q-item-tile>
                                     <q-item-tile class="text-center text-faded q-caption">
                                         {{ formatDate(fixture.date) }}
@@ -97,12 +98,20 @@ export default {
     name: "AppCompetitionView",
 
     computed: {
+        homeGoals () {
+            return this.fixture.score ? this.fixture.score[0] : null
+        },
+
+        awayGoals () {
+            return this.fixture.score ? this.fixture.score[1] : null
+        },
+
         fixtureStatus () {
-            if (this.fixture.homeGoals === null || this.fixture.awayGoals === null) {
+            if (this.fixture.score === null) {
                 return "None"
-            } else if (this.fixture.homeGoals > this.fixture.awayGoals) {
+            } else if (this.isHomeWin) {
                 return "HomeWin"
-            } else if (this.fixture.homeGoals < this.fixture.awayGoals) {
+            } else if (this.isAwayWin) {
                 return "AwayWin"
             } else {
                 return "Tie"
@@ -121,7 +130,34 @@ export default {
         },
 
         isPreFixture () {
-            return this.fixture.homeGoals === null || this.fixture.awayGoals === null
+            return this.fixture.score === null
+        },
+
+        isHomeWin () {
+            if (this.fixture.score === null) {
+                return false
+            }
+            const hg = this.fixture.score[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
+            const ag = this.fixture.score[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
+            return hg > ag
+        },
+
+        isAwayWin () {
+            if (this.fixture.score === null) {
+                return false
+            }
+            const hg = this.fixture.score[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
+            const ag = this.fixture.score[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
+            return hg < ag
+        },
+
+        isDraw () {
+            if (this.fixture.score === null) {
+                return false
+            }
+            const hg = this.fixture.score[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
+            const ag = this.fixture.score[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
+            return hg === ag
         }
     },
 
@@ -143,8 +179,8 @@ export default {
             const response = await this.$axios.get(`/fixtures/${this.fixture.id}/status`)
             if (response.data) {
                 this.fixture.status = response.data.status
-                this.fixture.homeGoals = response.data.homeGoals
-                this.fixture.awayGoals = response.data.awayGoals
+                this.fixture.score = response.data.score
+                this.fixture.penalties = response.data.penalties
             }
         },
 
@@ -223,9 +259,9 @@ export default {
         awayQualifiesResultClass (prediction) {
             if (this.isPreFixture) {
                 return undefined
-            } else if (this.fixture.homeGoals === this.fixture.awayGoals) {
+            } else if (this.isDraw) {
                 return "warning"
-            } else if (this.fixture.homeGoals > this.fixture.awayGoals) {
+            } else if (this.isHomeWin) {
                 return !prediction.awayQualifies ? "positive" : "negative"
             } else {
                 return prediction.awayQualifies ? "positive" : "negative"
@@ -235,9 +271,9 @@ export default {
         homeQualifiesResultClass (prediction) {
             if (this.isPreFixture) {
                 return undefined
-            } else if (this.fixture.homeGoals === this.fixture.awayGoals) {
+            } else if (this.isDraw) {
                 return "warning"
-            } else if (this.fixture.homeGoals < this.fixture.awayGoals) {
+            } else if (this.isAwayWin) {
                 return !prediction.homeQualifies ? "positive" : "negative"
             } else {
                 return prediction.homeQualifies ? "positive" : "negative"

@@ -197,7 +197,7 @@ type CompetitionLeagueTable =
     }
 
 [<CLIMutable>]
-type FixtureHalfTimeResult =
+type FixtureResultGoals =
     {
         GoalsHomeTeam: int
         GoalsAwayTeam: int
@@ -208,7 +208,9 @@ type FixtureResult =
     {
         GoalsHomeTeam: int option
         GoalsAwayTeam: int option
-        HalfTime: FixtureHalfTimeResult option
+        HalfTime: FixtureResultGoals option
+        ExtraTime: FixtureResultGoals option
+        PenaltyShootout: FixtureResultGoals option
     }
 
 [<CLIMutable>]

@@ -49,8 +49,8 @@ type FixtureDto =
         HomeTeam: TeamDto
         AwayTeam: TeamDto
         Status: string
-        HomeGoals: Nullable<int>
-        AwayGoals: Nullable<int>
+        Score: int array
+        Penalties: int array
         ResultPredictions: FixturePredictionDto array
         QualifierPredictions: QualifierPredictionDto array
     }
@@ -64,8 +64,8 @@ with
             HomeTeam = TeamDto.FromProjection(fixture.HomeTeam)
             AwayTeam = TeamDto.FromProjection(fixture.AwayTeam)
             Status = fixture.Status
-            HomeGoals = fixture.HomeGoals
-            AwayGoals = fixture.AwayGoals
+            Score = fixture.Score
+            Penalties = fixture.Penalties
             ResultPredictions = fixture.ResultPredictions |> Array.map FixturePredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
             QualifierPredictions = fixture.QualificationPredictions |> Array.map QualifierPredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
         }
@@ -76,14 +76,6 @@ let getFixture (id: Guid) : HttpHandler =
         let dto = FixtureDto.FromProjection(fixture)
         return! Successful.OK dto next ctx
     })
-
-[<CLIMutable>]
-type FixtureStatusDto =
-    {
-        Status: string
-        HomeGoals: Nullable<int>
-        AwayGoals: Nullable<int>
-    }
 
 let getFixtureStatus (id: Guid) : HttpHandler =
     (fun next ctx -> task {
