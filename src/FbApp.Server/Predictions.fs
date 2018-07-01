@@ -4,6 +4,13 @@ open FbApp.Server.Repositories
 open Giraffe
 open Saturn
 
+let getScoreTable : HttpHandler =
+    (fun next ctx -> task {
+        let! competition = Competitions.getActive ()
+        let! scoreTable = Predictions.getScoreTable competition.Id
+        return! Successful.OK scoreTable next ctx
+    })
+
 let findPredictions term : HttpHandler =
     (fun next ctx -> task {
         let! competition = Competitions.getActive ()
@@ -12,6 +19,8 @@ let findPredictions term : HttpHandler =
     })
 
 let scope = scope {
+    get "/score" getScoreTable
+
     forward "/admin" (scope {
         pipe_through Auth.authPipe
         pipe_through Auth.validateXsrfToken
