@@ -196,6 +196,12 @@ let getQualificationPredictions (input: Fixtures.AddFixtureInput) = task {
     return result
 }
 
+let updateQualifiedTeams (competition: ReadModels.Competition) = task {
+    let! qualifiedTeams = Fixtures.getQualifiedTeams competition.Id
+    let unqualifiedTeams = competition.Teams |> Seq.map (fun x -> x.ExternalId) |> Seq.except qualifiedTeams |> Seq.toArray
+    do! Predictions.setUnqualifiedTeams (competition.Id, unqualifiedTeams)
+}
+
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
     | Fixtures.Added input ->
@@ -234,6 +240,11 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             if input.Matchday > 3 then
                 do! Predictions.updateQualifiers (input.CompetitionId, input.Matchday - 1, fixtureModel.HomeTeam.ExternalId, true)
                 do! Predictions.updateQualifiers (input.CompetitionId, input.Matchday - 1, fixtureModel.AwayTeam.ExternalId, true)
+
+            if input.Matchday = 4 then
+                let! numFixtures = Fixtures.getFixtureCount (input.CompetitionId, input.Matchday)
+                if numFixtures = 8L then
+                    do! updateQualifiedTeams competition
 
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)

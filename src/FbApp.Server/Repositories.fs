@@ -150,6 +150,8 @@ module ReadModels =
             Name: string
         }
 
+    type FixtureTeamId = { TeamId: int64 }
+
 module Competitions =
     type Builders = Builders<ReadModels.Competition>
     type FieldDefinition = FieldDefinition<ReadModels.Competition>
@@ -298,6 +300,22 @@ module Fixtures =
         ()
     }
 
+    let getFixtureCount (competitionId: Guid, matchday: int) = task {
+        return! collection.CountAsync(FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), Matchday: { $eq: %d } }""" competitionId matchday))
+    }
+
+    let getQualifiedTeams (competitionId: Guid) = task {
+        let! teams =
+            collection.Aggregate(
+                PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
+                    (sprintf """{ $match: { CompetitionId: CSUUID("%O"), Matchday: 4 } }""" competitionId),
+                    """{ $project: { _id: 0, TeamId: ["$HomeTeam.ExternalId", "$AwayTeam.ExternalId"] } }""",
+                    """{ $unwind: "$TeamId" }"""
+                )
+            ).ToListAsync<ReadModels.FixtureTeamId>()
+        return teams |> Seq.map (fun x -> x.TeamId) |> Seq.toArray
+    }
+
 module Predictions =
     type Builders = Builders<ReadModels.Prediction>
     type FieldDefinition = FieldDefinition<ReadModels.Prediction>
@@ -395,15 +413,16 @@ module Predictions =
         ()
     }
 
+    let private getColName = function
+        | 3 -> "QualifiersRoundOf16"
+        | 4 -> "QualifiersRoundOf8"
+        | 5 -> "QualifiersRoundOf4"
+        | 6 -> "QualifiersRoundOf2"
+        | 8 -> "Winner"
+        | _ -> "--never--"
+
     let updateQualifiers (competitionId: Guid, matchday: int, teamId: int64, hasQualified: bool) = task {
-        let colName =
-            match matchday with
-            | 3 -> "QualifiersRoundOf16"
-            | 4 -> "QualifiersRoundOf8"
-            | 5 -> "QualifiersRoundOf4"
-            | 6 -> "QualifiersRoundOf2"
-            | 8 -> "Winner"
-            | _ -> failwith "never"
+        let colName = getColName matchday
         let! _ =
             collection.UpdateManyAsync(
                 FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), "%s._id": %d }""" competitionId colName teamId),
@@ -412,27 +431,64 @@ module Predictions =
         ()
     }
 
+    let setUnqualifiedTeams (competitionId: Guid, teams: int64 array) = task {
+        let teamList = String.Join(",", teams)
+
+        let updateQualifiers name = task {
+            let! _ =
+                collection.UpdateManyAsync(
+                    FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O") }""" competitionId),
+                    UpdateDefinition.op_Implicit (sprintf """{ $set: { "%s.$[q].HasQualified": false } }""" name),
+                    UpdateOptions(
+                        ArrayFilters = [
+                            ArrayFilterDefinition<ReadModels.Prediction>.op_Implicit (sprintf """{ $and: [ { "q.HasQualified": { $eq: null } }, { "q._id": { $in: [%s] } } ] }""" teamList)
+                        ]
+                    )
+                )
+            ()
+        }
+
+        do! updateQualifiers "QualifiersRoundOf16"
+        do! updateQualifiers "QualifiersRoundOf8"
+        do! updateQualifiers "QualifiersRoundOf4"
+        do! updateQualifiers "QualifiersRoundOf2"
+
+        let! _ =
+            collection.UpdateManyAsync(
+                FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), "Winner.HasQualified": { $eq: null }, "Winner._id": { $in: [%s] } }""" competitionId teamList),
+                UpdateDefinition.op_Implicit """{ $set: { "Winner.HasQualified": false } }"""
+            )
+        ()
+    }
+
     (*
     db.predictions.aggregate([
         { $addFields: {
             q32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $eq: [ "$$f.PredictedResult", "$$f.ActualResult" ] }, then: 1, else: 0 } } } } },
+            c32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $ne: [ "$$f.ActualResult", null ] }, then: 1, else: 0 } } } } },
             q16: { $sum: { $map: { input: "$QualifiersRoundOf16", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 2, else: 0 } } } } },
+            c16: { $sum: { $map: { input: "$QualifiersRoundOf16", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 2, else: 0 } } } } },
             q8: { $sum: { $map: { input: "$QualifiersRoundOf8", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 3, else: 0 } } } } },
+            c8: { $sum: { $map: { input: "$QualifiersRoundOf8", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 3, else: 0 } } } } },
             q4: { $sum: { $map: { input: "$QualifiersRoundOf4", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 4, else: 0 } } } } },
+            c4: { $sum: { $map: { input: "$QualifiersRoundOf4", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 4, else: 0 } } } } },
             q2: { $sum: { $map: { input: "$QualifiersRoundOf2", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 5, else: 0 } } } } },
+            c2: { $sum: { $map: { input: "$QualifiersRoundOf2", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 5, else: 0 } } } } },
             q1: { $cond: { if: "$Winner.HasQualified", then: 6, else: 0 } },
+            c1: { $cond: { if: { $ne: ["$Winner.HasQualified", null] }, then: 6, else: 0 } }
         } },
         { $addFields: {
             points: ["$q32", "$q16", "$q8", "$q4", "$q2", "$q1"]
         } },
         { $addFields: {
-            total: { $sum: "$points" }
+            total: { $sum: "$points" },
+            max: { $sum: ["$c32", "$c16", "$c8", "$c4", "$c2", "$c1"] }
         } },
         { $addFields: {
-            ppc: { $multiply: [ 100.0, { $divide: [ "$total", 136.0 ] } ] }
+            ppc: { $multiply: [ 100.0, { $divide: [ "$total", "$max" ] } ] }
         } },
-        { $sort: { total: -1 } },
-        { $project: { Name: 1, points: 1, total: 1, ppc: 1 } }
+        { $sort: { ppc: -1, total: -1 } },
+        { $project: { Name: 1, points: 1, total: 1, ppc: 1, max: 1 } }
     ])
     *)
 
