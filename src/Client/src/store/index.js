@@ -3,7 +3,7 @@ import Vue from "vue"
 import Vuex from "vuex"
 
 import example from "./module-example"
-import { SET_GOOGLE_READY, SET_USER } from "./mutation-types"
+import { SET_COMPETITION_STATUS, SET_GOOGLE_READY, SET_USER } from "./mutation-types"
 
 Vue.use(Vuex)
 
@@ -11,8 +11,10 @@ const store = new Vuex.Store({
     actions: {
         async authenticate (context) {
             try {
-                const response = await this._vm.$axios.post("/auth/info", {})
-                context.commit(SET_USER, response.data)
+                const response = await this._vm.$axios.get("/bootstrap")
+                context.commit(SET_USER, response.data.user)
+                const competitionStatus = response.data.competitionStatus
+                context.commit(SET_COMPETITION_STATUS, { competitionStatus })
                 context.commit(SET_GOOGLE_READY, { isReady: true })
             } catch (e) {
                 console.error(e)
@@ -68,6 +70,10 @@ const store = new Vuex.Store({
     },
 
     mutations: {
+        [SET_COMPETITION_STATUS] (state, { competitionStatus }) {
+            state.competitionStatus = competitionStatus
+        },
+
         [SET_GOOGLE_READY] (state, { isReady }) {
             state.isGoogleReady = isReady
         },
@@ -87,6 +93,7 @@ const store = new Vuex.Store({
     },
 
     state: {
+        competitionStatus: "",
         isGoogleReady: false,
         isSignedIn: false,
         name: "",

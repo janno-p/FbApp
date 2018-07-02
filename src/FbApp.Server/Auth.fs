@@ -78,16 +78,6 @@ let validateXsrfToken: HttpHandler =
                 return! RequestErrors.FORBIDDEN e.Message next context
         })
 
-let tokenInfo: HttpHandler =
-    (fun (next: HttpFunc) (context: HttpContext) ->
-        task {
-            let handler =
-                if context.User.Identity.IsAuthenticated then
-                    Successful.OK (createUser context.User context)
-                else Successful.OK None
-            return! handler next context
-        })
-
 let tokenSignIn: HttpHandler =
     (fun (next: HttpFunc) (context: HttpContext) ->
         task {
@@ -115,11 +105,13 @@ let tokenSignIn: HttpHandler =
                 return! RequestErrors.BAD_REQUEST "Token validation failed!" next context
         })
 
+let getUser (ctx: HttpContext) =
+    if ctx.User.Identity.IsAuthenticated then Some(createUser ctx.User ctx) else None
+
 let tokenSignOut: HttpHandler =
     signOut CookieAuthenticationDefaults.AuthenticationScheme >=> Successful.OK ()
 
 let authScope = scope {
-    post "/info" tokenInfo
     post "/signin" tokenSignIn
     post "/signout" (resetXsrfToken >=> tokenSignOut)
 }

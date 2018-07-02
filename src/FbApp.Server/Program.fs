@@ -25,9 +25,32 @@ open System
 let index : HttpHandler =
     (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
 
+[<CLIMutable>]
+type AppBootstrapInfo =
+    {
+        CompetitionStatus: string
+        User: Auth.User option
+    }
+
+let appBootstrap : HttpHandler =
+    (fun next ctx -> task {
+        let user =
+            Auth.getUser ctx
+        let! competitionStatus =
+            Predict.getCompetitionStatus ()
+        let dto =
+            {
+                CompetitionStatus = competitionStatus
+                User = user
+            }
+        return! Successful.OK dto next ctx
+    })
+
 let mainRouter = scope {
     not_found_handler index
     get "/" index
+
+    get "/api/bootstrap" appBootstrap
 
     forward "/api/auth" Auth.authScope
     forward "/api/predict" Predict.predictScope

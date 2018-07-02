@@ -39,6 +39,7 @@ export default {
         },
 
         ...mapState([
+            "competitionStatus",
             "isSignedIn"
         ])
     },
@@ -47,8 +48,7 @@ export default {
         return {
             isPredictionAdded: false,
             isLoading: true,
-            predictions: null,
-            competitionStatus: "accept-predictions"
+            predictions: null
         }
     },
 
@@ -75,8 +75,6 @@ export default {
     mounted () {
         this.$nextTick(async () => {
             try {
-                const response = await this.$axios.get("/predict/status")
-                this.competitionStatus = response.data
                 if (this.isSignedIn) {
                     await this.loadPredictions()
                 }

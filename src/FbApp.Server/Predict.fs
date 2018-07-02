@@ -134,16 +134,13 @@ let private getCurrentPrediction: HttpHandler =
         | None -> return! RequestErrors.NOT_FOUND "Prediction does not exist" next context
     })
 
-let private getCompetitionStatus : HttpHandler =
-    (fun next context -> task {
-        let! competition = Competitions.getActive ()
-        let status = if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
-        return! Successful.OK status next context
-    })
+let getCompetitionStatus () = task {
+    let! competition = Competitions.getActive ()
+    return if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
+}
 
 let predictScope = scope {
     post "/" (Auth.authPipe >=> Auth.validateXsrfToken >=> savePredictions)
     get "/fixtures" getFixtures
     get "/current" (Auth.authPipe >=> Auth.validateXsrfToken >=> getCurrentPrediction)
-    get "/status" getCompetitionStatus
 }
