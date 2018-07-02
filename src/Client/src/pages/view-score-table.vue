@@ -39,6 +39,14 @@ export default {
             standings: null,
             columns: [
                 {
+                    name: "pos",
+                    required: true,
+                    label: "",
+                    align: "left",
+                    field: "position",
+                    sortable: true
+                },
+                {
                     name: "name",
                     required: true,
                     label: "Nimi",
@@ -109,7 +117,16 @@ export default {
 
     async mounted () {
         const response = await this.$axios.get("/predictions/score")
-        this.$set(this, "standings", response.data)
+        let pos = 0
+        let score = 0
+        const standings = _(response.data).map((x, i) => {
+            if (score !== x.total) {
+                pos = i + 1
+            }
+            score = x.total
+            return { position: pos, ...x }
+        }).value()
+        this.$set(this, "standings", standings)
         const r = _(this.standings).map((x) => x.ratio)
         this.minv = r.min()
         this.maxv = r.max()

@@ -496,7 +496,7 @@ module Predictions =
                 """{ $addFields: {
                     Ratio: { $multiply: [ 100.0, { $divide: [ "$Total", "$max" ] } ] }
                 } }""",
-                """{ $sort: { Ratio: -1, Total: -1 } }""",
+                """{ $sort: { Total: -1, Ratio: -1, _id: 1 } }""",
                 """{ $project: { Name: 1, Points: 1, Total: 1, Ratio: 1 } }"""
             )
         ).ToListAsync()
