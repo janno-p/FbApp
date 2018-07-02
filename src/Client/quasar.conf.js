@@ -83,8 +83,10 @@ module.exports = function (ctx) {
                     "QStepper",
                     "QTable",
                     "QTabs",
+                    "QTd",
                     "QToolbar",
-                    "QToolbarTitle"
+                    "QToolbarTitle",
+                    "QTr"
                 ],
                 directives: [
                     "Ripple"
