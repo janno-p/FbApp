@@ -77,7 +77,8 @@
 <script>
 import _ from "lodash"
 import { Notify } from "quasar"
-import { mapActions, mapState } from "vuex"
+import { mapActions, mapState, mapMutations } from "vuex"
+import { SET_PREDICTIONS } from "../store/mutation-types"
 
 class SelectedTeam {
     constructor (team, qual, cb) {
@@ -322,7 +323,6 @@ export default {
         async registerPrediction () {
             this.isSaveInProgress = true
             try {
-                this.$emit("before-prediction-added")
                 if (!this.isSignedIn) {
                     await this.googleSignIn()
                 }
@@ -354,7 +354,8 @@ export default {
                     roundOf2: payload.qualifiers.roundOf2,
                     winner: payload.winner
                 }
-                this.$emit("prediction-added", predictions)
+                this.commitSetPrediction({ predictions })
+                this.$router.push("/")
             } catch (error) {
                 if (error.response && error.response.status === 409) {
                     Notify.create({
@@ -367,7 +368,7 @@ export default {
                             }
                         ]
                     })
-                    this.$emit("prediction-exists")
+                    await this.loadPredictions()
                     return
                 }
                 throw error
@@ -377,8 +378,13 @@ export default {
         },
 
         ...mapActions([
-            "googleSignIn"
-        ])
+            "googleSignIn",
+            "loadPredictions"
+        ]),
+
+        ...mapMutations({
+            commitSetPrediction: SET_PREDICTIONS
+        })
     }
 }
 </script>

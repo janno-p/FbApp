@@ -15,14 +15,13 @@ open Saturn
 
 let [<Literal>] AdministratorRole = "Administrator"
 
-type User =
-    {
-        Email: string
-        Name: string
-        Picture: string
-        Roles: string[]
-        XsrfToken: string
-    }
+[<AllowNullLiteral>]
+type User (email: string, name: string, picture: string, roles: string array, xsrfToken: string) =
+    member val Email = email with get
+    member val Name = name with get
+    member val Picture = picture with get
+    member val Roles = roles with get
+    member val XsrfToken = xsrfToken with get
 
 [<CLIMutable>]
 type Message =
@@ -49,13 +48,12 @@ type TokenInfo =
     }
 
 let createUser (claimsPrincipal: ClaimsPrincipal) (context: HttpContext) =
-    {
-        Email = claimsPrincipal.FindFirst(ClaimTypes.Email).Value
-        Name = claimsPrincipal.FindFirst(ClaimTypes.Name).Value
-        Picture = claimsPrincipal.FindFirst("Picture").Value
-        Roles = claimsPrincipal.FindAll(ClaimTypes.Role) |> Seq.map (fun x -> x.Value) |> Seq.toArray
-        XsrfToken = XsrfToken.create context
-    }
+    let email = claimsPrincipal.FindFirst(ClaimTypes.Email).Value
+    let name = claimsPrincipal.FindFirst(ClaimTypes.Name).Value
+    let picture = claimsPrincipal.FindFirst("Picture").Value
+    let roles = claimsPrincipal.FindAll(ClaimTypes.Role) |> Seq.map (fun x -> x.Value) |> Seq.toArray
+    let xsrfToken = XsrfToken.create context
+    User(email, name, picture, roles, xsrfToken)
 
 let notLoggedIn =
     RequestErrors.FORBIDDEN "You must be logged in"
@@ -106,7 +104,7 @@ let tokenSignIn: HttpHandler =
         })
 
 let getUser (ctx: HttpContext) =
-    if ctx.User.Identity.IsAuthenticated then Some(createUser ctx.User ctx) else None
+    if ctx.User.Identity.IsAuthenticated then createUser ctx.User ctx else null
 
 let tokenSignOut: HttpHandler =
     signOut CookieAuthenticationDefaults.AuthenticationScheme >=> Successful.OK ()

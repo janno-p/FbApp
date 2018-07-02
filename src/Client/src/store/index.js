@@ -3,7 +3,7 @@ import Vue from "vue"
 import Vuex from "vuex"
 
 import example from "./module-example"
-import { SET_COMPETITION_STATUS, SET_GOOGLE_READY, SET_USER } from "./mutation-types"
+import { SET_COMPETITION_STATUS, SET_GOOGLE_READY, SET_PREDICTIONS, SET_USER, SET_LOADING_PREDICTIONS } from "./mutation-types"
 
 Vue.use(Vuex)
 
@@ -18,6 +18,9 @@ const store = new Vuex.Store({
                 context.commit(SET_GOOGLE_READY, { isReady: true })
             } catch (e) {
                 console.error(e)
+            }
+            if (context.state.isSignedIn) {
+                await context.dispatch("loadPredictions")
             }
         },
 
@@ -45,6 +48,7 @@ const store = new Vuex.Store({
                     ]
                 })
             }
+            await context.dispatch("loadPredictions")
         },
 
         async googleSignOut (context) {
@@ -53,8 +57,19 @@ const store = new Vuex.Store({
                 auth.disconnect()
                 await this._vm.$axios.post("/auth/signout", {})
                 context.commit(SET_USER, null)
+                context.commit(SET_PREDICTIONS, { predictions: null })
             } catch (e) {
                 console.error(e)
+            }
+        },
+
+        async loadPredictions (context) {
+            try {
+                context.commit(SET_LOADING_PREDICTIONS, { isLoading: true })
+                const response = await this._vm.$axios.get("/predict/current")
+                context.commit(SET_PREDICTIONS, { predictions: response.data })
+            } finally {
+                context.commit(SET_LOADING_PREDICTIONS, { isLoading: false })
             }
         }
     },
@@ -78,6 +93,14 @@ const store = new Vuex.Store({
             state.isGoogleReady = isReady
         },
 
+        [SET_LOADING_PREDICTIONS] (state, { isLoading }) {
+            state.isLoadingPredictions = isLoading
+        },
+
+        [SET_PREDICTIONS] (state, { predictions }) {
+            Vue.set(state, "predictions", predictions)
+        },
+
         [SET_USER] (state, payload) {
             state.isSignedIn = !!payload
             state.email = payload ? payload.email : ""
@@ -99,7 +122,9 @@ const store = new Vuex.Store({
         name: "",
         imageUrl: "",
         email: "",
-        roles: []
+        roles: [],
+        predictions: null,
+        isLoadingPredictions: false
     }
 })
 

@@ -1,5 +1,5 @@
 ﻿<template>
-    <q-page class="q-pa-lg">
+    <div class="q-pa-lg">
         <q-inner-loading v-if="isInitializing" :visible="true">
             <q-spinner-puff size="100px" color="primary" />
             <p class="q-mt-lg">Võistluste hetkeseisu küsimine &hellip;</p>
@@ -91,7 +91,7 @@
                 </div>
             </div>
         </template>
-    </q-page>
+    </div>
 </template>
 
 <script>
@@ -129,6 +129,8 @@ export default {
                 return "Käimasolev mäng"
             case "FINISHED":
                 return "Lõppenud mäng"
+            case "PAUSED":
+                return "Käimasolev mäng (vaheaeg)"
             default:
                 return "Toimumata mäng"
             }

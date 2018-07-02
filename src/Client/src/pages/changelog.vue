@@ -20,6 +20,15 @@ export default {
         return {
             log: [
                 {
+                    version: "0.0.4",
+                    changes: [
+                        "Mängutulemuste kontrollimine v2 API-ga",
+                        "Väljalangemismängude tulemuste näitamine",
+                        "Üldise ennustuste punktitabeli näitamine",
+                        "Mängude järjekorra parandamine"
+                    ]
+                },
+                {
                     version: "0.0.3",
                     changes: [
                         "Parandatud iluviga Chromes",

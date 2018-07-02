@@ -29,7 +29,7 @@ let index : HttpHandler =
 type AppBootstrapInfo =
     {
         CompetitionStatus: string
-        User: Auth.User option
+        User: Auth.User
     }
 
 let appBootstrap : HttpHandler =

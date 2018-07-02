@@ -23,7 +23,7 @@
                         <q-icon name="mdi-logout" />
                     </q-btn>
                 </template>
-                <q-btn v-else flat dense round @click="googleSignIn" title="Logi sisse Google kontoga">
+                <q-btn v-else flat dense round @click="signIn" title="Logi sisse Google kontoga">
                     <q-icon name="mdi-google" />
                 </q-btn>
             </template>
@@ -57,6 +57,12 @@ export default {
             "googleSignIn",
             "googleSignOut"
         ]),
+
+        async signIn () {
+            await this.googleSignIn()
+            this.$router.push("/")
+        },
+
         async signOut () {
             await this.googleSignOut()
             this.$router.push("/")

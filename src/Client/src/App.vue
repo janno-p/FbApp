@@ -10,8 +10,9 @@ import { mapActions } from "vuex"
 export default {
     name: "App",
 
-    created () {
-        return this.authenticate()
+    async created () {
+        await this.authenticate()
+        this.$router.push("/")
     },
 
     methods: {
