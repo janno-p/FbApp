@@ -45,9 +45,12 @@
                                     <q-item-tile class="text-center">{{ fixture.homeTeam.name }}</q-item-tile>
                                 </q-item-side>
                                 <q-item-main>
+                                    <q-item-tile class="text-center text-faded q-caption">
+                                        {{ formatStage(fixture.stage) }}
+                                    </q-item-tile>
                                     <q-item-tile class="text-center q-py-lg">
                                         <h3 class="q-my-none q-mb-sm">{{ goals(homeGoals) }} : {{ goals(awayGoals) }}</h3>
-                                        <p v-if="this.fixture.penalties" class="q-body-2 text-faded">( {{ this.fixture.penalties[0] }} : {{ this.fixture.penalties[1] }} )</p>
+                                        <p v-if="this.fixture.penalties" class="q-body-2 text-faded">(pen {{ this.fixture.penalties[0] }} : {{ this.fixture.penalties[1] }} )</p>
                                     </q-item-tile>
                                     <q-item-tile class="text-center text-faded q-caption">
                                         {{ formatDate(fixture.date) }}
@@ -99,11 +102,13 @@ export default {
 
     computed: {
         homeGoals () {
-            return this.fixture.fullTime ? this.fixture.fullTime[0] : null
+            const eth = this.fixture.extraTime ? this.fixture.extraTime[0] : 0
+            return this.fixture.fullTime ? (this.fixture.fullTime[0] + eth) : null
         },
 
         awayGoals () {
-            return this.fixture.fullTime ? this.fixture.fullTime[1] : null
+            const eta = this.fixture.extraTime ? this.fixture.extraTime[1] : 0
+            return this.fixture.fullTime ? (this.fixture.fullTime[1] + eta) : null
         },
 
         fixtureStatus () {
@@ -171,6 +176,23 @@ export default {
     },
 
     methods: {
+        formatStage (stage) {
+            switch (stage) {
+            case "GROUP_STAGE":
+                return "Alagrupimäng"
+            case "ROUND_OF_16":
+                return "1/16 finaal"
+            case "QUARTER_FINALS":
+                return "Veerandfinaal"
+            case "SEMI_FINALS":
+                return "Poolfinaal"
+            case "FINAL":
+                return "Finaal"
+            default:
+                return ""
+            }
+        },
+
         goals (value) {
             return value === null ? "-" : value
         },

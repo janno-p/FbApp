@@ -49,6 +49,7 @@ type FixtureDto =
         HomeTeam: TeamDto
         AwayTeam: TeamDto
         Status: string
+        Stage: string
         FullTime: int array
         ExtraTime: int array
         Penalties: int array
@@ -65,6 +66,7 @@ with
             HomeTeam = TeamDto.FromProjection(fixture.HomeTeam)
             AwayTeam = TeamDto.FromProjection(fixture.AwayTeam)
             Status = fixture.Status
+            Stage = fixture.Stage
             FullTime = fixture.FullTime
             ExtraTime = fixture.ExtraTime
             Penalties = fixture.Penalties

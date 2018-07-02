@@ -72,18 +72,18 @@ let mapFixtureId = function
     | 200005L -> 165101L
     | 200010L -> 165112L
     | 200011L -> 165109L
-    | 200016L -> 165113L
-    | 200017L -> 165107L
+    | 200016L -> 165107L
+    | 200017L -> 165113L
     | 200022L -> 165115L
     | 200023L -> 165114L
-    | 200034L -> 165102L
-    | 200035L -> 165106L
+    | 200034L -> 165106L
+    | 200035L -> 165102L
     | 200028L -> 165116L
     | 200029L -> 165108L
     | 200046L -> 165104L
     | 200047L -> 165103L
-    | 200040L -> 165110L
-    | 200041L -> 165105L
+    | 200040L -> 165105L
+    | 200041L -> 165110L
     | x -> x
 
 let mapGoals : FootballData.Api2.CompetitionMatchScoreGoals -> FbApp.Domain.Fixtures.FixtureGoals option = function
@@ -120,7 +120,7 @@ let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = 
             | Error(err) ->
                 anyError <- true
                 log.LogError(sprintf "Could not update fixture %A: %A" id err)
-        for fixture in data.Matches |> Array.filter (fun f -> f.Stage <> "GROUP_STAGE") do
+        for fixture in data.Matches |> Array.filter (fun f -> f.Stage = "ROUND_OF_16" || f.Stage = "QUARTER_FINALS" || f.Stage = "SEMI_FINALS" || f.Stage = "FINAL") do
             let fixtureId = mapFixtureId fixture.Id
             let id = Fixtures.createId (competitionGuid, fixtureId)
             let command =
