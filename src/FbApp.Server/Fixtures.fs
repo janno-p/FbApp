@@ -49,7 +49,8 @@ type FixtureDto =
         HomeTeam: TeamDto
         AwayTeam: TeamDto
         Status: string
-        Score: int array
+        FullTime: int array
+        ExtraTime: int array
         Penalties: int array
         ResultPredictions: FixturePredictionDto array
         QualifierPredictions: QualifierPredictionDto array
@@ -64,7 +65,8 @@ with
             HomeTeam = TeamDto.FromProjection(fixture.HomeTeam)
             AwayTeam = TeamDto.FromProjection(fixture.AwayTeam)
             Status = fixture.Status
-            Score = fixture.Score
+            FullTime = fixture.FullTime
+            ExtraTime = fixture.ExtraTime
             Penalties = fixture.Penalties
             ResultPredictions = fixture.ResultPredictions |> Array.map FixturePredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
             QualifierPredictions = fixture.QualificationPredictions |> Array.map QualifierPredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())

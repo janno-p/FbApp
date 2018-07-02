@@ -37,12 +37,19 @@ with
         | Canceled -> "CANCELED"
         | Unknown x -> x
 
+type FixtureGoals =
+    {
+        Home: int
+        Away: int
+    }
+
 type State =
     {
         Date: DateTimeOffset
         Status: FixtureStatus
-        Score: (int * int) option
-        Penalties: (int * int) option
+        FullTime: FixtureGoals option
+        ExtraTime: FixtureGoals option
+        Penalties: FixtureGoals option
     }
 
 type AddFixtureInput =
@@ -53,14 +60,15 @@ type AddFixtureInput =
         AwayTeamId: int64
         Date: DateTimeOffset
         Status: string
-        Matchday: int
+        Stage: string
     }
 
 type UpdateFixtureInput =
     {
         Status: string
-        Result: (int * int) option
-        Penalties: (int * int) option
+        FullTime: FixtureGoals option
+        ExtraTime: FixtureGoals option
+        Penalties: FixtureGoals option
     }
 
 type UpdateQualifiersInput =
@@ -70,16 +78,18 @@ type UpdateQualifiersInput =
         HomeTeamId: int64
         AwayTeamId: int64
         Date: DateTimeOffset
-        Matchday: int
+        Stage: string
         Status: string
-        Result: (int * int) option
-        Penalties: (int * int) option
+        FullTime: FixtureGoals option
+        ExtraTime: FixtureGoals option
+        Penalties: FixtureGoals option
     }
 
 type ScoreChangedArgs =
     {
-        Goals: int * int
-        Penalties: (int * int) option
+        FullTime: FixtureGoals
+        ExtraTime: FixtureGoals option
+        Penalties: FixtureGoals option
     }
 
 type Event =
@@ -107,9 +117,9 @@ let decide : State option -> Command -> Result<Event list, Error> =
                     if status <> state.Status then
                         yield StatusChanged status
 
-                    match input.Result, input.Penalties with
-                    | Some(score), penalties when input.Result <> state.Score || penalties <> state.Penalties ->
-                        yield ScoreChanged2 { Goals = score; Penalties = input.Penalties }
+                    match input.FullTime, input.ExtraTime, input.Penalties with
+                    | Some(fullTime), extraTime, penalties when input.FullTime <> state.FullTime || extraTime <> state.ExtraTime || penalties <> state.Penalties ->
+                        yield ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties }
                     | _ -> ()
                 ])
             | None -> Error(UnknownFixture)
@@ -121,32 +131,32 @@ let decide : State option -> Command -> Result<Event list, Error> =
                     if status <> state.Status then
                         yield StatusChanged status
 
-                    match input.Result, input.Penalties with
-                    | Some(score), penalties when input.Result <> state.Score || penalties <> state.Penalties ->
-                        yield ScoreChanged2 { Goals = score; Penalties = penalties }
+                    match input.FullTime, input.ExtraTime, input.Penalties with
+                    | Some(fullTime), extraTime, penalties when input.FullTime <> state.FullTime || extraTime <> state.ExtraTime || penalties <> state.Penalties ->
+                        yield ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties }
                     | _ -> ()
                 ])
             | None ->
                 Ok([
-                    yield Added { CompetitionId = input.CompetitionId; ExternalId = input.ExternalId; HomeTeamId = input.HomeTeamId; AwayTeamId = input.AwayTeamId; Date = input.Date; Status = input.Status; Matchday = input.Matchday }
-                    if input.Result.IsSome then yield ScoreChanged2 { Goals = input.Result.Value; Penalties = input.Penalties }
+                    yield Added { CompetitionId = input.CompetitionId; ExternalId = input.ExternalId; HomeTeamId = input.HomeTeamId; AwayTeamId = input.AwayTeamId; Date = input.Date; Status = input.Status; Stage = input.Stage }
+                    if input.FullTime.IsSome then yield ScoreChanged2 { FullTime = input.FullTime.Value; ExtraTime = input.ExtraTime; Penalties = input.Penalties }
                 ])
     )
 
 let evolve : State option -> Event -> State =
     (fun state -> function
         | Added input ->
-            { Date = input.Date; Status = FixtureStatus.FromString(input.Status); Score = None; Penalties = None }
+            { Date = input.Date; Status = FixtureStatus.FromString(input.Status); FullTime = None; ExtraTime = None; Penalties = None }
         | StatusChanged status ->
-            let score =
-                match status, state.Value.Score with
-                | InPlay, None -> Some(0, 0)
-                | _, score -> score
-            { state.Value with Status = status; Score = score }
+            let fullTime =
+                match status, state.Value.FullTime with
+                | InPlay, None -> Some({ Home = 0; Away = 0 })
+                | _, fullTime -> fullTime
+            { state.Value with Status = status; FullTime = fullTime }
         | ScoreChanged (homeGoals, awayGoals) ->
-            { state.Value with Score = Some(homeGoals, awayGoals) }
-        | ScoreChanged2 { Goals = (homeGoals, awayGoals); Penalties = penalties } ->
-            { state.Value with Score = Some(homeGoals, awayGoals); Penalties = penalties }
+            { state.Value with FullTime = Some({ Home = homeGoals; Away = awayGoals }) }
+        | ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties } ->
+            { state.Value with FullTime = Some(fullTime); ExtraTime = extraTime; Penalties = penalties }
     )
 
 let fixturesNamespace =

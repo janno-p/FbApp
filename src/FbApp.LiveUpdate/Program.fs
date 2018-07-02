@@ -20,7 +20,8 @@ type FixturesHandler = Aggregate.CommandHandler<Fixtures.Command, Fixtures.Error
 type Marker = class end
 
 let mutable lastFullUpdate = DateTimeOffset.MinValue
-let [<Literal>] competitionExternalId = 467L
+let [<Literal>] oldCompetitionId = 467L
+let [<Literal>] newCompetitionId = 2000L
 
 let mapResult (fixture: FootballData.CompetitionFixture) =
     fixture.Result
@@ -30,13 +31,64 @@ let mapResult (fixture: FootballData.CompetitionFixture) =
         | _ -> None
     )
 
-let mapPenalties (fixture: FootballData.CompetitionFixture) =
-    fixture.Result
-    |> Option.bind (fun x ->
-        match x.PenaltyShootout with
-        | Some(ps) -> Some(ps.GoalsHomeTeam, ps.GoalsAwayTeam)
-        | _ -> None
-    )
+let mapTeamId = function
+    | 6679L -> 788L
+    | x -> x
+
+let mapFixtureId = function
+    | 200000L -> 165069L
+    | 200001L -> 165084L
+    | 200006L -> 165083L
+    | 200007L -> 165076L
+    | 200012L -> 165072L
+    | 200018L -> 165073L
+    | 200013L -> 165071L
+    | 200019L -> 165074L
+    | 200024L -> 165075L
+    | 200030L -> 165082L
+    | 200025L -> 165070L
+    | 200031L -> 165081L
+    | 200036L -> 165077L
+    | 200037L -> 165078L
+    | 200042L -> 165080L
+    | 200043L -> 165079L
+    | 200002L -> 165100L
+    | 200008L -> 165087L
+    | 200003L -> 165086L
+    | 200009L -> 165085L
+    | 200014L -> 165099L
+    | 200015L -> 165096L
+    | 200020L -> 165094L
+    | 200026L -> 165092L
+    | 200021L -> 165098L
+    | 200027L -> 165091L
+    | 200038L -> 165088L
+    | 200032L -> 165089L
+    | 200033L -> 165090L
+    | 200039L -> 165093L
+    | 200044L -> 165095L
+    | 200045L -> 165097L
+    | 200004L -> 165111L
+    | 200005L -> 165101L
+    | 200010L -> 165112L
+    | 200011L -> 165109L
+    | 200016L -> 165113L
+    | 200017L -> 165107L
+    | 200022L -> 165115L
+    | 200023L -> 165114L
+    | 200034L -> 165102L
+    | 200035L -> 165106L
+    | 200028L -> 165116L
+    | 200029L -> 165108L
+    | 200046L -> 165104L
+    | 200047L -> 165103L
+    | 200040L -> 165110L
+    | 200041L -> 165105L
+    | x -> x
+
+let mapGoals : FootballData.Api2.CompetitionMatchScoreGoals -> FbApp.Domain.Fixtures.FixtureGoals option = function
+    | { HomeTeam = Some(a); AwayTeam = Some(b) } -> Some({ Home = a; Away = b })
+    | _ -> None
 
 let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = task {
     let filters, onSuccess =
@@ -45,37 +97,45 @@ let updateFixtures authToken (log: ILogger) (fixtureHandler: FixturesHandler) = 
             [], (fun () -> lastFullUpdate <- now)
         else
             let today = DateTimeOffset(now.Date, TimeSpan.Zero)
-            [FootballData.TimeFrameRange(today, today)], (fun () -> ())
-    let! result = FootballData.getCompetitionFixtures authToken competitionExternalId filters
+            [FootballData.Api2.DateRange(today, today)], (fun () -> ())
+    let! result = FootballData.Api2.getCompetitionMatches authToken newCompetitionId filters
     match result with
     | Ok(data) ->
         log.LogInformation("Loaded data of {0} fixtures.", data.Count)
         let mutable anyError = false
-        let competitionGuid = Competitions.createId competitionExternalId
-        for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday < 4) do
-            let id = Fixtures.createId (competitionGuid, fixture.Id)
-            let command = Fixtures.UpdateFixture { Status = fixture.Status; Result = mapResult fixture; Penalties = mapPenalties fixture }
+        let competitionGuid = Competitions.createId oldCompetitionId
+        for fixture in data.Matches |> Array.filter (fun f -> f.Stage = "GROUP_STAGE") do
+            let id = Fixtures.createId (competitionGuid, mapFixtureId fixture.Id)
+            let command =
+                Fixtures.UpdateFixture
+                    {
+                        Status = fixture.Status
+                        FullTime = mapGoals fixture.Score.FullTime
+                        ExtraTime = mapGoals fixture.Score.ExtraTime
+                        Penalties = mapGoals fixture.Score.Penalties
+                    }
             let! updateResult = fixtureHandler (id, Aggregate.Any) command
             match updateResult with
             | Ok(_) -> ()
             | Error(err) ->
                 anyError <- true
                 log.LogError(sprintf "Could not update fixture %A: %A" id err)
-        for fixture in data.Fixtures |> Array.filter (fun f -> f.Matchday >= 4) do
-            if fixture.HomeTeamName |> String.IsNullOrEmpty || fixture.AwayTeamName |> String.IsNullOrEmpty then () else
-            let id = Fixtures.createId (competitionGuid, fixture.Id)
+        for fixture in data.Matches |> Array.filter (fun f -> f.Stage <> "GROUP_STAGE") do
+            let fixtureId = mapFixtureId fixture.Id
+            let id = Fixtures.createId (competitionGuid, fixtureId)
             let command =
                 Fixtures.UpdateQualifiers
                     {
                         CompetitionId = competitionGuid
-                        ExternalId = fixture.Id
-                        HomeTeamId = fixture.HomeTeamId
-                        AwayTeamId = fixture.AwayTeamId
-                        Date = fixture.Date
-                        Matchday = fixture.Matchday
+                        ExternalId = fixtureId
+                        HomeTeamId = mapTeamId fixture.HomeTeam.Id
+                        AwayTeamId = mapTeamId fixture.AwayTeam.Id
+                        Date = fixture.UtcDate
+                        Stage = fixture.Stage
                         Status = fixture.Status
-                        Result = mapResult fixture
-                        Penalties = mapPenalties fixture
+                        FullTime = mapGoals fixture.Score.FullTime
+                        ExtraTime = mapGoals fixture.Score.ExtraTime
+                        Penalties = mapGoals fixture.Score.Penalties
                     }
             let! _ = fixtureHandler (id, Aggregate.Any) command
             ()

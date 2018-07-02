@@ -52,7 +52,7 @@ let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata)
                         AwayTeamId = fixture.AwayTeamId
                         Date = fixture.Date
                         Status = "SCHEDULED"
-                        Matchday = 0
+                        Stage = "GROUP_STAGE"
                     }
                 let! _ = CommandHandlers.fixturesHandler (fixtureId, Aggregate.New) (Fixtures.AddFixture input)
                 ()

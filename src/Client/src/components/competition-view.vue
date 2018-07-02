@@ -99,15 +99,15 @@ export default {
 
     computed: {
         homeGoals () {
-            return this.fixture.score ? this.fixture.score[0] : null
+            return this.fixture.fullTime ? this.fixture.fullTime[0] : null
         },
 
         awayGoals () {
-            return this.fixture.score ? this.fixture.score[1] : null
+            return this.fixture.fullTime ? this.fixture.fullTime[1] : null
         },
 
         fixtureStatus () {
-            if (this.fixture.score === null) {
+            if (this.fixture.fullTime === null) {
                 return "None"
             } else if (this.isHomeWin) {
                 return "HomeWin"
@@ -130,33 +130,33 @@ export default {
         },
 
         isPreFixture () {
-            return this.fixture.score === null
+            return this.fixture.fullTime === null
         },
 
         isHomeWin () {
-            if (this.fixture.score === null) {
+            if (this.fixture.fullTime === null) {
                 return false
             }
-            const hg = this.fixture.score[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
-            const ag = this.fixture.score[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
+            const hg = this.fixture.fullTime[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
+            const ag = this.fixture.fullTime[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
             return hg > ag
         },
 
         isAwayWin () {
-            if (this.fixture.score === null) {
+            if (this.fixture.fullTime === null) {
                 return false
             }
-            const hg = this.fixture.score[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
-            const ag = this.fixture.score[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
+            const hg = this.fixture.fullTime[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
+            const ag = this.fixture.fullTime[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
             return hg < ag
         },
 
         isDraw () {
-            if (this.fixture.score === null) {
+            if (this.fixture.fullTime === null) {
                 return false
             }
-            const hg = this.fixture.score[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
-            const ag = this.fixture.score[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
+            const hg = this.fixture.fullTime[0] + (this.fixture.penalties ? this.fixture.penalties[0] : 0)
+            const ag = this.fixture.fullTime[1] + (this.fixture.penalties ? this.fixture.penalties[1] : 0)
             return hg === ag
         }
     },
@@ -179,7 +179,8 @@ export default {
             const response = await this.$axios.get(`/fixtures/${this.fixture.id}/status`)
             if (response.data) {
                 this.fixture.status = response.data.status
-                this.fixture.score = response.data.score
+                this.fixture.fullTime = response.data.fullTime
+                this.fixture.extraTime = response.data.extraTime
                 this.fixture.penalties = response.data.penalties
             }
         },

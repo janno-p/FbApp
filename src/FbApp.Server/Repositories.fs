@@ -70,12 +70,13 @@ module ReadModels =
             HomeTeam: Team
             AwayTeam: Team
             Status: string
-            Score: int array
+            FullTime: int array
+            ExtraTime: int array
             Penalties: int array
             ResultPredictions: FixtureResultPrediction array
             QualificationPredictions: QualificationPrediction array
             ExternalId: int64
-            Matchday: int
+            Stage: string
             Version: int64
         }
 
@@ -133,7 +134,8 @@ module ReadModels =
     type FixtureStatus =
         {
             Status: string
-            Score: int array
+            FullTime: int array
+            ExtraTime: int array
             Penalties: int array
         }
 
@@ -228,12 +230,13 @@ module Fixtures =
         ()
     }
 
-    let updateScore (id, version) (homeGoals, awayGoals) penalties = task {
+    let updateScore (id, version) (fullTime: Fixtures.FixtureGoals, extraTime: Fixtures.FixtureGoals option, penalties: Fixtures.FixtureGoals option) = task {
         let f = Builders.Filter.Eq((fun x -> x.Id), id)
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
-                    .Set((fun x -> x.Score), [|homeGoals; awayGoals|])
-                    .Set((fun x -> x.Penalties), penalties |> Option.fold (fun _ (a,b) -> [|a; b|]) null)
+                    .Set((fun x -> x.FullTime), [| fullTime.Home; fullTime.Away |])
+                    .Set((fun x -> x.ExtraTime), extraTime |> Option.fold (fun _ u -> [| u.Home; u.Away |]) null)
+                    .Set((fun x -> x.Penalties), penalties |> Option.fold (fun _ u -> [| u.Home; u.Away |]) null)
         let! _ = collection.UpdateOneAsync(f, u)
         ()
     }
@@ -261,7 +264,7 @@ module Fixtures =
 
     let getFixtureStatus id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let projection = ProjectionDefinition<ReadModels.FixtureStatus>.op_Implicit """{ Status: 1, Score: 1, Penalties: 1, _id: 0 }"""
+        let projection = ProjectionDefinition<ReadModels.FixtureStatus>.op_Implicit """{ Status: 1, FullTime: 1, ExtraTime: 1, Penalties: 1, _id: 0 }"""
         return! collection.Find(idFilter).Project(projection).SingleAsync()
     }
 
@@ -309,15 +312,15 @@ module Fixtures =
         ()
     }
 
-    let getFixtureCount (competitionId: Guid, matchday: int) = task {
-        return! collection.CountAsync(FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), Matchday: { $eq: %d } }""" competitionId matchday))
+    let getFixtureCount (competitionId: Guid, stage: string) = task {
+        return! collection.CountAsync(FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), Stage: { $eq: "%s" } }""" competitionId stage))
     }
 
     let getQualifiedTeams (competitionId: Guid) = task {
         let! teams =
             collection.Aggregate(
                 PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
-                    (sprintf """{ $match: { CompetitionId: CSUUID("%O"), Matchday: 4 } }""" competitionId),
+                    (sprintf """{ $match: { CompetitionId: CSUUID("%O"), Stage: "ROUND_OF_16" } }""" competitionId),
                     """{ $project: { _id: 0, TeamId: ["$HomeTeam.ExternalId", "$AwayTeam.ExternalId"] } }""",
                     """{ $unwind: "$TeamId" }"""
                 )
@@ -341,11 +344,13 @@ module Predictions =
         return! collection.Aggregate(pipelines).ToListAsync()
     }
 
-    let ofMatchday (competitionId: Guid, matchday: int) =
-        match matchday with
-        | 4 | 5 | 6 ->
+    let ofStage (competitionId: Guid, stage: string) =
+        match stage with
+        | "ROUND_OF_16"
+        | "QUARTER_FINALS"
+        | "SEMI_FINALS" ->
             task {
-                let qualName = if matchday = 4 then "QualifiersRoundOf8" elif matchday = 5 then "QualifiersRoundOf4" else "QualifiersRoundOf2"
+                let qualName = if stage = "ROUND_OF_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINALS" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
                         (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
@@ -353,11 +358,7 @@ module Predictions =
                     )
                 return! collection.Aggregate(pipelines).ToListAsync()
             }
-        | 7 ->
-            task {
-                return ResizeArray<_>()
-            }
-        | 8 ->
+        | "FINAL" ->
             task {
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
@@ -366,10 +367,7 @@ module Predictions =
                     )
                 return! collection.Aggregate(pipelines).ToListAsync()
             }
-        | _ ->
-            task {
-                return ResizeArray<_>()
-            }
+        | _ -> task { return ResizeArray<_>() }
 
     let private idToGuid (competitionId, email) =
         FbApp.Domain.Predictions.createId (competitionId, FbApp.Domain.Predictions.Email email)
@@ -423,15 +421,15 @@ module Predictions =
     }
 
     let private getColName = function
-        | 3 -> "QualifiersRoundOf16"
-        | 4 -> "QualifiersRoundOf8"
-        | 5 -> "QualifiersRoundOf4"
-        | 6 -> "QualifiersRoundOf2"
-        | 8 -> "Winner"
-        | _ -> "--never--"
+        | "GROUP_STAGE" -> "QualifiersRoundOf16"
+        | "ROUND_OF_16" -> "QualifiersRoundOf8"
+        | "QUARTER_FINALS" -> "QualifiersRoundOf4"
+        | "SEMI_FINALS" -> "QualifiersRoundOf2"
+        | "FINAL" -> "Winner"
+        | x -> failwithf "Unexpected value: `%s`" x
 
-    let updateQualifiers (competitionId: Guid, matchday: int, teamId: int64, hasQualified: bool) = task {
-        let colName = getColName matchday
+    let updateQualifiers (competitionId: Guid, stage: string, teamId: int64, hasQualified: bool) = task {
+        let colName = getColName stage
         let! _ =
             collection.UpdateManyAsync(
                 FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), "%s._id": %d }""" competitionId colName teamId),

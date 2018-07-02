@@ -61,18 +61,6 @@ type FixturePredictionDto =
         Result: string
     }
 
-[<CLIMutable>]
-type FixtureDetailsDto =
-    {
-        Id: Guid
-        Date: DateTimeOffset
-        HomeTeam: TeamDto
-        AwayTeam: TeamDto
-        Status: string
-        Score: int array
-        Predictions: FixturePredictionDto[]
-    }
-
 let private mapTeams (competition: ReadModels.Competition) =
     competition.Teams
     |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))

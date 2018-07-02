@@ -63,18 +63,16 @@ let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task 
 
 let (|Nullable|_|) (x: Nullable<_>) = if x.HasValue then Some(x.Value) else None
 
-let private mapActualResult (status, score, penalties) =
-    match status, score with
+let private mapActualResult (status, fullTime, extraTime: int array, penalties: int array) =
+    match status, fullTime with
     | "FINISHED", [| homeGoals; awayGoals |] ->
+        let et = if extraTime |> isNull then [| 0; 0 |] else extraTime
+        let ps = if penalties |> isNull then [| 0; 0 |] else penalties
+        let homeGoals = homeGoals + et.[0] + ps.[0]
+        let awayGoals = awayGoals + et.[1] + ps.[1]
         if homeGoals > awayGoals then "HomeWin"
         elif homeGoals < awayGoals then "AwayWin"
-        else
-            match penalties with
-            | [| homeGoals; awayGoals |] ->
-                if homeGoals > awayGoals then "HomeWin"
-                elif homeGoals < awayGoals then "AwayWin"
-                else "Tie"
-            | _ -> "Tie"
+        else "Tie"
     | _ -> null
 
 let private mapFixtureResult competitionId (x: Predictions.FixtureResultRegistration) = task {
@@ -86,7 +84,7 @@ let private mapFixtureResult competitionId (x: Predictions.FixtureResultRegistra
     let fixtureId = Fixtures.createId (competitionId, x.Id)
     let! result = Fixtures.getFixtureStatus fixtureId
 
-    let result = mapActualResult (result.Status, result.Score, result.Penalties)
+    let result = mapActualResult (result.Status, result.FullTime, result.ExtraTime, result.Penalties)
 
     let fixtureResult : ReadModels.PredictionFixtureResult =
         {
@@ -171,7 +169,7 @@ let updateFixtureOrder competitionId = task {
 }
 
 let getResultPredictions (input: Fixtures.AddFixtureInput) = task {
-    if input.Matchday >= 4 then return [||] else
+    if input.Stage <> "GROUP_STAGE" then return [||] else
     let! predictions = Predictions.ofFixture input.CompetitionId input.ExternalId
     let predictions =
         predictions
@@ -187,8 +185,8 @@ let getResultPredictions (input: Fixtures.AddFixtureInput) = task {
 }
 
 let getQualificationPredictions (input: Fixtures.AddFixtureInput) = task {
-    if input.Matchday < 4 then return [||] else
-    let! predictions = Predictions.ofMatchday (input.CompetitionId, input.Matchday)
+    if input.Stage = "GROUP_STAGE" then return [||] else
+    let! predictions = Predictions.ofStage (input.CompetitionId, input.Stage)
     let result =
         predictions
         |> Seq.map (fun x ->
@@ -208,30 +206,19 @@ let updateQualifiedTeams (competition: ReadModels.Competition) = task {
     do! Predictions.setUnqualifiedTeams (competition.Id, unqualifiedTeams)
 }
 
-let updateScore (fixtureId: Guid, expectedVersion: int64, (homeGoals, awayGoals), penalties) = task {
+let updateScore (fixtureId: Guid, expectedVersion: int64, fullTime, extraTime, penalties) = task {
     let! fixture = Fixtures.get fixtureId
-    do! Fixtures.updateScore (fixtureId, expectedVersion) (homeGoals, awayGoals) penalties
-    if fixture.Matchday < 4 then
-        let ps = match penalties with Some(a, b) -> [| a; b |] | _ -> null
-        let actualResult = mapActualResult (fixture.Status, [| homeGoals; awayGoals |], ps)
+    do! Fixtures.updateScore (fixtureId, expectedVersion) (fullTime, extraTime, penalties)
+    let ps = match penalties with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
+    let et = match extraTime with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
+    let actualResult = mapActualResult (fixture.Status, [| fullTime.Home; fullTime.Away |], et, ps)
+    if fixture.Stage = "GROUP_STAGE" then
         if actualResult |> isNull |> not then
             do! Predictions.updateResult (fixture.CompetitionId, fixture.ExternalId, actualResult)
     else if fixture.Status = "FINISHED" then
-        do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Matchday, fixture.HomeTeam.ExternalId, homeGoals > awayGoals)
-        do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Matchday, fixture.AwayTeam.ExternalId, awayGoals > homeGoals)
+        do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.HomeTeam.ExternalId, actualResult = "HomeWin")
+        do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.AwayTeam.ExternalId, actualResult = "AwayWin")
 }
-
-let isHomeWin (score, penalties) =
-    match score, penalties with
-    | [| a; b |], _ when a > b -> true
-    | [| a; b |], [| c; d |] when a = b && c > d -> true
-    | _ -> false
-
-let isAwayWin (score, penalties) =
-    match score, penalties with
-    | [| a; b |], _ when a < b -> true
-    | [| a; b |], [| c; d |] when a = b && c < d -> true
-    | _ -> false
 
 let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
@@ -246,6 +233,8 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             let! resultPredictions = getResultPredictions input
             let! qualificationPredictions = getQualificationPredictions input
 
+            let stage = if input.Stage |> String.IsNullOrEmpty then "GROUP_STAGE" else input.Stage
+
             let fixtureModel: ReadModels.Fixture =
                 {
                     Id = md.AggregateId
@@ -256,24 +245,25 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     HomeTeam = homeTeam
                     AwayTeam = awayTeam
                     Status = input.Status
-                    Score = null
+                    FullTime = null
+                    ExtraTime = null
                     Penalties = null
                     ResultPredictions = resultPredictions
                     QualificationPredictions = qualificationPredictions
                     ExternalId = input.ExternalId
-                    Matchday = input.Matchday
+                    Stage = stage
                     Version = md.AggregateSequenceNumber
                 }
 
             do! Fixtures.insert fixtureModel
             do! updateFixtureOrder input.CompetitionId
 
-            if input.Matchday > 3 then
-                do! Predictions.updateQualifiers (input.CompetitionId, input.Matchday - 1, fixtureModel.HomeTeam.ExternalId, true)
-                do! Predictions.updateQualifiers (input.CompetitionId, input.Matchday - 1, fixtureModel.AwayTeam.ExternalId, true)
+            if stage <> "GROUP_STAGE" then
+                do! Predictions.updateQualifiers (input.CompetitionId, "GROUP_STAGE", fixtureModel.HomeTeam.ExternalId, true)
+                do! Predictions.updateQualifiers (input.CompetitionId, "GROUP_STAGE", fixtureModel.AwayTeam.ExternalId, true)
 
-            if input.Matchday = 4 then
-                let! numFixtures = Fixtures.getFixtureCount (input.CompetitionId, input.Matchday)
+            if stage = "ROUND_OF_16" then
+                let! numFixtures = Fixtures.getFixtureCount (input.CompetitionId, "ROUND_OF_16")
                 if numFixtures = 8L then
                     do! updateQualifiedTeams competition
 
@@ -281,21 +271,21 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
     | Fixtures.ScoreChanged (homeGoals, awayGoals) ->
-        do! updateScore (md.AggregateId, md.AggregateSequenceNumber, (homeGoals, awayGoals), None)
+        do! updateScore (md.AggregateId, md.AggregateSequenceNumber, { Home = homeGoals; Away = awayGoals }, None, None)
 
-    | Fixtures.ScoreChanged2 { Goals = goals; Penalties = penalties } ->
-        do! updateScore (md.AggregateId, md.AggregateSequenceNumber, goals, penalties)
+    | Fixtures.ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties } ->
+        do! updateScore (md.AggregateId, md.AggregateSequenceNumber, fullTime, extraTime, penalties)
 
     | Fixtures.StatusChanged status ->
         let! fixture = Fixtures.get md.AggregateId
         do! Fixtures.updateStatus (md.AggregateId, md.AggregateSequenceNumber) status
-        if fixture.Matchday < 4 then
-            let actualResult = mapActualResult (status.ToString(), fixture.Score, fixture.Penalties)
+        let actualResult = mapActualResult (status.ToString(), fixture.FullTime, fixture.ExtraTime, fixture.Penalties)
+        if fixture.Stage = "GROUP_STAGE" then
             if actualResult |> isNull |> not then
                 do! Predictions.updateResult (fixture.CompetitionId, fixture.ExternalId, actualResult)
         else if status = Fixtures.Finished then
-            do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Matchday, fixture.HomeTeam.ExternalId, (isHomeWin (fixture.Score, fixture.Penalties)))
-            do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Matchday, fixture.AwayTeam.ExternalId, (isAwayWin (fixture.Score, fixture.Penalties)))
+            do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.HomeTeam.ExternalId, actualResult = "HomeWin")
+            do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.AwayTeam.ExternalId, actualResult = "AwayWin")
 }
 
 let projectLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
