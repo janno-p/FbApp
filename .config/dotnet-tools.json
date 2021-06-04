@@ -7,18 +7,6 @@
       "commands": [
         "tye"
       ]
-    },
-    "paket": {
-      "version": "5.257.0",
-      "commands": [
-        "paket"
-      ]
-    },
-    "fake-cli": {
-      "version": "5.20.4",
-      "commands": [
-        "fake"
-      ]
     }
   }
 }

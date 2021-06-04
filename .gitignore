@@ -6,6 +6,8 @@
 !/.paket/paket.exe
 !/.paket/Paket.Restore.targets
 
+/.tye/
+
 /.vs/
 
 bin/

@@ -8,3 +8,27 @@ services:
     bindings:
       - port: 8080
         protocol: https
+
+  - name: fbapp-proxy
+    project: fbapp-proxy/FbApp.Proxy.fsproj
+    bindings:
+      - port: 8090
+        protocol: https
+
+  - name: fbapp-web-service
+    project: fbapp-web-service/FbApp.Web.fsproj
+    bindings:
+      - port: 7001
+        protocol: http
+
+  - name: eventstore
+    image: eventstore/eventstore
+    args: '--insecure --run-projections=All --enable-atom-pub-over-http'
+    bindings:
+      - name: http
+        port: 2113
+
+  - name: mongodb
+    image: bitnami/mongodb
+    bindings:
+      - port: 27017

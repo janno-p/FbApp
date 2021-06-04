@@ -22,25 +22,18 @@ Playground application for trying out new technologies, libraries, frameworks, p
 
 ## Quick Start ##
 
-Make sure EventStore and MongoDB instances are running:
+Restore required tools
 
-```
-EventStore.ClusterNode.exe --db ./db --log ./logs --run-projections=all
-"C:\Program Files\MongoDB\Server\3.6\bin\mongod.exe"
-```
-
-Prepare build environment:
-
-```
-.paket\paket.exe install
-dotnet tool install fake-cli -g
-dotnet restore
+```sh
+$ dotnet tool restore
 ```
 
-Build and run application:
+Run development environment
 
-```
-fake run build.fsx
+```sh
+$ dotnet tye run
 ```
 
-The [site](http://localhost:8080) should automatically open in default browser.
+Open [Tye Dashboard](http://localhost:8000) to monitor running components.
+
+Open [Application](https://localhost:8090) for demo.
