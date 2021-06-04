@@ -1,0 +1,10 @@
+﻿name: fbapp
+
+services:
+  - name: fbapp-ui
+    executable: node
+    workingDirectory: fbapp-ui
+    args: node_modules/yarn/bin/yarn.js quasar dev
+    bindings:
+      - port: 8080
+        protocol: https

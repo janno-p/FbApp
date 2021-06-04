@@ -1,0 +1,41 @@
+{
+    "name": "fbapp",
+    "version": "1.0.0",
+    "description": "A Quasar Framework app",
+    "productName": "FbApp",
+    "cordovaId": "org.cordova.quasar.app",
+    "author": "Janno Põldma <janno.poldma@gmail.com>",
+    "private": true,
+    "scripts": {
+        "lint": "eslint --ext .js,.vue src",
+        "test": "echo \"No test specified\" && exit 0"
+    },
+    "dependencies": {
+        "axios": "^0.21.1",
+        "moment": "^2.22.2"
+    },
+    "devDependencies": {
+        "babel-eslint": "^10.1.0",
+        "eslint": "^7.27.0",
+        "eslint-config-standard": "^16.0.3",
+        "eslint-friendly-formatter": "^4.0.1",
+        "eslint-loader": "^4.0.2",
+        "eslint-plugin-import": "^2.9.0",
+        "eslint-plugin-node": "^11.1.0",
+        "eslint-plugin-promise": "^5.1.0",
+        "eslint-plugin-standard": "^5.0.0",
+        "eslint-plugin-vue": "^7.10.0",
+        "quasar-cli": "^0.17.26",
+        "strip-ansi": "=3.0.1",
+        "yarn": "^1.22.10"
+    },
+    "engines": {
+        "node": ">= 8.9.0",
+        "npm": ">= 5.6.0"
+    },
+    "browserslist": [
+        "> 1%",
+        "last 2 versions",
+        "not ie <= 10"
+    ]
+}
