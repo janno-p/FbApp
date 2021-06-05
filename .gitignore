@@ -16,3 +16,4 @@ wwwroot/
 
 *.pfx
 *.user
+appsettings.user.json

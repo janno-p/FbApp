@@ -76,7 +76,8 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
 
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
-          .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName, optional=true, reloadOnChange=true)
+          .AddJsonFile($"appsettings.%s{context.HostingEnvironment.EnvironmentName}.json", optional=true, reloadOnChange=true)
+          .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
           .AddEnvironmentVariables()
     |> ignore
 

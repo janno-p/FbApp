@@ -175,7 +175,7 @@ module Competitions =
 
     let getActive () = task {
         let f = Builders.Filter.Eq((fun x -> x.ExternalId), 467L)
-        return! collection.Find(f).Limit(Nullable(1)).SingleAsync()
+        return! collection.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
     let get (competitionId: Uuid) = task {
