@@ -1,23 +1,10 @@
 <template>
-    <div id="q-app">
-        <router-view />
-    </div>
+  <router-view />
 </template>
+<script lang="ts">
+import { defineComponent } from 'vue';
 
-<script>
-import { mapActions } from 'vuex'
-
-export default {
-    name: 'App',
-
-    async created () {
-        this.$router.push('/')
-    },
-
-    methods: {
-        ...mapActions([
-            'authenticate2'
-        ])
-    }
-}
+export default defineComponent({
+  name: 'App'
+})
 </script>
