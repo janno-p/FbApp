@@ -12,8 +12,8 @@
 
             <q-btn class="q-mr-sm" icon="mdi-playlist-check" flat dense round title="Muudatuste logi" to="/changelog" />
 
-            <template v-if="isGoogleReady">
-                <template v-if="isSignedIn">
+            <template v-if="authStatus !== 'authenticating'">
+                <template v-if="authStatus === 'authenticated'">
                     <img :src="sizedImageUrl" />
                     <span class="q-pl-sm q-pr-sm text-weight-medium">{{ name }}</span>
                     <q-btn v-if="hasDashboard" flat dense round title="Ava kontrollpaneel" @click="$router.push('/dashboard')">
@@ -32,24 +32,37 @@
 </template>
 
 <script>
+import Vue from 'vue'
 import { mapState, mapActions, mapGetters } from 'vuex'
 
 export default {
     name: 'AppSiteToolbar',
 
+    data () {
+        return {
+            authStatus: 'authenticating'
+        }
+    },
+
     computed: {
         ...mapState([
-            'isGoogleReady',
-            'isSignedIn',
             'imageUrl',
             'name'
         ]),
+
         ...mapGetters([
             'hasDashboard'
         ]),
+
         sizedImageUrl () {
             return `${this.imageUrl}?sz=32`
         }
+    },
+
+    created () {
+        this.$auth.on('authenticated', () => Vue.set(this, 'authStatus', 'authenticated'))
+        this.$auth.on('unauthenticated', () => Vue.set(this, 'authStatus', 'unauthenticated'))
+        Vue.set(this, 'authStatus', this.$auth.state)
     },
 
     methods: {

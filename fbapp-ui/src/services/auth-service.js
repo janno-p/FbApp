@@ -78,7 +78,6 @@ class AuthService {
                 return true
             }
         } catch (err) {
-            Log.warn('muuuuuuuu: ', err)
             const errorMessage = err.error || err.message || ''
             if (errorMessage === 'login_required') {
                 Log.info('User not authenticated')

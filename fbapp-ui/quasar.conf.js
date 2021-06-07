@@ -7,8 +7,8 @@ module.exports = function (ctx) {
     return {
         // app plugins (/src/plugins)
         plugins: [
-            'auth2',
-            'axios'
+            'axios',
+            'auth'
         ],
         css: [
             'app.styl'

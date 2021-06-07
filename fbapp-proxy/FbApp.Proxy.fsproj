@@ -6,11 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Startup.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Giraffe" Version="5.0.0" />
+    <PackageReference Include="Saturn" Version="0.15.0-preview*" />
     <PackageReference Include="Yarp.ReverseProxy" Version="1.0.0-preview.11.*" />
   </ItemGroup>
 
