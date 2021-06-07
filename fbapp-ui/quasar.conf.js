@@ -1,11 +1,14 @@
 // Configuration for your app
 
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const path = require('path')
+
 module.exports = function (ctx) {
     return {
         // app plugins (/src/plugins)
         plugins: [
-            "auth2",
-            "axios"
+            'auth2',
+            'axios'
         ],
         css: [
             'app.styl'
@@ -25,6 +28,23 @@ module.exports = function (ctx) {
             // analyze: true,
             // extractCSS: false,
             extendWebpack (cfg) {
+                cfg.output = {
+                    publicPath: '/'
+                }
+
+                const app = cfg.plugins.filter(x => x instanceof HtmlWebpackPlugin)[0]
+                app.options.excludeChunks.push('oidc')
+
+                cfg.entry.oidc = './src/oidc.js'
+
+                cfg.plugins.push(
+                    new HtmlWebpackPlugin({
+                        template: path.join(__dirname, './src/oidc.template.html'),
+                        filename: 'oidc.html',
+                        chunks: ['oidc']
+                    })
+                )
+
                 cfg.module.rules.push({
                     enforce: 'pre',
                     test: /\.(js|vue)$/,
@@ -33,14 +53,14 @@ module.exports = function (ctx) {
                 })
             },
             env: {
-                API: JSON.stringify("/api")
+                API: JSON.stringify('/api')
             },
-            distDir: "../FbApp.Server/wwwroot"
+            distDir: '../FbApp.Server/wwwroot'
         },
         devServer: {
             proxy: {
-                "/api": {
-                    target: "https://localhost:5001",
+                '/api': {
+                    target: 'https://localhost:5001',
                     changeOrigin: true,
                     secure: false
                 }
@@ -51,49 +71,49 @@ module.exports = function (ctx) {
             public: 'localhost:8090'
         },
         framework: ctx.dev
-            ? "all" // includes everything; for dev only!
+            ? 'all' // includes everything; for dev only!
             : {
                 components: [
-                    "QBtn",
-                    "QDatetime",
-                    "QField",
-                    "QIcon",
-                    "QInnerLoading",
-                    "QInput",
-                    "QItem",
-                    "QItemMain",
-                    "QItemSeparator",
-                    "QItemSide",
-                    "QItemTile",
-                    "QLayout",
-                    "QLayoutHeader",
-                    "QList",
-                    "QListHeader",
-                    "QModal",
-                    "QLayoutDrawer",
-                    "QModalLayout",
-                    "QPage",
-                    "QPageContainer",
-                    "QPageSticky",
-                    "QRating",
-                    "QRouteTab",
-                    "QSelect",
-                    "QSpinnerPie",
-                    "QSpinnerPuff",
-                    "QStep",
-                    "QStepper",
-                    "QTable",
-                    "QTabs",
-                    "QTd",
-                    "QToolbar",
-                    "QToolbarTitle",
-                    "QTr"
+                    'QBtn',
+                    'QDatetime',
+                    'QField',
+                    'QIcon',
+                    'QInnerLoading',
+                    'QInput',
+                    'QItem',
+                    'QItemMain',
+                    'QItemSeparator',
+                    'QItemSide',
+                    'QItemTile',
+                    'QLayout',
+                    'QLayoutHeader',
+                    'QList',
+                    'QListHeader',
+                    'QModal',
+                    'QLayoutDrawer',
+                    'QModalLayout',
+                    'QPage',
+                    'QPageContainer',
+                    'QPageSticky',
+                    'QRating',
+                    'QRouteTab',
+                    'QSelect',
+                    'QSpinnerPie',
+                    'QSpinnerPuff',
+                    'QStep',
+                    'QStepper',
+                    'QTable',
+                    'QTabs',
+                    'QTd',
+                    'QToolbar',
+                    'QToolbarTitle',
+                    'QTr'
                 ],
                 directives: [
-                    "Ripple"
+                    'Ripple'
                 ],
                 plugins: [
-                    "Notify"
+                    'Notify'
                 ],
                 iconSet: ctx.theme.mat ? 'material-icons' : 'ionicons'
             },
@@ -114,29 +134,29 @@ module.exports = function (ctx) {
                 theme_color: '#027be3',
                 icons: [
                     {
-                        'src': 'statics/icons/icon-128x128.png',
-                        'sizes': '128x128',
-                        'type': 'image/png'
+                        src: 'statics/icons/icon-128x128.png',
+                        sizes: '128x128',
+                        type: 'image/png'
                     },
                     {
-                        'src': 'statics/icons/icon-192x192.png',
-                        'sizes': '192x192',
-                        'type': 'image/png'
+                        src: 'statics/icons/icon-192x192.png',
+                        sizes: '192x192',
+                        type: 'image/png'
                     },
                     {
-                        'src': 'statics/icons/icon-256x256.png',
-                        'sizes': '256x256',
-                        'type': 'image/png'
+                        src: 'statics/icons/icon-256x256.png',
+                        sizes: '256x256',
+                        type: 'image/png'
                     },
                     {
-                        'src': 'statics/icons/icon-384x384.png',
-                        'sizes': '384x384',
-                        'type': 'image/png'
+                        src: 'statics/icons/icon-384x384.png',
+                        sizes: '384x384',
+                        type: 'image/png'
                     },
                     {
-                        'src': 'statics/icons/icon-512x512.png',
-                        'sizes': '512x512',
-                        'type': 'image/png'
+                        src: 'statics/icons/icon-512x512.png',
+                        sizes: '512x512',
+                        type: 'image/png'
                     }
                 ]
             }
@@ -168,4 +188,4 @@ module.exports = function (ctx) {
             }
         }
     }
-};
+}

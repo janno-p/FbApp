@@ -6,18 +6,20 @@
 
 <script>
 import { mapActions } from 'vuex'
+import authService from './services/auth-service'
 
 export default {
     name: 'App',
 
     async created () {
-        await this.authenticate()
+        await authService.renewToken()
+        // await this.authenticate2()
         this.$router.push('/')
     },
 
     methods: {
         ...mapActions([
-            'authenticate'
+            'authenticate2'
         ])
     }
 }

@@ -90,7 +90,7 @@ let app = application {
         app.UseForwardedHeaders(new ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
         |> ignore
 
-        let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
+        let env = Environment.getWebHostEnvironment app
 
         if env.IsProduction() then
             app.UseStaticFiles(

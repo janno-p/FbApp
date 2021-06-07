@@ -15,6 +15,12 @@ services:
       - port: 8090
         protocol: https
 
+  - name: fbapp-auth
+    project: fbapp-auth-service/FbApp.Auth.fsproj
+    bindings:
+      - port: 7002
+        protocol: http
+
   - name: fbapp-web-service
     project: fbapp-web-service/FbApp.Web.fsproj
     bindings:
@@ -32,3 +38,20 @@ services:
     image: bitnami/mongodb
     bindings:
       - port: 27017
+
+  - name: postgres
+    image: postgres
+    args: postgres -N 1000
+    bindings:
+      - port: 5432
+        protocol: tcp
+    env:
+      - name: POSTGRES_USER
+        value: postgres
+      - name: POSTGRES_PASSWORD
+        value: password
+      - name: POSTGRES_DB
+        value: fbapp
+    volumes:
+      - source: ./.postgres
+        target: /var/lib/postgresql/data

@@ -1,0 +1,65 @@
+namespace FbApp.Auth
+
+
+open FSharp.Control.Tasks
+open Microsoft.EntityFrameworkCore
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
+open OpenIddict.Abstractions
+open System
+open System.Threading.Tasks
+
+
+type ClientTypes = OpenIddictConstants.ClientTypes
+type ConsentTypes = OpenIddictConstants.ConsentTypes
+type Permissions = OpenIddictConstants.Permissions
+type Requirements = OpenIddictConstants.Requirements
+
+
+type ApplicationDbContext(options: DbContextOptions<ApplicationDbContext>) =
+    inherit DbContext(options)
+
+
+type Worker(serviceProvider: IServiceProvider) =
+    interface IHostedService with
+        member __.StartAsync(_) = unitTask {
+            use scope = serviceProvider.CreateScope()
+
+            let context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
+            let! _ = context.Database.EnsureCreatedAsync()
+
+            let manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>()
+
+            let! client = manager.FindByClientIdAsync("fbapp-ui-client")
+            match client with
+            | null ->
+                let descriptor =
+                    OpenIddictApplicationDescriptor(
+                        ClientId = "fbapp-ui-client",
+                        ConsentType = ConsentTypes.Implicit,
+                        DisplayName = "FbApp UI Application",
+                        Type = ClientTypes.Public
+                    )
+
+                descriptor.PostLogoutRedirectUris.Add(Uri("https://localhost:8090/")) |> ignore
+                descriptor.RedirectUris.Add(Uri("https://localhost:8090/oidc.html")) |> ignore
+
+                descriptor.Permissions.Add(Permissions.Endpoints.Authorization) |> ignore
+                descriptor.Permissions.Add(Permissions.Endpoints.Logout) |> ignore
+                descriptor.Permissions.Add(Permissions.Endpoints.Token) |> ignore
+                descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode) |> ignore
+                descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken) |> ignore
+                descriptor.Permissions.Add(Permissions.ResponseTypes.Code) |> ignore
+                descriptor.Permissions.Add(Permissions.Scopes.Email) |> ignore
+                descriptor.Permissions.Add(Permissions.Scopes.Profile) |> ignore
+                descriptor.Permissions.Add(Permissions.Scopes.Roles) |> ignore
+
+                descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange) |> ignore
+
+                let! _ = manager.CreateAsync(descriptor)
+                ()
+            | _ -> ()
+        }
+
+        member _.StopAsync(_) =
+            Task.CompletedTask
