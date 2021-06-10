@@ -1,11 +1,15 @@
 ﻿import { Todo, Meta } from 'components/models'
 import ExampleComponent from 'components/CompositionComponent.vue'
+import CompetitionView from 'components/CompetitionView.vue'
 import { defineComponent, ref } from 'vue'
 
 export default defineComponent({
     name: 'PageIndex',
 
-    components: { ExampleComponent },
+    components: {
+        CompetitionView,
+        ExampleComponent
+    },
 
     setup() {
         const todos = ref<Todo[]>([

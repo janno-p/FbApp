@@ -1,4 +1,5 @@
-﻿import { Log, UserManager } from 'oidc-client'
+﻿import { Log, User, UserManager } from 'oidc-client'
+import { LoadingBar } from 'quasar'
 import { boot } from 'quasar/wrappers'
 import { readonly, ref } from 'vue'
 
@@ -8,16 +9,20 @@ declare module '@vue/runtime-core' {
     }
 }
 
-type AuthenticationState =
-    | 'authenticating'
-    | 'authenticated'
-    | 'anonymous'
+interface IAnonymousUser {
+    kind: 'anonymous'
+}
+
+interface IAuthenticatedUser {
+    user: User
+    kind: 'authenticated'
+}
 
 const NUMBER_OF_RENEW_RETRIES = 10
 
 class AuthService {
     private readonly _manager: UserManager
-    private _state = ref<AuthenticationState>('authenticating')
+    private _state = ref<IAuthenticatedUser | IAnonymousUser>()
 
     get state() {
         return readonly(this._state)
@@ -41,12 +46,12 @@ class AuthService {
         this._manager.events.addUserLoaded((user) => {
             Log.info('new user loaded: ', user)
             Log.info('access token: ', user.access_token)
-            this._state.value = 'authenticated'
+            this._state.value = { kind: 'authenticated', user }
         })
 
         this._manager.events.addUserUnloaded(() => {
             Log.info('user unloaded')
-            this._state.value = 'authenticating'
+            this._state.value = undefined
         })
 
         this._manager.events.addAccessTokenExpiring(() => {
@@ -66,7 +71,7 @@ class AuthService {
 
         this._manager.events.addSilentRenewError((error) => {
             Log.error('silent renew error: ', error)
-            this._state.value = 'anonymous'
+            this._state.value = { kind: 'anonymous' }
         })
 
         this._manager.events.addUserSignedOut(() => {
@@ -75,31 +80,40 @@ class AuthService {
         })
 
         Log.logger = console
-        Log.level = process.env.NODE_ENV === 'development' ? Log.INFO : Log.ERROR
+        Log.level = process.env.NODE_ENV === 'development' ? Log.DEBUG : Log.ERROR
+
+        LoadingBar.start()
 
         void this.renewToken()
+            .then((user) => {
+                if (user === null) {
+                    this._state.value = { kind: 'anonymous' }
+                } else {
+                    this._state.value = { kind: 'authenticated', user }
+                }
+            })
+            .catch((err) => {
+                Log.error(err)
+                this._state.value = { kind: 'anonymous' }
+            })
+            .finally(() => LoadingBar.stop())
     }
 
     private async signOutImpl () {
-        this._state.value = 'anonymous'
+        this._state.value = { kind: 'anonymous' }
         const resp = await this._manager.signoutRedirect()
         Log.info('signed out', resp)
     }
 
-    private async renewTokenWithRetries (attempt?: number): Promise<boolean> {
+    private async renewTokenWithRetries (attempt?: number): Promise<User | null> {
         try {
-            const user = await this._manager.signinSilent()
-            if (user === null) {
-                return false
-            } else {
-                return true
-            }
+            return await this._manager.signinSilent()
         } catch (err) {
             const errObj = err as { error?: string, message?: string }
             const errorMessage = errObj.error ?? errObj.message ?? ''
             if (errorMessage === 'login_required') {
                 Log.info('User not authenticated')
-                return false
+                return null
             }
             if (errorMessage === 'Frame window timed out') {
                 attempt = (attempt || 0) + 1
@@ -133,3 +147,14 @@ const authService = new AuthService()
 export default boot(({ app }) => {
     app.config.globalProperties.$auth = authService
 })
+
+function logout() {
+    return authService.signOut()
+}
+
+export function useAuth() {
+    return {
+        state: authService.state,
+        logout
+    }
+}

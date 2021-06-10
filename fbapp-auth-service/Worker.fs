@@ -2,12 +2,14 @@ namespace FbApp.Auth
 
 
 open FSharp.Control.Tasks
+open Microsoft.AspNetCore.Identity
 open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open OpenIddict.Abstractions
 open System
 open System.Threading.Tasks
+open Microsoft.AspNetCore.Identity.EntityFrameworkCore
 
 
 type ClientTypes = OpenIddictConstants.ClientTypes
@@ -16,8 +18,17 @@ type Permissions = OpenIddictConstants.Permissions
 type Requirements = OpenIddictConstants.Requirements
 
 
+[<AllowNullLiteral>]
+type ApplicationUser() =
+    inherit IdentityUser<Guid>()
+
+[<AllowNullLiteral>]
+type ApplicationRole() =
+    inherit IdentityRole<Guid>()
+
+
 type ApplicationDbContext(options: DbContextOptions<ApplicationDbContext>) =
-    inherit DbContext(options)
+    inherit IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
 
 
 type Worker(serviceProvider: IServiceProvider) =

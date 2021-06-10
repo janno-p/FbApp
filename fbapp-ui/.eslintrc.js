@@ -38,7 +38,7 @@ module.exports = {
     // Uncomment any of the lines below to choose desired strictness,
     // but leave only one uncommented!
     // See https://eslint.vuejs.org/rules/#available-rules
-    'plugin:vue/vue3-essential', // Priority A: Essential (Error Prevention)
+    'plugin:vue/vue3-recommended', // Priority A: Essential (Error Prevention)
     // 'plugin:vue/vue3-strongly-recommended', // Priority B: Strongly Recommended (Improving Readability)
     // 'plugin:vue/vue3-recommended', // Priority C: Recommended (Minimizing Arbitrary Choices and Cognitive Overhead)
 
@@ -84,8 +84,22 @@ module.exports = {
     // allow debugger during development only
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
 
-    indent: ['error', 4],
-    quotes: ['error', 'single', { avoidEscape: true }],
-    semi: ['error', 'never']
+    indent: ['error', 4, {
+        SwitchCase: 1
+    }],
+
+    quotes: ['warn', 'single', { avoidEscape: true }],
+    semi: ['error', 'never'],
+
+    'brace-style': ['error', '1tbs'],
+    'comma-dangle': ['warn', 'never'],
+    'curly': ['error', 'all'],
+
+    'no-unused-vars': ['warn', {
+        args: 'none'
+    }],
+
+    'vue/html-indent': ['warn', 4],
+    'vue/require-default-prop': 'off'
   }
 }

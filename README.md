@@ -16,11 +16,16 @@ Playground application for trying out new technologies, libraries, frameworks, p
 * [.NET Core SDK](https://www.microsoft.com/net/download)
 * [Node.js](https://nodejs.org/en/)
 * [Yarn](https://yarnpkg.com/en/)
-* [MongoDB](https://www.mongodb.com/)
-* [EventStore](https://eventstore.org/)
+* [Dapr](https://dapr.io)
+* [Docker Desktop](https://docs.docker.com/docker-for-windows/install/)
 
 
 ## Quick Start ##
+
+Install and initialize local dapr:
+
+* https://docs.dapr.io/getting-started/install-dapr-cli/
+* https://docs.dapr.io/getting-started/install-dapr-selfhost/
 
 Restore required tools
 

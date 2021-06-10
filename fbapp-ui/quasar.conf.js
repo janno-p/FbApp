@@ -20,8 +20,8 @@ module.exports = configure(function (ctx) {
             tsCheckerConfig: {
                 eslint: {
                     enabled: true,
-                    files: './src/**/*.{ts,tsx,js,jsx,vue}',
-                },
+                    files: './src/**/*.{ts,tsx,js,jsx,vue}'
+                }
             }
         },
 
@@ -33,7 +33,7 @@ module.exports = configure(function (ctx) {
         // https://v2.quasar.dev/quasar-cli/boot-files
         boot: [
             'auth',
-            'axios',
+            'axios'
         ],
 
         // https://v2.quasar.dev/quasar-cli/quasar-conf-js#Property%3A-css
@@ -44,20 +44,20 @@ module.exports = configure(function (ctx) {
         // https://github.com/quasarframework/quasar/tree/dev/extras
         extras: [
             // 'ionicons-v4',
-            // 'mdi-v5',
+            'mdi-v5',
             // 'fontawesome-v5',
             // 'eva-icons',
             // 'themify',
             // 'line-awesome',
             // 'roboto-font-latin-ext', // this or either 'roboto-font', NEVER both!
 
-            'roboto-font', // optional, you are not bound to it
-            'material-icons', // optional, you are not bound to it
+            'roboto-font' // optional, you are not bound to it
+            // 'material-icons' // optional, you are not bound to it
         ],
 
         // Full list of options: https://v2.quasar.dev/quasar-cli/quasar-conf-js#Property%3A-build
         build: {
-            vueRouterMode: 'hash', // available values: 'hash', 'history'
+            vueRouterMode: 'history', // available values: 'hash', 'history'
 
             // transpile: false,
 
@@ -99,7 +99,7 @@ module.exports = configure(function (ctx) {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
                         return args
                     })
-            },
+            }
         },
 
         // Full list of options: https://v2.quasar.dev/quasar-cli/quasar-conf-js#Property%3A-devServer
@@ -113,7 +113,9 @@ module.exports = configure(function (ctx) {
 
         // https://v2.quasar.dev/quasar-cli/quasar-conf-js#Property%3A-framework
         framework: {
-            config: {},
+            config: {
+                loadingBar: {}
+            },
 
             // iconSet: 'material-icons', // Quasar icon set
             // lang: 'en-US', // Quasar language pack
@@ -126,12 +128,14 @@ module.exports = configure(function (ctx) {
             // directives: [],
 
             // Quasar plugins
-            plugins: []
+            plugins: [
+                'LoadingBar'
+            ]
         },
 
         // animations: 'all', // --- includes all animations
         // https://v2.quasar.dev/options/animations
-        animations: [],
+        animations: 'all',
 
         // https://v2.quasar.dev/quasar-cli/developing-ssr/configuring-ssr
         ssr: {
@@ -248,7 +252,7 @@ module.exports = configure(function (ctx) {
             chainWebpackPreload (/* chain */) {
                 // do something with the Electron main process Webpack cfg
                 // extendWebpackPreload also available besides this chainWebpackPreload
-            },
+            }
         }
     }
 })

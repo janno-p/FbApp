@@ -1,5 +1,10 @@
 ﻿name: fbapp
 
+extensions:
+  - name: dapr
+    components-path: ./components
+    config: config
+
 services:
   - name: fbapp-ui
     executable: node
@@ -12,20 +17,24 @@ services:
   - name: fbapp-proxy
     project: fbapp-proxy/FbApp.Proxy.fsproj
     bindings:
-      - port: 8090
+      - name: public
+        port: 8090
         protocol: https
+      - name: dapr
+        port: 7000
+        protocol: http
 
   - name: fbapp-auth
     project: fbapp-auth-service/FbApp.Auth.fsproj
     bindings:
-      - port: 7002
+      - port: 7001
         protocol: http
+
+  - name: fbapp-competitions
+    project: fbapp-competitions-service/FbApp.Competitions.fsproj
 
   - name: fbapp-web-service
     project: fbapp-web-service/FbApp.Web.fsproj
-    bindings:
-      - port: 7001
-        protocol: http
 
   - name: eventstore
     image: eventstore/eventstore
