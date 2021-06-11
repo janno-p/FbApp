@@ -23,7 +23,7 @@ let getCompetitionSources year: HttpHandler =
                 return! Successful.OK [||] next context
             else
                 let authOptions = context.RequestServices.GetService<IOptions<AuthOptions>>().Value
-                let! competitions = FootballData.getCompetitions authOptions.FootballDataToken [FootballData.Season year]
+                let! competitions = FootballData.getCompetitions authOptions.FootballDataToken // [FootballData.Season year]
                 match competitions with
                 | Ok(competitions) ->
                     let competitions = competitions |> Array.map (fun x -> { Label = sprintf "%s (%s)" x.Caption x.League; Value = x.Id })

@@ -302,13 +302,6 @@ type TeamPlayers =
         Players: TeamPlayer array
     }
 
-type CompetitionFilter =
-    | Season of int
-with
-    override this.ToString() =
-        match this with
-        | Season year -> sprintf "season=%d" year
-
 type LeagueTableFilter =
     | Matchday of int
 with
@@ -387,7 +380,7 @@ let private toQuery lst =
     | xs -> String.Join("&", xs |> List.map (fun x -> x.ToString())) |> sprintf "?%s"
 
 let private baseUri =
-    Uri("http://api.football-data.org/v1/")
+    Uri("https://api.football-data.org/v2/")
 
 let private createClient (authToken: string) =
     let client = new HttpClient()
@@ -407,8 +400,8 @@ let private apiCall<'T> authToken (uri: string) = task {
 }
 
 /// List all available competitions.
-let getCompetitions authToken (filters: CompetitionFilter list) = task {
-    let uri = sprintf "competitions%s" (filters |> toQuery)
+let getCompetitions authToken = task {
+    let uri = sprintf "competitions?plan=TIER_ONE"
     return! apiCall<Competition array> authToken uri
 }
 

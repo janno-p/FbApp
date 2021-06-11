@@ -179,7 +179,7 @@ module Competitions =
         Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
     let tryGetActive () = task {
-        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2146L)
+        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2018L)
         return! collection.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
