@@ -26,7 +26,7 @@ let getCompetitionSources year: HttpHandler =
                 let! competitions = FootballData.Api2.getCompetitions authOptions.FootballDataToken // [FootballData.Season year]
                 match competitions with
                 | Ok(competitions) ->
-                    let competitions = competitions |> Array.map (fun x -> { Label = sprintf "%s (%s)" x.Caption x.League; Value = x.Id })
+                    let competitions = competitions |> Array.map (fun x -> { Label = x.Name; Value = x.Id })
                     return! Successful.OK competitions next context
                 | Error(_,_,err) ->
                     return! RequestErrors.BAD_REQUEST err.Error next context

@@ -154,15 +154,15 @@ type TeamPlayersLinks =
 [<CLIMutable>]
 type Competition =
     {
-        [<JsonProperty("_links")>] Links: CompetitionLinks
+        // [<JsonProperty("_links")>] Links: CompetitionLinks
         Id: Id
-        Caption: string
-        League: string
-        Year: string
-        CurrentMatchday: int
-        NumberOfMatchdays: int
-        NumberOfTeams: int
-        NumberOfGames: int
+        Name: string
+        // League: string
+        // Year: string
+        // CurrentMatchday: int
+        // NumberOfMatchdays: int
+        // NumberOfTeams: int
+        // NumberOfGames: int
         LastUpdated: DateTimeOffset
     }
 
