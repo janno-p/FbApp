@@ -559,5 +559,6 @@ module Api2 =
     /// List all available competitions.
     let getCompetitions authToken = task {
         let uri = sprintf "competitions?plan=TIER_ONE"
-        return! apiCall<Competition array> authToken uri
+        let! comp = apiCall<Competition> authToken uri
+        return comp |> Result.map (fun x -> [| x |])
     }
