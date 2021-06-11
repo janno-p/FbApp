@@ -16,7 +16,7 @@ let [<Literal>] ProcessManagerSubscriptionGroup = "process-manager"
 let initProjectionsAndSubscriptions (connection: IEventStoreConnection, options: EventStoreOptions) = task {
     let logger = ConsoleLogger()
 
-    let projectionsManager = ProjectionsManager(logger, IPEndPoint(IPAddress.Loopback, 2113), TimeSpan.FromSeconds(5.0))
+    let projectionsManager = ProjectionsManager(logger, DnsEndPoint("eventstore", 2113), TimeSpan.FromSeconds(5.0))
 
     let query = (sprintf """fromAll()
 .when({
