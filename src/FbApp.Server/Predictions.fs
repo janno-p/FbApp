@@ -10,17 +10,23 @@ let private fixName (name: string) =
 
 let getScoreTable : HttpHandler =
     (fun next ctx -> task {
-        let! competition = Competitions.getActive ()
-        let! scoreTable = Predictions.getScoreTable competition.Id
-        let scoreTable = scoreTable |> Seq.map (fun x -> { x with Name = fixName x.Name }) |> Seq.toArray
-        return! Successful.OK scoreTable next ctx
+        match! Competitions.tryGetActive () with
+        | Some competition ->
+            let! scoreTable = Predictions.getScoreTable competition.Id
+            let scoreTable = scoreTable |> Seq.map (fun x -> { x with Name = fixName x.Name }) |> Seq.toArray
+            return! Successful.OK scoreTable next ctx
+        | None ->
+            return! RequestErrors.NOT_FOUND "No active competition" next ctx
     })
 
 let findPredictions term : HttpHandler =
     (fun next ctx -> task {
-        let! competition = Competitions.getActive ()
-        let! predictions = Predictions.find competition.Id term
-        return! Successful.OK predictions next ctx
+        match! Competitions.tryGetActive () with
+        | Some competition ->
+            let! predictions = Predictions.find competition.Id term
+            return! Successful.OK predictions next ctx
+        | None ->
+            return! RequestErrors.NOT_FOUND "No active competition" next ctx
     })
 
 let scope = router {

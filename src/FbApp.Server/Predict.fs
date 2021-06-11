@@ -69,20 +69,23 @@ let private mapTeams (competition: ReadModels.Competition) =
 
 let private getFixtures: HttpHandler =
     (fun next context -> task {
-        let! activeCompetition = Competitions.getActive ()
-        let fixtures =
-            {
-                CompetitionId =
-                    activeCompetition.Id
-                Teams =
-                    (activeCompetition |> mapTeams)
-                Fixtures =
-                    activeCompetition.Fixtures
-                    |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
-                Groups =
-                    activeCompetition.Groups
-            }
-        return! Successful.OK fixtures next context
+        match! Competitions.tryGetActive () with
+        | Some activeCompetition ->
+            let fixtures =
+                {
+                    CompetitionId =
+                        activeCompetition.Id
+                    Teams =
+                        (activeCompetition |> mapTeams)
+                    Fixtures =
+                        activeCompetition.Fixtures
+                        |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
+                    Groups =
+                        activeCompetition.Groups
+                }
+            return! Successful.OK fixtures next context
+        | None ->
+            return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
 let private savePredictions: HttpHandler =
@@ -107,37 +110,43 @@ let private savePredictions: HttpHandler =
 
 let private getCurrentPrediction: HttpHandler =
     (fun next context -> task {
-        let! activeCompetition = Competitions.getActive ()
-        let user = Auth.createUser context.User context
-        let! prediction = Predictions.get (activeCompetition.Id, user.Email)
-        match prediction with
-        | Some(prediction) ->
-            let mapFixture (fixture: ReadModels.PredictionFixtureResult) : PredictionFixtureDto =
-                let x = activeCompetition.Fixtures |> Array.find (fun n -> n.ExternalId = fixture.FixtureId)
-                {
-                    Fixture = fixture.FixtureId
-                    HomeTeam = x.HomeTeamId
-                    AwayTeam = x.AwayTeamId
-                    Result = fixture.PredictedResult
-                }
-            let dto: PredictionDto =
-                {
-                    CompetitionId = activeCompetition.Id
-                    Teams = (activeCompetition |> mapTeams)
-                    Fixtures = prediction.Fixtures |> Array.map mapFixture
-                    RoundOf16 = prediction.QualifiersRoundOf16 |> Array.map (fun x -> x.Id)
-                    RoundOf8 = prediction.QualifiersRoundOf8 |> Array.map (fun x -> x.Id)
-                    RoundOf4 = prediction.QualifiersRoundOf4 |> Array.map (fun x -> x.Id)
-                    RoundOf2 = prediction.QualifiersRoundOf2 |> Array.map (fun x -> x.Id)
-                    Winner = prediction.Winner.Id
-                }
-            return! Successful.OK dto next context
-        | None -> return! RequestErrors.NOT_FOUND "Prediction does not exist" next context
+        match! Competitions.tryGetActive () with
+        | Some activeCompetition ->
+            let user = Auth.createUser context.User context
+            let! prediction = Predictions.get (activeCompetition.Id, user.Email)
+            match prediction with
+            | Some(prediction) ->
+                let mapFixture (fixture: ReadModels.PredictionFixtureResult) : PredictionFixtureDto =
+                    let x = activeCompetition.Fixtures |> Array.find (fun n -> n.ExternalId = fixture.FixtureId)
+                    {
+                        Fixture = fixture.FixtureId
+                        HomeTeam = x.HomeTeamId
+                        AwayTeam = x.AwayTeamId
+                        Result = fixture.PredictedResult
+                    }
+                let dto: PredictionDto =
+                    {
+                        CompetitionId = activeCompetition.Id
+                        Teams = (activeCompetition |> mapTeams)
+                        Fixtures = prediction.Fixtures |> Array.map mapFixture
+                        RoundOf16 = prediction.QualifiersRoundOf16 |> Array.map (fun x -> x.Id)
+                        RoundOf8 = prediction.QualifiersRoundOf8 |> Array.map (fun x -> x.Id)
+                        RoundOf4 = prediction.QualifiersRoundOf4 |> Array.map (fun x -> x.Id)
+                        RoundOf2 = prediction.QualifiersRoundOf2 |> Array.map (fun x -> x.Id)
+                        Winner = prediction.Winner.Id
+                    }
+                return! Successful.OK dto next context
+            | None -> return! RequestErrors.NOT_FOUND "Prediction does not exist" next context
+        | None ->
+            return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
 let getCompetitionStatus () = task {
-    let! competition = Competitions.getActive ()
-    return if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
+    match! Competitions.tryGetActive () with
+    | Some competition ->
+        return if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
+    | None ->
+        return "no-active-competition"
 }
 
 let predictScope = router {

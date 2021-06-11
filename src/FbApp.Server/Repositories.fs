@@ -178,9 +178,9 @@ module Competitions =
     let private filterByIdAndVersion (id, ver) =
         Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
-    let getActive () = task {
-        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 467L)
-        return! collection.Find(f).Limit(Nullable(1)).SingleAsync()
+    let tryGetActive () = task {
+        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2146L)
+        return! collection.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
     let get (competitionId: Guid) = task {
