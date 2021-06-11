@@ -94,11 +94,15 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
                 let streamId = aggregateStreamId aggregateName id
                 let pages = ResizeArray<ResolvedEvent>()
                 let rec readNextPage startFrom = unitTask {
-                    let slice = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-                    let! events = readSlice slice
-                    pages.AddRange(events)
-                    if events.Count = 4096 then
-                        do! readNextPage events.[4095].OriginalEventNumber
+                    let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
+                    match! result.ReadState with
+                    | ReadState.StreamNotFound ->
+                        ()
+                    | _ ->
+                        let! events = readSlice result
+                        pages.AddRange(events)
+                        if events.Count = 4096 then
+                            do! readNextPage events.[4095].OriginalEventNumber
                 }
                 do! readNextPage StreamPosition.Start
                 let domainEvents = pages |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
