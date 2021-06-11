@@ -31,6 +31,7 @@ let createEventStoreConnection (options: EventStoreOptions) = task {
             .Create()
             .UseConsoleLogger()
             .SetDefaultUserCredentials(options.UserCredentials)
+            .DisableTls()
             .Build()
 
     let connection = EventStoreConnection.Create(settings, Uri(options.Uri))
