@@ -380,7 +380,7 @@ let private toQuery lst =
     | xs -> String.Join("&", xs |> List.map (fun x -> x.ToString())) |> sprintf "?%s"
 
 let private baseUri =
-    Uri("https://api.football-data.org/v2/")
+    Uri("http://api.football-data.org/v1/")
 
 let private createClient (authToken: string) =
     let client = new HttpClient()
@@ -397,12 +397,6 @@ let private apiCall<'T> authToken (uri: string) = task {
     else
         let! jsonStream = response.Content.ReadAsStreamAsync()
         return Error(response.StatusCode, response.ReasonPhrase, deserialize<Error> jsonStream)
-}
-
-/// List all available competitions.
-let getCompetitions authToken = task {
-    let uri = sprintf "competitions?plan=TIER_ONE"
-    return! apiCall<Competition array> authToken uri
 }
 
 /// List all teams for a certain competition.
@@ -560,4 +554,10 @@ module Api2 =
     let getCompetitionMatches authToken (competitionId: Id) (filters: CompetitionMatchFilter list) = task {
         let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
         return! apiCall<CompetitionMatches> authToken uri
+    }
+
+    /// List all available competitions.
+    let getCompetitions authToken = task {
+        let uri = sprintf "competitions?plan=TIER_ONE"
+        return! apiCall<Competition array> authToken uri
     }
