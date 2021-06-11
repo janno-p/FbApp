@@ -22,20 +22,17 @@ let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata)
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
         try
-            let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
+            let! teams = FootballData.Api2.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
             let teams = teams |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
-            let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
+            let! fixtures = FootballData.Api2.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
             let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
-            let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId []
-            let groups =
-                match (groups |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)).Standings with
-                | FootballData.Groups groups -> groups
-                | _ -> failwith "Leagues are not implemented"
+            let! groups = FootballData.Api2.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
+            let groups = groups |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
                     (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
-                        fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday < 4) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
-                        groups |> Seq.map (fun kvp -> kvp.Key, (kvp.Value |> Array.map (fun x -> x.TeamId))) |> Seq.toList)
+                        fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday < 4) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
+                        groups.Standings |> Seq.filter (fun r -> r.Stage = "GROUP_STAGE") |> Seq.map (fun kvp -> kvp.Group, (kvp.Table |> Array.map (fun x -> x.Team.Id))) |> Seq.toList)
             let id = Competitions.createId args.ExternalId
             let! _ = CommandHandlers.competitionsHandler (id, Aggregate.Version md.AggregateSequenceNumber) command
             ()

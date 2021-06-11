@@ -30,16 +30,20 @@ let private parseIdSuffix (link: Link) =
     Convert.ToInt64(value)
 
 [<CLIMutable>]
+type GroupEntryTeam = {
+    Id: int64
+    Name: string
+    CrestUrl: string
+    }
+
+[<CLIMutable>]
 type GroupEntry =
     {
-        Group: string
-        Rank: int
-        Team: string
-        TeamId: int64
+        Position: int
+        Team: GroupEntryTeam
         PlayedGames: int
-        CrestURI: string
         Points: int
-        Goals: int
+        GoalsFor: int
         GoalsAgainst: int
         GoalDifference: int
     }
@@ -79,23 +83,12 @@ type LeagueEntry =
         Away: LeagueEntryStats
     }
 
-type CompetitionLeagueTableStandings =
-    | Groups of Dictionary<string, GroupEntry array>
-    | League of LeagueEntry array
-
-type private CompetitionLeagueTableConverter () =
-    inherit JsonConverter ()
-    let expectedType = typeof<CompetitionLeagueTableStandings>
-    override __.CanConvert typ =
-        expectedType.IsAssignableFrom(typ)
-    override __.WriteJson (_,_,_) =
-        raise (NotImplementedException())
-    override __.ReadJson (reader, typ, _, serializer) =
-        match reader.TokenType with
-        | JsonToken.StartObject ->
-            Groups (serializer.Deserialize<Dictionary<string, GroupEntry array>>(reader)) |> box
-        | _ ->
-            League (serializer.Deserialize<LeagueEntry array>(reader)) |> box
+[<CLIMutable>]
+type CompetitionLeagueTableStandings = {
+    Stage: string
+    Group: string
+    Table: GroupEntry array
+    }
 
 [<CLIMutable>]
 type CompetitionLinks =
@@ -171,9 +164,9 @@ type CompetitionTeam =
     {
         [<JsonProperty("_links")>] Links: CompetitionTeamLinks
         Name: string
-        Code: string
+        [<JsonProperty("tla")>] Code: string
         ShortName: string
-        SquadMarketValue: string
+        // SquadMarketValue: string
         CrestUrl: string
     }
 with
@@ -193,7 +186,7 @@ type CompetitionLeagueTable =
     {
         LeagueCaption: string
         Matchday: int
-        Standings: CompetitionLeagueTableStandings
+        Standings: CompetitionLeagueTableStandings array
     }
 
 [<CLIMutable>]
@@ -204,41 +197,46 @@ type FixtureResultGoals =
     }
 
 [<CLIMutable>]
+type FixtureScore = {
+    HomeTeam: int option
+    AwayTeam: int option
+    }
+
+[<CLIMutable>]
 type FixtureResult =
     {
-        GoalsHomeTeam: int option
-        GoalsAwayTeam: int option
-        HalfTime: FixtureResultGoals option
-        ExtraTime: FixtureResultGoals option
-        PenaltyShootout: FixtureResultGoals option
+        Winner: string option
+        Duration: string option
+        FullTime: FixtureScore
+        HalfTime: FixtureScore
+        ExtraTime: FixtureScore
+        Penalties: FixtureScore
+    }
+
+[<CLIMutable>]
+type CompetitionFixtureTeam = {
+    Id: int64 option
+    Name: string option
     }
 
 [<CLIMutable>]
 type CompetitionFixture =
     {
-        [<JsonProperty("_links")>] Links: CompetitionFixtureLinks
-        Date: DateTimeOffset
+        Id: int64
+        [<JsonProperty("utcDate")>] Date: DateTimeOffset
         Status: string
         Matchday: int
-        HomeTeamName: string
-        AwayTeamName: string
-        Result: FixtureResult option
+        HomeTeam: CompetitionFixtureTeam option
+        AwayTeam: CompetitionFixtureTeam option
+        [<JsonProperty("score")>] Result: FixtureResult option
         //Odds
     }
-with
-    member this.Id =
-        this.Links.Self |> parseIdSuffix
-    member this.HomeTeamId =
-        this.Links.HomeTeam |> parseIdSuffix
-    member this.AwayTeamId =
-        this.Links.AwayTeam |> parseIdSuffix
 
 [<CLIMutable>]
 type CompetitionFixtures =
     {
-        [<JsonProperty("_links")>] Links: CompetitionFixturesLinks
         Count: int
-        Fixtures: CompetitionFixture array
+        [<JsonProperty("matches")>] Fixtures: CompetitionFixture array
     }
 
 [<CLIMutable>]
@@ -302,13 +300,6 @@ type TeamPlayers =
         Players: TeamPlayer array
     }
 
-type LeagueTableFilter =
-    | Matchday of int
-with
-    override this.ToString() =
-        match this with
-        | Matchday day -> sprintf "matchday=%d" day
-
 type TimeFrame =
     | Previous of int
     | Next of int
@@ -319,14 +310,12 @@ with
         | Next v -> sprintf "n%d" v
 
 type CompetitionFixtureFilter =
-    | TimeFrame of TimeFrame
-    | TimeFrameRange of DateTimeOffset * DateTimeOffset
+    | Range of DateTimeOffset * DateTimeOffset
     | Matchday of int
 with
     override this.ToString() =
         match this with
-        | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
-        | TimeFrameRange (s, e) -> sprintf "timeFrameStart=%s&timeFrameEnd=%s" (s.ToString("yyyy-MM-dd")) (e.ToString("yyyy-MM-dd"))
+        | Range (s, e) -> sprintf "dateFrom=%s&dateTo=%s" (s.ToString("yyyy-MM-dd")) (e.ToString("yyyy-MM-dd"))
         | Matchday n -> sprintf "matchday=%d" n
 
 type FixturesFilter =
@@ -367,7 +356,6 @@ with
 
 let serializer = JsonSerializer()
 serializer.Converters.Add(OptionConverter())
-serializer.Converters.Add(CompetitionLeagueTableConverter())
 serializer.ContractResolver <- CamelCasePropertyNamesContractResolver()
 
 let deserialize<'T> (stream: IO.Stream) =
@@ -397,24 +385,6 @@ let private apiCall<'T> authToken (uri: string) = task {
     else
         let! jsonStream = response.Content.ReadAsStreamAsync()
         return Error(response.StatusCode, response.ReasonPhrase, deserialize<Error> jsonStream)
-}
-
-/// List all teams for a certain competition.
-let getCompetitionTeams authToken (competitionId: Id) = task {
-    let uri = sprintf "competitions/%d/teams" competitionId
-    return! apiCall<CompetitionTeams> authToken uri
-}
-
-/// Show league table / current standing.
-let getCompetitionLeagueTable authToken (competitionId: Id) (filters: LeagueTableFilter list) = task {
-    let uri = sprintf "competitions/%d/leagueTable%s" competitionId (filters |> toQuery)
-    return! apiCall<CompetitionLeagueTable> authToken uri
-}
-
-/// List all fixtures for a certain competition.
-let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
-    let uri = sprintf "competitions/%d/fixtures%s" competitionId (filters |> toQuery)
-    return! apiCall<CompetitionFixtures> authToken uri
 }
 
 /// List fixtures across a set of competitions.
@@ -561,4 +531,22 @@ module Api2 =
         let uri = sprintf "competitions/%i" 2018L
         let! comp = apiCall<Competition> authToken uri
         return comp |> Result.map (fun x -> [| x |])
+    }
+
+    /// List all teams for a certain competition.
+    let getCompetitionTeams authToken (competitionId: Id) = task {
+        let uri = sprintf "competitions/%d/teams" competitionId
+        return! apiCall<CompetitionTeams> authToken uri
+    }
+
+    /// List all fixtures for a certain competition.
+    let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
+        let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
+        return! apiCall<CompetitionFixtures> authToken uri
+    }
+
+    /// Show league table / current standing.
+    let getCompetitionLeagueTable authToken (competitionId: Id) = task {
+        let uri = sprintf "competitions/%d/standings" competitionId
+        return! apiCall<CompetitionLeagueTable> authToken uri
     }
