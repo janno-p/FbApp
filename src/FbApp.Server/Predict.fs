@@ -3,6 +3,7 @@ module FbApp.Server.Predict
 open FbApp.Core
 open FbApp.Domain
 open FbApp.Server.Repositories
+open FSharp.Control.Tasks
 open Giraffe
 open Saturn
 open System
@@ -139,7 +140,7 @@ let getCompetitionStatus () = task {
     return if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
 }
 
-let predictScope = scope {
+let predictScope = router {
     post "/" (Auth.authPipe >=> Auth.validateXsrfToken >=> savePredictions)
     get "/fixtures" getFixtures
     get "/current" (Auth.authPipe >=> Auth.validateXsrfToken >=> getCurrentPrediction)

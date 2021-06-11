@@ -2,7 +2,7 @@
 module FbApp.Core.FootballData
 
 open FbApp.Core.Serialization.Converters
-open FSharp.Control.Tasks.ContextInsensitive
+open FSharp.Control.Tasks
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open System

@@ -1,6 +1,7 @@
 ﻿module FbApp.Server.Predictions
 
 open FbApp.Server.Repositories
+open FSharp.Control.Tasks
 open Giraffe
 open Saturn
 
@@ -22,10 +23,10 @@ let findPredictions term : HttpHandler =
         return! Successful.OK predictions next ctx
     })
 
-let scope = scope {
+let scope = router {
     get "/score" getScoreTable
 
-    forward "/admin" (scope {
+    forward "/admin" (router {
         pipe_through Auth.authPipe
         pipe_through Auth.validateXsrfToken
         pipe_through Auth.adminPipe

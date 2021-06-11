@@ -1,6 +1,7 @@
 ﻿module FbApp.Server.Fixtures
 
 open FbApp.Server.Repositories
+open FSharp.Control.Tasks
 open Giraffe
 open Saturn
 open System
@@ -94,7 +95,7 @@ let getTimelyFixture : HttpHandler =
         return! Successful.OK dto next ctx
     })
 
-let scope = scope {
+let scope = router {
     getf "/%O" getFixture
     getf "/%O/status" getFixtureStatus
     get "/timely" getTimelyFixture

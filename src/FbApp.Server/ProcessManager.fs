@@ -1,12 +1,12 @@
 module FbApp.Server.ProcessManager
 
-open EventStore.ClientAPI
-open EventStore.ClientAPI.Exceptions
+open EventStore.Client
 open FbApp.Core
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
 open FbApp.Domain
 open FbApp.Server.Repositories
+open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.Extensions.Logging
 open FbApp.Server
@@ -72,7 +72,7 @@ let processPredictions (md: Metadata) (e: ResolvedEvent) = task {
     | _ -> ()
 }
 
-let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
+let eventAppeared (log: ILogger, authOptions: AuthOptions) (e: ResolvedEvent) : System.Threading.Tasks.Task = unitTask {
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
@@ -80,14 +80,15 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventS
         | Some(md) when md.AggregateName = Predictions.AggregateName ->
             do! processPredictions md e
         | _ -> ()
-        subscription.Acknowledge(e)
     with ex ->
         log.LogError(ex, "Process manager error with event {0} {1}.", e.OriginalStreamId, e.OriginalEventNumber)
-        subscription.Fail(e, PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured")
+        raise ex
 }
 
 type private X = class end
 
-let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) =
+let connectSubscription (client: EventStoreClient) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) = unitTask {
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProcessManagerSubscriptionGroup, (eventAppeared (log, authOptions)), autoAck = false) |> ignore
+    let! _ = client.SubscribeToStreamAsync(EventStore.DomainEventsStreamName, fun _ e _ -> eventAppeared (log, authOptions) e)
+    ()
+}

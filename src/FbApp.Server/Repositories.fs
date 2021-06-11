@@ -1,13 +1,19 @@
 ﻿module FbApp.Server.Repositories
 
-open FSharp.Control.Tasks.ContextInsensitive
+open FSharp.Control.Tasks
 open MongoDB.Bson
 open MongoDB.Driver
 open System
 open System.Collections.Generic
 open System.Linq
 
-let private mongo = MongoClient(MongoClientSettings(GuidRepresentation = GuidRepresentation.Standard))
+let private settings =
+    MongoClientSettings(
+        GuidRepresentation = GuidRepresentation.Standard,
+        Server = MongoServerAddress("mongo")
+    )
+
+let private mongo = MongoClient(settings)
 let private db = mongo.GetDatabase("fbapp")
 
 module FindFluent =
@@ -313,7 +319,7 @@ module Fixtures =
     }
 
     let getFixtureCount (competitionId: Guid, stage: string) = task {
-        return! collection.CountAsync(FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), Stage: { $eq: "%s" } }""" competitionId stage))
+        return! collection.CountDocumentsAsync(FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), Stage: { $eq: "%s" } }""" competitionId stage))
     }
 
     let getQualifiedTeams (competitionId: Guid) = task {

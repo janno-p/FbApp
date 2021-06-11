@@ -3,7 +3,7 @@ module FbApp.Server.Auth
 open System.Net.Http
 open System.Security.Claims
 open FbApp.Server.Configuration
-open FSharp.Control.Tasks.ContextInsensitive
+open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Antiforgery
 open Microsoft.AspNetCore.Authentication
@@ -109,7 +109,7 @@ let getUser (ctx: HttpContext) =
 let tokenSignOut: HttpHandler =
     signOut CookieAuthenticationDefaults.AuthenticationScheme >=> Successful.OK ()
 
-let authScope = scope {
+let authScope = router {
     post "/signin" tokenSignIn
     post "/signout" (resetXsrfToken >=> tokenSignOut)
 }

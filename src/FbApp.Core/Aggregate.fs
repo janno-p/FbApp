@@ -1,6 +1,6 @@
 ﻿module FbApp.Core.Aggregate
 
-open FSharp.Control.Tasks.ContextInsensitive
+open FSharp.Control.Tasks
 open System
 open System.Threading.Tasks
 
@@ -39,9 +39,9 @@ let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
         | Ok(events) ->
             let expectedCommitVersion =
                 match expectedVersion with
-                | ExpectedVersion.New -> ExpectedCommitVersion.NewStream
-                | ExpectedVersion.Version v -> ExpectedCommitVersion.Value v
-                | ExpectedVersion.Any -> ExpectedCommitVersion.Value ver
+                | New -> NewStream
+                | Version v -> Value v
+                | Any -> Value ver
             return! commit (streamId, expectedCommitVersion) events
         | Error(err) ->
             return Error(DomainError(err))

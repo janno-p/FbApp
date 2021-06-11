@@ -1,6 +1,7 @@
 [<RequireQualifiedAccess>]
 module FbApp.Server.EventStore
 
+(*
 open FbApp.Core.EventStore
 open EventStore.ClientAPI
 open EventStore.ClientAPI.Common.Log
@@ -8,11 +9,13 @@ open EventStore.ClientAPI.Projections
 open FSharp.Control.Tasks.ContextInsensitive
 open System
 open System.Net
+*)
 
 let [<Literal>] DomainEventsStreamName = "domain-events"
 let [<Literal>] ProjectionsSubscriptionGroup = "projections"
 let [<Literal>] ProcessManagerSubscriptionGroup = "process-manager"
 
+(*
 let initProjectionsAndSubscriptions (connection: IEventStoreConnection, options: EventStoreOptions) = task {
     let logger = ConsoleLogger()
 
@@ -47,3 +50,4 @@ let initProjectionsAndSubscriptions (connection: IEventStoreConnection, options:
         do! connection.CreatePersistentSubscriptionAsync(DomainEventsStreamName, ProcessManagerSubscriptionGroup, settings, null)
     })
 }
+*)

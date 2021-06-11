@@ -4,6 +4,7 @@ open FbApp.Core
 open FbApp.Domain
 open FbApp.Server.Configuration
 open FbApp.Server
+open FSharp.Control.Tasks
 open Giraffe
 open Saturn
 open Microsoft.Extensions.DependencyInjection
@@ -50,7 +51,7 @@ let getCompetitions: HttpHandler =
             return! Successful.OK competitions next context
         })
 
-let dashboardScope = scope {
+let dashboardScope = router {
     get "/competitions" getCompetitions
     getf "/competition_sources/%i" getCompetitionSources
     post "/competition/add" addCompetition

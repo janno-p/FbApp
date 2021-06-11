@@ -5,7 +5,7 @@ open FbApp.Core.EventStore
 open FbApp.Domain
 open FbApp.Server
 open FbApp.Server.Configuration
-open FbApp.Server.HttpsConfig
+open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
@@ -14,16 +14,17 @@ open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Configuration.UserSecrets
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.FileProviders
+open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Saturn
 open System.IO
 open Microsoft.AspNetCore.HttpOverrides
-open EventStore.ClientAPI
+open EventStore.Client
 open Microsoft.Extensions.Options
 open System
 
 let index : HttpHandler =
-    (Path.Combine("wwwroot", "index.html") |> ResponseWriters.htmlFile)
+    (Path.Combine("wwwroot", "index.html") |> htmlFile)
 
 [<CLIMutable>]
 type AppBootstrapInfo =
@@ -46,7 +47,7 @@ let appBootstrap : HttpHandler =
         return! Successful.OK dto next ctx
     })
 
-let mainRouter = scope {
+let mainRouter = router {
     not_found_handler index
     get "/" index
 
@@ -58,7 +59,7 @@ let mainRouter = scope {
     forward "/api/predictions" Predictions.scope
     forward "/api/leagues" Leagues.scope
 
-    forward "/api" (scope {
+    forward "/api" (router {
         not_found_handler (RequestErrors.NOT_FOUND "Not found")
 
         pipe_through Auth.authPipe
@@ -69,40 +70,30 @@ let mainRouter = scope {
     })
 }
 
-let endpoints = [
-    { EndpointConfiguration.Default with
-        Port = Some 5000 }
-    { EndpointConfiguration.Default with 
-        Port = Some 5001
-        Scheme = Https
-        FilePath = Some (Path.Combine(__SOURCE_DIRECTORY__, "..", "FbApp.pfx")) }
-]
-
 let initializeEventStore (sp: IServiceProvider) = task {
     let options = sp.GetService<IOptions<EventStoreOptions>>().Value
-    let! connection = createEventStoreConnection options
-    do! EventStore.initProjectionsAndSubscriptions (connection, options)
+    let connection = createEventStoreConnection options
+    // do! EventStore.initProjectionsAndSubscriptions (connection, options)
     return connection
 }
 
-let configureServices (context: WebHostBuilderContext) (services: IServiceCollection) =
+let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
 
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
     services.Configure<EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
 
-    services.AddSingleton<IEventStoreConnection>((fun sp -> (initializeEventStore sp).Result)) |> ignore
+    services.AddSingleton<EventStoreClient>((fun sp -> (initializeEventStore sp).Result)) |> ignore
 
-let configureAppConfiguration (context: WebHostBuilderContext) (config: IConfigurationBuilder) =
+let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
           .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName, optional=true, reloadOnChange=true)
           .AddEnvironmentVariables()
-          .AddUserSecrets<EndpointConfiguration>()
     |> ignore
 
 let app = application {
-    router mainRouter
+    use_router mainRouter
     memory_cache
     use_gzip
 
@@ -110,7 +101,7 @@ let app = application {
         app.UseForwardedHeaders(new ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
         |> ignore
 
-        let env = app.ApplicationServices.GetService<IHostingEnvironment>()
+        let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
 
         if env.IsProduction() then
             app.UseStaticFiles(
@@ -122,10 +113,10 @@ let app = application {
 
         let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
         let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
-        let eventStoreConnection = app.ApplicationServices.GetService<IEventStoreConnection>()
+        let eventStoreConnection = app.ApplicationServices.GetService<EventStoreClient>()
 
-        Projection.connectSubscription eventStoreConnection loggerFactory
-        ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
+        (Projection.connectSubscription eventStoreConnection loggerFactory).Wait()
+        (ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions).Wait()
 
         CommandHandlers.competitionsHandler <-
             makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository eventStoreConnection Competitions.AggregateName)
@@ -145,8 +136,7 @@ let app = application {
     use_cookies_authentication "jnx.era.ee"
 
     host_config (fun host ->
-        host.UseKestrel(fun o -> o.ConfigureEndpoints endpoints)
-            .ConfigureAppConfiguration(configureAppConfiguration)
+        host.ConfigureAppConfiguration(configureAppConfiguration)
             .ConfigureServices(configureServices)
     )
 }

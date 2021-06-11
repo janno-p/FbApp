@@ -2,6 +2,7 @@
 
 open FbApp.Core
 open FbApp.Domain
+open FSharp.Control.Tasks
 open Giraffe
 open Saturn
 open System
@@ -42,11 +43,11 @@ let private getLeagues : HttpHandler =
         return! Successful.OK leagues next ctx
     })
 
-let scope = scope {
+let scope = router {
     get "/" getDefaultLeague
     getf "/league/%s" getLeague
 
-    forward "/admin" (scope {
+    forward "/admin" (router {
         pipe_through Auth.authPipe
         pipe_through Auth.validateXsrfToken
         pipe_through Auth.adminPipe
