@@ -67,7 +67,6 @@ type LeagueEntryStats =
 [<CLIMutable>]
 type LeagueEntry =
     {
-        [<JsonProperty("_links")>] Links: LeagueEntryLinks
         Position: int
         TeamName: string
         CrestURI: string
@@ -147,7 +146,6 @@ type TeamPlayersLinks =
 [<CLIMutable>]
 type Competition =
     {
-        // [<JsonProperty("_links")>] Links: CompetitionLinks
         Id: Id
         Name: string
         // League: string
@@ -162,21 +160,17 @@ type Competition =
 [<CLIMutable>]
 type CompetitionTeam =
     {
-        [<JsonProperty("_links")>] Links: CompetitionTeamLinks
+        Id: int64
         Name: string
         [<JsonProperty("tla")>] Code: string
         ShortName: string
         // SquadMarketValue: string
         CrestUrl: string
     }
-with
-    member this.Id =
-        this.Links.Self |> parseIdSuffix
 
 [<CLIMutable>]
 type CompetitionTeams =
     {
-        [<JsonProperty("_links")>] Links: CompetitionTeamsLinks
         Count: int
         Teams: CompetitionTeam array
     }
@@ -274,7 +268,6 @@ type Fixture =
 [<CLIMutable>]
 type TeamFixtures =
     {
-        [<JsonProperty("_links")>] Links: TeamFixturesLinks
         Season: int
         Count: int
         Fixtures: CompetitionFixture array
@@ -295,7 +288,6 @@ type TeamPlayer =
 [<CLIMutable>]
 type TeamPlayers =
     {
-        [<JsonProperty("_links")>] Links: TeamPlayersLinks
         Count: int
         Players: TeamPlayer array
     }
