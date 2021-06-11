@@ -19,7 +19,7 @@ open Microsoft.Extensions.Logging
 open Saturn
 open System.IO
 open Microsoft.AspNetCore.HttpOverrides
-open EventStore.Client
+open EventStore.ClientAPI
 open Microsoft.Extensions.Options
 open System
 
@@ -72,8 +72,8 @@ let mainRouter = router {
 
 let initializeEventStore (sp: IServiceProvider) = task {
     let options = sp.GetService<IOptions<EventStoreOptions>>().Value
-    let connection = createEventStoreConnection options
-    // do! EventStore.initProjectionsAndSubscriptions (connection, options)
+    let! connection = createEventStoreConnection options
+    do! EventStore.initProjectionsAndSubscriptions (connection, options)
     return connection
 }
 
@@ -84,7 +84,7 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
     services.Configure<EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
 
-    services.AddSingleton<EventStoreClient>((fun sp -> (initializeEventStore sp).Result)) |> ignore
+    services.AddSingleton<IEventStoreConnection>((fun sp -> (initializeEventStore sp).Result)) |> ignore
 
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
@@ -113,10 +113,10 @@ let app = application {
 
         let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
         let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
-        let eventStoreConnection = app.ApplicationServices.GetService<EventStoreClient>()
+        let eventStoreConnection = app.ApplicationServices.GetService<IEventStoreConnection>()
 
-        (Projection.connectSubscription eventStoreConnection loggerFactory).Wait()
-        (ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions).Wait()
+        Projection.connectSubscription eventStoreConnection loggerFactory
+        ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions
 
         CommandHandlers.competitionsHandler <-
             makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository eventStoreConnection Competitions.AggregateName)

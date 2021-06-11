@@ -1,6 +1,6 @@
 module FbApp.Server.Projection
 
-open EventStore.Client
+open EventStore.ClientAPI
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
 open FbApp.Domain
@@ -307,7 +307,7 @@ let projectLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
         do! Predictions.addToLeague (predictionId, md.AggregateId)
 }
 
-let eventAppeared (log: ILogger) (e: ResolvedEvent) = unitTask {
+let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
@@ -319,15 +319,14 @@ let eventAppeared (log: ILogger) (e: ResolvedEvent) = unitTask {
         | Some(md) when md.AggregateName = Leagues.AggregateName ->
             do! projectLeagues log md e
         | _ -> ()
+        subscription.Acknowledge(e)
     with ex ->
         log.LogError(ex, "Projection error of event {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
-        raise ex
+        subscription.Fail(e, PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured")
 }
 
 type private Marker = class end
 
-let connectSubscription (client: EventStoreClient) (loggerFactory: ILoggerFactory) = unitTask {
+let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
     let log = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
-    let! _ = client.SubscribeToStreamAsync(EventStore.DomainEventsStreamName, fun _ e _ -> eventAppeared log e)
-    ()
-}
+    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProjectionsSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore

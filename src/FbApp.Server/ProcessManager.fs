@@ -1,6 +1,7 @@
 module FbApp.Server.ProcessManager
 
-open EventStore.Client
+open EventStore.ClientAPI
+open EventStore.ClientAPI.Exceptions
 open FbApp.Core
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
@@ -72,7 +73,7 @@ let processPredictions (md: Metadata) (e: ResolvedEvent) = task {
     | _ -> ()
 }
 
-let eventAppeared (log: ILogger, authOptions: AuthOptions) (e: ResolvedEvent) : System.Threading.Tasks.Task = unitTask {
+let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventStorePersistentSubscriptionBase) (e: ResolvedEvent) : System.Threading.Tasks.Task = upcast task {
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
@@ -80,15 +81,14 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (e: ResolvedEvent) : 
         | Some(md) when md.AggregateName = Predictions.AggregateName ->
             do! processPredictions md e
         | _ -> ()
+        subscription.Acknowledge(e)
     with ex ->
         log.LogError(ex, "Process manager error with event {0} {1}.", e.OriginalStreamId, e.OriginalEventNumber)
-        raise ex
+        subscription.Fail(e, PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured")
 }
 
 type private X = class end
 
-let connectSubscription (client: EventStoreClient) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) = unitTask {
+let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    let! _ = client.SubscribeToStreamAsync(EventStore.DomainEventsStreamName, fun _ e _ -> eventAppeared (log, authOptions) e)
-    ()
-}
+    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProcessManagerSubscriptionGroup, (eventAppeared (log, authOptions)), autoAck = false) |> ignore

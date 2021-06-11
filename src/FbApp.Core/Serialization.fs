@@ -5,7 +5,6 @@ open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open System.IO
 open System.Text
-open System
 
 module Converters =
     // open Giraffe.Common
@@ -174,16 +173,17 @@ let serialize o =
         serializer.Serialize(writer, o)
     )
     let data = ms.ToArray()
-    (eventType o, ReadOnlyMemory(data))
+    (eventType o, data)
 
-let deserialize (typ, _, data: ReadOnlyMemory<byte>) =
-    use ms = new MemoryStream(data.ToArray())
+let deserialize (typ, _, data: byte array) =
+    use ms = new MemoryStream(data)
     use reader = new JsonTextReader(new StreamReader(ms))
     serializer.Deserialize(reader, typ)
 
 let deserializeOf<'T> (eventType, data) =
     deserialize (typeof<'T>, eventType, data) |> unbox<'T>
 
-let deserializeType (data: ReadOnlyMemory<byte>) =
-    let json = Encoding.UTF8.GetString(data.ToArray())
+let deserializeType (data: byte array) =
+    let json = Encoding.UTF8.GetString(data)
     JsonConvert.DeserializeObject<'T>(json)
+    

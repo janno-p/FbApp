@@ -1,10 +1,11 @@
 module FbApp.Core.EventStore
 
-open EventStore.Client
+open EventStore.ClientAPI
+open EventStore.ClientAPI.Exceptions
+open EventStore.ClientAPI.SystemData
 open FbApp.Core.Aggregate
 open FSharp.Control.Tasks
 open System
-open System.Collections.Generic
 
 let [<Literal>] ApplicationName = "FbApp"
 
@@ -24,10 +25,19 @@ with
     member this.UserCredentials =
         UserCredentials(this.UserName, this.Password)
 
-let createEventStoreConnection (options: EventStoreOptions) =
-    let settings = EventStoreClientSettings.Create(options.Uri)
-    settings.DefaultCredentials <- options.UserCredentials
-    new EventStoreClient(settings)
+let createEventStoreConnection (options: EventStoreOptions) = task {
+    let settings =
+        ConnectionSettings
+            .Create()
+            .UseConsoleLogger()
+            .SetDefaultUserCredentials(options.UserCredentials)
+            .Build()
+
+    let connection = EventStoreConnection.Create(settings, Uri(options.Uri))
+    do! connection.ConnectAsync()
+
+    return connection
+}
 
 [<CLIMutable>]
 type Metadata =
@@ -65,51 +75,29 @@ let getMetadata (e: ResolvedEvent) : Metadata option =
     |> Option.ofObj
     |> Option.bind (fun x ->
         match x.Metadata with
-        | v when v.IsEmpty -> None
+        | null | [||] -> None
         | arr -> Some(Serialization.deserializeType arr)
     )
 
-let makeRepository<'Event, 'Error> (client: EventStoreClient)
+let makeRepository<'Event, 'Error> (connection: IEventStoreConnection)
                                    (aggregateName: string)
-                                   (serialize: obj -> string * ReadOnlyMemory<byte>)
-                                   (deserialize: Type * string * ReadOnlyMemory<byte> -> obj) =
+                                   (serialize: obj -> string * byte array)
+                                   (deserialize: Type * string * byte array -> obj) =
     let aggregateStreamId aggregateName (id: Guid) =
         sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
-
-    let readSlice (v: IAsyncEnumerator<ResolvedEvent>) = task {
-        let events = ResizeArray<ResolvedEvent>()
-        let rec readNext () = task {
-            let! hasNext = v.MoveNextAsync()
-            if hasNext then
-                events.Add(v.Current)
-                do! readNext ()
-        }
-        do! readNext ()
-        return events
-    }
 
     let load: LoadAggregateEvents<'Event> =
         (fun (eventType, id) ->
             task {
                 let streamId = aggregateStreamId aggregateName id
-                let pages = ResizeArray<ResolvedEvent>()
-                let rec readNextPage startFrom = unitTask {
-                    let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-                    match! result.ReadState with
-                    | ReadState.StreamNotFound ->
-                        ()
-                    | _ ->
-                        let! events = readSlice result
-                        pages.AddRange(events)
-                        if events.Count = 4096 then
-                            do! readNextPage events.[4095].OriginalEventNumber
+                let rec readNextPage startFrom pages = task {
+                    let! slice = connection.ReadStreamEventsForwardAsync(streamId, startFrom, 4096, false)
+                    let pages = slice.Events :: pages
+                    if not slice.IsEndOfStream then return! readNextPage slice.NextEventNumber pages else return (slice.LastEventNumber, pages)
                 }
-                do! readNextPage StreamPosition.Start
-                let domainEvents = pages |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
-                if pages.Count < 1 then
-                    return (0L, domainEvents)
-                else
-                    return (pages.[pages.Count - 1].OriginalEventNumber.ToInt64(), domainEvents)
+                let! version, events = readNextPage 0L []
+                let domainEvents = events |> List.rev |> Seq.concat |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
+                return (version, domainEvents)
             }
         )
 
@@ -135,17 +123,20 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
                                 AggregateSequenceNumber = aggregateSequenceNumber + 1L + (int64 i)
                             }
                         let _, metadata = serialize metadata
-                        EventData(Uuid.FromGuid(guid), eventType, data, metadata)
+                        EventData(guid, eventType, true, data, metadata)
                     )
 
                 let expectedVersion =
                     match expectedVersion with
-                    | NewStream -> StreamRevision.None.ToInt64()
+                    | NewStream -> int64 ExpectedVersion.NoStream
                     | Value v -> v
 
                 try
-                    let! writeResult = client.AppendToStreamAsync(streamId, StreamRevision.FromInt64 expectedVersion, eventDatas)
-                    return Ok(writeResult.NextExpectedStreamRevision.ToInt64())
+                    use! transaction = connection.StartTransactionAsync(streamId, expectedVersion)
+                    do! transaction.WriteAsync(eventDatas)
+                    let! writeResult = transaction.CommitAsync()
+
+                    return Ok(writeResult.NextExpectedVersion)
                 with
                 | :? WrongExpectedVersionException ->
                     return Error(WrongExpectedVersion)
