@@ -22,7 +22,7 @@
                     <q-icon name="mdi-account-tie" size="1.715rem" />
                     <div class="q-pl-sm text-weight-medium">{{ userName }}</div>
                 </div>
-                <q-btn icon="mdi-cog-outline" flat stretch title="Ava kontrollpaneel" />
+                <q-btn icon="mdi-cog-outline" flat stretch title="Ava kontrollpaneel" :to="{ name: 'dashboard' }" />
                 <q-btn icon="mdi-logout" flat stretch title="Logi välja" @click="logout" />
             </template>
         </q-toolbar>
