@@ -71,27 +71,28 @@ let main _ =
     let subscriptionsClient = serviceProvider.GetRequiredService<EventStorePersistentSubscriptionsClient>()
 
     let projectionsSettings = serviceProvider.GetRequiredService<IOptions<ProjectionsSettings>>().Value
+    let subscriptionGroupsSettings = serviceProvider.GetRequiredService<IOptions<SubscriptionGroupsSettings>>().Value
 
     let task = unitTask {
         try
-            logger.LogInformation($"Trying to create '%s{domainEventsStreamName}' projection (if not exists)")
-            do! projectionManagementClient.CreateContinuousAsync(domainEventsStreamName, query)
+            logger.LogInformation($"Trying to create '%s{projectionsSettings.DomainEventsName}' projection (if not exists)")
+            do! projectionManagementClient.CreateContinuousAsync(projectionsSettings.DomainEventsName, getQuery projectionsSettings)
         with e ->
-            logger.LogWarning(e, $"Error occurred while initializing '%s{domainEventsStreamName}' projection")
+            logger.LogWarning(e, $"Error occurred while initializing '%s{projectionsSettings.DomainEventsName}' projection")
 
         let settings = PersistentSubscriptionSettings(resolveLinkTos = true, startFrom = StreamPosition.Start)
 
         try
-            logger.LogInformation($"Trying to create '%s{projectionsSubscriptionGroup}' subscription group (if not exists)")
-            do! subscriptionsClient.CreateAsync(domainEventsStreamName, projectionsSubscriptionGroup, settings)
+            logger.LogInformation($"Trying to create '%s{subscriptionGroupsSettings.Projections}' subscription group (if not exists)")
+            do! subscriptionsClient.CreateAsync(projectionsSettings.DomainEventsName, subscriptionGroupsSettings.Projections, settings)
         with e ->
-            logger.LogWarning(e, $"Error occurred while initializing '%s{projectionsSubscriptionGroup}' subscription group")
+            logger.LogWarning(e, $"Error occurred while initializing '%s{subscriptionGroupsSettings.Projections}' subscription group")
 
         try
-            logger.LogInformation($"Trying to create '%s{processManagerSubscriptionGroup}' subscription group (if not exists)")
-            do! subscriptionsClient.CreateAsync(domainEventsStreamName, processManagerSubscriptionGroup, settings)
+            logger.LogInformation($"Trying to create '%s{subscriptionGroupsSettings.ProcessManager}' subscription group (if not exists)")
+            do! subscriptionsClient.CreateAsync(projectionsSettings.DomainEventsName, subscriptionGroupsSettings.ProcessManager, settings)
         with e ->
-            logger.LogWarning(e, $"Error occurred while initializing '%s{processManagerSubscriptionGroup}' subscription group")
+            logger.LogWarning(e, $"Error occurred while initializing '%s{subscriptionGroupsSettings.ProcessManager}' subscription group")
     }
 
     task.Wait()
