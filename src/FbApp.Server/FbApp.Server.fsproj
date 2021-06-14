@@ -21,8 +21,12 @@
     <Compile Include="Leagues.fs" />
     <Compile Include="Predictions.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="appsettings.Development.json" />
     <None Include="appsettings.json" />
+    <None Include="paket.references" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,24 +34,6 @@
     <ProjectReference Include="..\FbApp.Domain\FbApp.Domain.fsproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="5.0.1" />
-    <PackageReference Include="Giraffe" Version="5.0.0" />
-    <PackageReference Include="MongoDB.Driver" Version="2.12.3" />
-    <PackageReference Include="Saturn" Version="0.15.0" />
-  </ItemGroup>
-
-  <!--
-  group Server
-dotnet-saturn
-Microsoft.AspNetCore.Antiforgery
-Microsoft.AspNetCore.Authentication.Google
-Microsoft.AspNetCore.Server.Kestrel
-Microsoft.AspNetCore.SpaServices
-Microsoft.Extensions.Configuration.UserSecrets
-Saturn
-MongoDB.Driver
-Microsoft.AspNetCore.HttpOverrides
-  -->
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 
 </Project>

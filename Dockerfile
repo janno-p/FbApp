@@ -7,19 +7,23 @@ COPY src/Client .
 RUN yarn quasar build -m spa
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0-focal AS build
-WORKDIR /source
-COPY src/FbApp.Core/FbApp.Core.fsproj ./FbApp.Core/
-COPY src/FbApp.Domain/FbApp.Domain.fsproj ./FbApp.Domain/
-COPY src/FbApp.Server/FbApp.Server.fsproj ./FbApp.Server/
-RUN dotnet restore ./FbApp.Server
+WORKDIR /build
+COPY .config/dotnet-tools.json ./.config/
+COPY .paket/Paket.Restore.targets ./.paket/
+COPY src/FbApp.Core/FbApp.Core.fsproj ./src/FbApp.Core/
+COPY src/FbApp.Domain/FbApp.Domain.fsproj ./src/FbApp.Domain/
+COPY src/FbApp.Server/FbApp.Server.fsproj ./src/FbApp.Server/
+COPY paket.* ./
+RUN dotnet tool restore
+RUN dotnet restore ./src/FbApp.Server
 
-COPY src/FbApp.Core/. ./FbApp.Core/
-COPY src/FbApp.Domain/. ./FbApp.Domain/
-COPY src/FbApp.Server/. ./FbApp.Server/
-COPY --from=client-build-stage /app/src/FbApp.Server/wwwroot/. ./FbApp.Server/wwwroot/
+COPY src/FbApp.Core/. ./src/FbApp.Core/
+COPY src/FbApp.Domain/. ./src/FbApp.Domain/
+COPY src/FbApp.Server/. ./src/FbApp.Server/
+COPY --from=client-build-stage /app/src/FbApp.Server/wwwroot/. ./src/FbApp.Server/wwwroot/
 
-WORKDIR /source/FbApp.Server
-RUN dotnet publish -c release -o /app --no-restore
+WORKDIR /build/src/FbApp.Server
+RUN dotnet publish -c release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:5.0-focal AS final
 WORKDIR /app

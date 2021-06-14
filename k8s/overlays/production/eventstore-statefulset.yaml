@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eventstore
+spec:
+  template:
+    spec:
+      containers:
+      - name: eventstore
+        args:
+        - --insecure
+        - --run-projections=All
+        - --enable-atom-pub-over-http
+        - --enable-external-tcp
+        ports:
+        - containerPort: 2113
+        - containerPort: 1113
+        volumeMounts:
+        - mountPath: /var/lib/eventstore
+          name: eventstore-volume-data
+        - mountPath: /var/log/eventstore
+          name: eventstore-volume-logs
+      volumes:
+      - name: eventstore-volume-data
+        hostPath:
+          path: /data/eventstore/data
+          type: Directory
+      - name: eventstore-volume-logs
+        hostPath:
+          path: /data/eventstore/logs
+          type: Directory

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eventstore
+spec:
+  template:
+    spec:
+      containers:
+      - name: eventstore
+        volumeMounts:
+        - mountPath: /var/lib/eventstore
+          name: eventstore-volume-data
+        - mountPath: /var/log/eventstore
+          name: eventstore-volume-logs
+      volumes:
+      - name: eventstore-volume-data
+        hostPath:
+          path: /home/janno/k8s/data/eventstore/data
+          type: Directory
+      - name: eventstore-volume-logs
+        hostPath:
+          path: /home/janno/k8s/data/eventstore/logs
+          type: Directory

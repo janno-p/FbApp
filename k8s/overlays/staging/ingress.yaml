@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: public
+  name: fbapp-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: fbapp
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

@@ -1,0 +1,12 @@
+source https://api.nuget.org/v3/index.json
+
+storage: none
+framework: net50
+
+nuget EventStore.Client
+nuget FSharp.Core
+nuget Giraffe
+nuget MongoDB.Driver
+nuget Newtonsoft.Json
+nuget Ply
+nuget Saturn
