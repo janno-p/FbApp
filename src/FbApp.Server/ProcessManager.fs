@@ -86,6 +86,11 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (subscription: EventS
 
 type private X = class end
 
-let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) =
+let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) (subscriptionsSettings: SubscriptionsSettings) =
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProcessManagerSubscriptionGroup, (eventAppeared (log, authOptions)), autoAck = false) |> ignore
+    connection.ConnectToPersistentSubscription(
+        subscriptionsSettings.StreamName,
+        subscriptionsSettings.ProcessManagerGroup,
+        (eventAppeared (log, authOptions)),
+        autoAck = false
+    ) |> ignore

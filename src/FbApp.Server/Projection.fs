@@ -10,6 +10,7 @@ open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open System
 open System.Collections.Generic
+open FbApp.Server.Configuration
 
 let projectCompetitions (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
@@ -327,6 +328,11 @@ let eventAppeared (log: ILogger) (subscription: EventStorePersistentSubscription
 
 type private Marker = class end
 
-let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) =
+let connectSubscription (connection: IEventStoreConnection) (loggerFactory: ILoggerFactory) (subscriptionsSettings: SubscriptionsSettings) =
     let log = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
-    connection.ConnectToPersistentSubscription(EventStore.DomainEventsStreamName, EventStore.ProjectionsSubscriptionGroup, (eventAppeared log), autoAck = false) |> ignore
+    connection.ConnectToPersistentSubscription(
+        subscriptionsSettings.StreamName,
+        subscriptionsSettings.ProjectionsGroup,
+        (eventAppeared log),
+        autoAck = false
+    ) |> ignore

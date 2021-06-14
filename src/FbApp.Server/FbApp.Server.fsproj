@@ -9,7 +9,6 @@
   <ItemGroup>
     <Compile Include="Configuration.fs" />
     <Compile Include="CommandHandlers.fs" />
-    <Compile Include="EventStore.fs" />
     <Compile Include="Repositories.fs" />
     <Compile Include="Projection.fs" />
     <Compile Include="ProcessManager.fs" />
