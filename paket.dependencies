@@ -4,8 +4,15 @@ storage: none
 framework: net50
 
 nuget EventStore.Client
+nuget EventStore.Client.Grpc.PersistentSubscriptions
+nuget EventStore.Client.Grpc.ProjectionManagement
 nuget FSharp.Core
 nuget Giraffe
+nuget Microsoft.Extensions.Configuration
+nuget Microsoft.Extensions.Configuration.EnvironmentVariables
+nuget Microsoft.Extensions.Configuration.Json
+nuget Microsoft.Extensions.DependencyInjection
+nuget Microsoft.Extensions.Logging.Console
 nuget MongoDB.Driver
 nuget Newtonsoft.Json
 nuget Ply

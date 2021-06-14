@@ -1,0 +1,9 @@
+EventStore.Client.Grpc.PersistentSubscriptions
+EventStore.Client.Grpc.ProjectionManagement
+FSharp.Core
+Microsoft.Extensions.Configuration
+Microsoft.Extensions.Configuration.EnvironmentVariables
+Microsoft.Extensions.Configuration.Json
+Microsoft.Extensions.DependencyInjection
+Microsoft.Extensions.Logging.Console
+Ply
