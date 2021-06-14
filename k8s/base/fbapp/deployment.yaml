@@ -46,3 +46,7 @@ spec:
             secretKeyRef:
               name: fbapp
               key: googleClientSecret
+      initContainers:
+      - name: fbapp-init-events
+        image: localhost:32000/fbapp-init-events:registry
+        imagePullPolicy: Always

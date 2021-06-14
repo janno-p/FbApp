@@ -8,6 +8,7 @@ nuget EventStore.Client.Grpc.PersistentSubscriptions
 nuget EventStore.Client.Grpc.ProjectionManagement
 nuget FSharp.Core
 nuget Giraffe
+nuget Grpc.Net.Client
 nuget Microsoft.Extensions.Configuration
 nuget Microsoft.Extensions.Configuration.EnvironmentVariables
 nuget Microsoft.Extensions.Configuration.Json
