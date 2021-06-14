@@ -1,9 +1,8 @@
 ﻿/.fake/
 /.idea/
-/.paket/
 /paket-files/
 
-!/.paket/paket.exe
+/.paket/*
 !/.paket/Paket.Restore.targets
 
 /.vs/
