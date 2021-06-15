@@ -1,4 +1,6 @@
-﻿/.fake/
+﻿/.api/
+
+/.fake/
 /.idea/
 /paket-files/
 

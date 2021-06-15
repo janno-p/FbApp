@@ -6,7 +6,6 @@ open FSharp.Control.Tasks
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open System
-open System.Collections.Generic
 open System.Net.Http
 
 [<CLIMutable>]
@@ -360,7 +359,7 @@ let private toQuery lst =
     | xs -> String.Join("&", xs |> List.map (fun x -> x.ToString())) |> sprintf "?%s"
 
 let private baseUri =
-    Uri("http://api.football-data.org/v1/")
+    Uri("http://api.football-data.org/v2/")
 
 let private createClient (authToken: string) =
     let client = new HttpClient()
@@ -379,166 +378,27 @@ let private apiCall<'T> authToken (uri: string) = task {
         return Error(response.StatusCode, response.ReasonPhrase, deserialize<Error> jsonStream)
 }
 
-/// List fixtures across a set of competitions.
-let getFixtures authToken (filters: FixturesFilter list) = task {
-    let uri = sprintf "fixtures%s" (filters |> toQuery)
-    return! apiCall<Fixtures> authToken uri
+/// List all available competitions.
+let getCompetitions authToken = task {
+    let uri = sprintf "competitions/%i" 2018L
+    let! comp = apiCall<Competition> authToken uri
+    return comp |> Result.map (fun x -> [| x |])
 }
 
-/// Show one fixture.
-let getFixture authToken (fixtureId: Id) (filters: FixtureFilter list) = task {
-    let uri = sprintf "fixtures/%d%s" fixtureId (filters |> toQuery)
-    return! apiCall<Fixture> authToken uri
+/// List all teams for a certain competition.
+let getCompetitionTeams authToken (competitionId: Id) = task {
+    let uri = sprintf "competitions/%d/teams" competitionId
+    return! apiCall<CompetitionTeams> authToken uri
 }
 
-/// Show all fixtures for a certain team.
-let getTeamFixtures authToken (teamId: Id) (filters: TeamFixturesFilter list) = task {
-    let uri = sprintf "teams/%d/fixtures%s" teamId (filters |> toQuery)
-    return! apiCall<TeamFixtures> authToken uri
+/// List all fixtures for a certain competition.
+let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
+    let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
+    return! apiCall<CompetitionFixtures> authToken uri
 }
 
-/// Show one team.
-let getTeam authToken (teamId: Id) = task {
-    let uri = sprintf "teams/%d" teamId
-    return! apiCall<CompetitionTeam> authToken uri
+/// Show league table / current standing.
+let getCompetitionLeagueTable authToken (competitionId: Id) = task {
+    let uri = sprintf "competitions/%d/standings" competitionId
+    return! apiCall<CompetitionLeagueTable> authToken uri
 }
-
-/// Show all players for a certain team.
-let getTeamPlayers authToken (teamId: Id) = task {
-    let uri = sprintf "teams/%d/players" teamId
-    return! apiCall<TeamPlayers> authToken uri
-}
-
-module Api2 =
-    let private baseUri =
-        Uri("http://api.football-data.org/v2/")
-
-    let private createClient (authToken: string) =
-        let client = new HttpClient()
-        client.BaseAddress <- baseUri
-        client.DefaultRequestHeaders.Add("X-Auth-Token", authToken)
-        client
-
-    let private apiCall<'T> authToken (uri: string) = task {
-        use client = createClient authToken
-        let! response = client.GetAsync(uri)
-        if response.IsSuccessStatusCode then
-            let! jsonStream = response.Content.ReadAsStreamAsync()
-            return Ok(deserialize<'T> jsonStream)
-        else
-            let! jsonStream = response.Content.ReadAsStreamAsync()
-            return Error(response.StatusCode, response.ReasonPhrase, deserialize<Error> jsonStream)
-    }
-    type CompetitionMatchFilter =
-        | DateRange of DateTimeOffset * DateTimeOffset
-        | Stage of string
-        | Status of string
-        | Matchday of int
-        | Group of string
-    with
-        override this.ToString() =
-            match this with
-            | DateRange (dateFrom, dateTo) -> sprintf "dateFrom=%s&dateTo=%s" (dateFrom.ToString("yyyy-MM-dd")) (dateTo.ToString("yyyy-MM-dd"))
-            | Stage stage -> sprintf "stage=%s" stage
-            | Status status -> sprintf "status=%s" status
-            | Matchday matchday -> sprintf "matchday=%d" matchday
-            | Group group -> sprintf "group=%s" group
-
-    [<CLIMutable>]
-    type CompetitionSeason =
-        {
-            Id: Id
-            StartDate: DateTimeOffset
-            EndDate: DateTimeOffset
-            CurrentMatchday: int
-        }
-
-    [<CLIMutable>]
-    type Resource =
-        {
-            Id: Id
-            Name: string
-        }
-
-    [<CLIMutable>]
-    type CompetitionMatchScoreGoals =
-        {
-            HomeTeam: int option
-            AwayTeam: int option
-        }
-
-    [<CLIMutable>]
-    type CompetitionMatchScore =
-        {
-            Winner: string option
-            Duration: string
-            FullTime: CompetitionMatchScoreGoals
-            HalfTime: CompetitionMatchScoreGoals
-            ExtraTime: CompetitionMatchScoreGoals
-            Penalties: CompetitionMatchScoreGoals
-        }
-
-    [<CLIMutable>]
-    type CompetitionMatchReferee =
-        {
-            Id: Id
-            Name: string
-            Nationality: string
-        }
-
-    [<CLIMutable>]
-    type CompetitionMatch =
-        {
-            Id: Id
-            Competition: Resource
-            Season: CompetitionSeason
-            UtcDate: DateTimeOffset
-            Status: string
-            Matchday: int option
-            Stage: string
-            Group: string
-            LastUpdated: DateTimeOffset
-            HomeTeam: Resource
-            AwayTeam: Resource
-            Score: CompetitionMatchScore
-            Referees: CompetitionMatchReferee array
-        }
-
-    [<CLIMutable>]
-    type CompetitionMatches =
-        {
-            Count: int
-            Season: CompetitionSeason
-            Matches: CompetitionMatch array
-            // filters
-        }
-
-    let getCompetitionMatches authToken (competitionId: Id) (filters: CompetitionMatchFilter list) = task {
-        let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
-        return! apiCall<CompetitionMatches> authToken uri
-    }
-
-    /// List all available competitions.
-    let getCompetitions authToken = task {
-        let uri = sprintf "competitions/%i" 2018L
-        let! comp = apiCall<Competition> authToken uri
-        return comp |> Result.map (fun x -> [| x |])
-    }
-
-    /// List all teams for a certain competition.
-    let getCompetitionTeams authToken (competitionId: Id) = task {
-        let uri = sprintf "competitions/%d/teams" competitionId
-        return! apiCall<CompetitionTeams> authToken uri
-    }
-
-    /// List all fixtures for a certain competition.
-    let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
-        let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
-        return! apiCall<CompetitionFixtures> authToken uri
-    }
-
-    /// Show league table / current standing.
-    let getCompetitionLeagueTable authToken (competitionId: Id) = task {
-        let uri = sprintf "competitions/%d/standings" competitionId
-        return! apiCall<CompetitionLeagueTable> authToken uri
-    }

@@ -22,11 +22,11 @@ let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata)
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
         try
-            let! teams = FootballData.Api2.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
+            let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
             let teams = teams |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
-            let! fixtures = FootballData.Api2.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
+            let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
             let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
-            let! groups = FootballData.Api2.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
+            let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
             let groups = groups |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
             let command =
                 Competitions.Command.AssignTeamsAndFixtures

@@ -1,9 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>FbApp.Init.Events</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
