@@ -12,7 +12,7 @@ COPY fbapp-init-events/. ./fbapp-init-events/
 WORKDIR /build/fbapp-init-events
 RUN dotnet publish -c release -o /app
 
-FROM mcr.microsoft.com/dotnet/runtime:5.0-focal AS final
+FROM mcr.microsoft.com/dotnet/aspnet:5.0-focal AS final
 WORKDIR /app
 COPY --from=build /app .
 ENTRYPOINT [ "dotnet", "FbApp.Init.Events.dll" ]

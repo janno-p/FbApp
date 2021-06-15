@@ -170,10 +170,15 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
 
             let! fixtureUpdatesLookup, tag =
                 dapr.GetStateAndETagAsync<Dictionary<int64, DateTimeOffset>>(
-                    "live-update-store",
+                    "live-update-state",
                     $"competition-%d{competitionId}",
                     cancellationToken = cancellationToken
                 )
+
+            let fixtureUpdatesLookup =
+                match fixtureUpdatesLookup with
+                | null -> Dictionary<int64, DateTimeOffset>()
+                | value -> value
 
             let isUpdated (fixture: MatchDto) =
                 match fixtureUpdatesLookup.TryGetValue fixture.Id with
@@ -214,7 +219,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                     )
                 let! _ =
                     dapr.TrySaveStateAsync(
-                        "live-update-store",
+                        "live-update-state",
                         $"competition-%d{competitionId}",
                         fixtureUpdatesLookup,
                         tag,

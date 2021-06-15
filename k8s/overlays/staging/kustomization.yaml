@@ -7,5 +7,6 @@ patchesStrategicMerge:
 - eventstore-service.yaml
 - eventstore-statefulset.yaml
 - mongo-statefulset.yaml
+- redis-statefulset.yaml
 resources:
 - ingress.yaml

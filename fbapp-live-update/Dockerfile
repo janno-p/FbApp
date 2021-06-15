@@ -12,7 +12,7 @@ COPY fbapp-live-update/. ./fbapp-live-update/
 WORKDIR /build/fbapp-live-update
 RUN dotnet publish -c release -o /app
 
-FROM mcr.microsoft.com/dotnet/runtime:5.0-focal AS final
+FROM mcr.microsoft.com/dotnet/aspnet:5.0-focal AS final
 WORKDIR /app
 COPY --from=build /app .
 ENTRYPOINT [ "dotnet", "FbApp.LiveUpdate.dll" ]
