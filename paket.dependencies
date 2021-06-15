@@ -3,7 +3,7 @@ source https://api.nuget.org/v3/index.json
 storage: none
 framework: net50
 
-nuget Dapr.Client
+nuget Dapr.AspNetCore
 nuget EventStore.Client
 nuget EventStore.Client.Grpc.PersistentSubscriptions
 nuget EventStore.Client.Grpc.ProjectionManagement

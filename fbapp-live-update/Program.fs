@@ -1,18 +1,20 @@
 namespace FbApp.LiveUpdate
 
 
+open Dapr.Client
 open Flurl.Http
+open Flurl.Http.Configuration
 open FSharp.Control.Tasks
-open System
-open System.Threading.Tasks
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
-open Newtonsoft.Json
 open Microsoft.FSharp.Reflection
+open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
-open Flurl.Http.Configuration
+open System
+open System.Threading.Tasks
+open System.Collections.Generic
 
 
 type OptionConverter () =
@@ -104,7 +106,29 @@ type MatchesDto = {
     }
 
 
-type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>) =
+type UpdatedFixtureDto = {
+    FixtureId: int64
+    CompetitionId: int64
+    HomeTeamId: int64 option
+    AwayTeamId: int64 option
+    UtcDate: DateTimeOffset
+    Stage: string
+    Status: string
+    FullTime: (int * int) option
+    HalfTime: (int * int) option
+    ExtraTime: (int * int) option
+    Penalties: (int * int) option
+    Winner: string option
+    Duration: string
+    }
+
+
+type FixturesUpdatedIntegrationEvent = {
+    Fixtures: UpdatedFixtureDto[]
+    }
+
+
+type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: DaprClient) =
     inherit BackgroundService()
 
     let authToken = apiSettings.Value.Token
@@ -143,46 +167,63 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>) =
         match! getCompetitionMatches cancellationToken with
         | Ok matches ->
             logger.LogInformation("Loaded data of {count} fixtures.", matches.Count)
-            (*
-            let mutable anyError = false
-            let competitionGuid = Competitions.createId oldCompetitionId
-            for fixture in data.Matches |> Array.filter (fun f -> f.Stage = "GROUP_STAGE") do
-                let id = Fixtures.createId (competitionGuid, mapFixtureId fixture.Id)
-                let command =
-                    Fixtures.UpdateFixture
-                        {
-                            Status = fixture.Status
-                            FullTime = mapGoals fixture.Score.FullTime
-                            ExtraTime = mapGoals fixture.Score.ExtraTime
-                            Penalties = mapGoals fixture.Score.Penalties
-                        }
-                let! updateResult = fixtureHandler (id, Aggregate.Any) command
-                match updateResult with
-                | Ok(_) -> ()
-                | Error(err) ->
-                    anyError <- true
-                    log.LogError(sprintf "Could not update fixture %A: %A" id err)
-            for fixture in data.Matches |> Array.filter (fun f -> f.Stage = "ROUND_OF_16" || f.Stage = "QUARTER_FINALS" || f.Stage = "SEMI_FINALS" || f.Stage = "FINAL") do
-                let fixtureId = mapFixtureId fixture.Id
-                let id = Fixtures.createId (competitionGuid, fixtureId)
-                let command =
-                    Fixtures.UpdateQualifiers
-                        {
-                            CompetitionId = competitionGuid
-                            ExternalId = fixtureId
-                            HomeTeamId = mapTeamId fixture.HomeTeam.Id
-                            AwayTeamId = mapTeamId fixture.AwayTeam.Id
-                            Date = fixture.UtcDate
-                            Stage = fixture.Stage
-                            Status = fixture.Status
-                            FullTime = mapGoals fixture.Score.FullTime
-                            ExtraTime = mapGoals fixture.Score.ExtraTime
-                            Penalties = mapGoals fixture.Score.Penalties
-                        }
-                let! _ = fixtureHandler (id, Aggregate.Any) command
+
+            let! fixtureUpdatesLookup, tag =
+                dapr.GetStateAndETagAsync<Dictionary<int64, DateTimeOffset>>(
+                    "live-update-store",
+                    $"competition-%d{competitionId}",
+                    cancellationToken = cancellationToken
+                )
+
+            let isUpdated (fixture: MatchDto) =
+                match fixtureUpdatesLookup.TryGetValue fixture.Id with
+                | false, v | true, v when v < fixture.LastUpdated -> true
+                | _ -> false
+
+            let fixtureUpdates = ResizeArray<UpdatedFixtureDto>()
+
+            let mapGoals (g: GoalsDto) =
+                match g.HomeTeam, g.AwayTeam with
+                | Some(home), Some(away) -> Some(home, away)
+                | _ -> None
+
+            for fixture in matches.Matches |> Array.filter isUpdated do
+                fixtureUpdates.Add({
+                    FixtureId = fixture.Id
+                    CompetitionId = competitionId
+                    HomeTeamId = fixture.HomeTeam.Id
+                    AwayTeamId = fixture.AwayTeam.Id
+                    UtcDate = fixture.UtcDate
+                    Stage = fixture.Stage
+                    Status = fixture.Status
+                    FullTime = mapGoals fixture.Score.FullTime
+                    HalfTime = mapGoals fixture.Score.HalfTime
+                    ExtraTime = mapGoals fixture.Score.ExtraTime
+                    Penalties = mapGoals fixture.Score.Penalties
+                    Winner = fixture.Score.Winner
+                    Duration = fixture.Score.Duration
+                })
+                fixtureUpdatesLookup.[fixture.Id] <- fixture.LastUpdated
+
+            if fixtureUpdates.Count > 0 then
+                do! dapr.PublishEventAsync<FixturesUpdatedIntegrationEvent>(
+                        "live-update-pubsub",
+                        "fixtures-updates",
+                        { Fixtures = fixtureUpdates.ToArray() },
+                        cancellationToken
+                    )
+                let! _ =
+                    dapr.TrySaveStateAsync(
+                        "live-update-store",
+                        $"competition-%d{competitionId}",
+                        fixtureUpdatesLookup,
+                        tag,
+                        cancellationToken = cancellationToken
+                    )
                 ()
-            if not anyError then setLastUpdate ()
-            *)
+
+            setLastUpdate()
+
         | Error e ->
             logger.LogCritical(e, "Error returned from API request")
     }
@@ -210,6 +251,7 @@ module Program =
 
     let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
         services.Configure<ApiSettings>(context.Configuration.GetSection("Api")) |> ignore
+        services.AddDaprClient() |> ignore
         services.AddHostedService<Worker>() |> ignore
 
     let createHostBuilder args =
@@ -220,18 +262,3 @@ module Program =
     let main args =
         createHostBuilder(args).Build().Run()
         0
-
-
-(*
-let mapResult (fixture: FootballData.CompetitionFixture) =
-    fixture.Result
-    |> Option.bind (fun x ->
-        match (x.GoalsHomeTeam, x.GoalsAwayTeam) with
-        | Some(x1), Some(x2) -> Some(x1, x2)
-        | _ -> None
-    )
-
-let mapGoals : FootballData.Api2.CompetitionMatchScoreGoals -> FbApp.Domain.Fixtures.FixtureGoals option = function
-    | { HomeTeam = Some(a); AwayTeam = Some(b) } -> Some({ Home = a; Away = b })
-    | _ -> None
-*)
