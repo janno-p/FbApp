@@ -17,4 +17,5 @@ nuget Microsoft.Extensions.Logging.Console
 nuget MongoDB.Driver
 nuget Newtonsoft.Json
 nuget Ply
+nuget protobuf-net ~> 2
 nuget Saturn

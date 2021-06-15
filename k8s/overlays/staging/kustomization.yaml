@@ -4,6 +4,7 @@ bases:
 - ../../base
 namespace: fbapp
 patchesStrategicMerge:
+- eventstore-service.yaml
 - eventstore-statefulset.yaml
 - mongo-statefulset.yaml
 resources:

@@ -7,6 +7,14 @@ spec:
     spec:
       containers:
       - name: eventstore
+        args:
+        - --insecure
+        - --run-projections=All
+        - --enable-atom-pub-over-http
+        - --enable-external-tcp
+        ports:
+        - containerPort: 2113
+        - containerPort: 1113
         volumeMounts:
         - mountPath: /var/lib/eventstore
           name: eventstore-volume-data

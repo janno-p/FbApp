@@ -4,9 +4,11 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: public
   name: fbapp-ingress
+  namespace: fbapp
 spec:
   rules:
-  - http:
+  - host: fbapp.dev
+    http:
       paths:
       - backend:
           service:
@@ -15,3 +17,6 @@ spec:
               number: 80
         path: /
         pathType: Prefix
+  tls:
+  - hosts:
+    - fbapp.dev

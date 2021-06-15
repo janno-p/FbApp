@@ -98,7 +98,7 @@ let main _ =
             do! projectionManagementClient.CreateContinuousAsync(projectionsSettings.DomainEventsName, getQuery projectionsSettings)
         with
         | Conflict ->
-            logger.LogInformation($"Event projection '%s{subscriptionGroupsSettings.Projections}' already exists")
+            logger.LogInformation($"Event projection '%s{projectionsSettings.DomainEventsName}' already exists")
         | e ->
             logger.LogCritical(e, $"Error occurred while initializing '%s{projectionsSettings.DomainEventsName}' projection")
             raise e
