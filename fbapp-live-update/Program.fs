@@ -106,7 +106,7 @@ type MatchesDto = {
     }
 
 
-type UpdatedFixtureDto = {
+type FixtureDto = {
     FixtureId: int64
     CompetitionId: int64
     HomeTeamId: int64 option
@@ -124,7 +124,7 @@ type UpdatedFixtureDto = {
 
 
 type FixturesUpdatedIntegrationEvent = {
-    Fixtures: UpdatedFixtureDto[]
+    Fixtures: FixtureDto[]
     }
 
 
@@ -134,6 +134,16 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
     let authToken = apiSettings.Value.Token
     let baseUrl = apiSettings.Value.BaseUrl
     let competitionId = apiSettings.Value.CompetitionId
+
+    let [<Literal>] StoreName = "live-update-state"
+    let [<Literal>] PubsubName = "live-update-pubsub"
+    let [<Literal>] FixtureUpdatesTopicName = "fixture-updates"
+
+    let competitionKey id =
+        $"competition-%d{id}"
+
+    let fixtureKey id =
+        $"fixture-%d{id}"
 
     let isFullUpdate, setLastUpdate =
         let mutable lastFullUpdate = DateTimeOffset.MinValue
@@ -170,8 +180,8 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
 
             let! fixtureUpdatesLookup, tag =
                 dapr.GetStateAndETagAsync<Dictionary<int64, DateTimeOffset>>(
-                    "live-update-state",
-                    $"competition-%d{competitionId}",
+                    StoreName,
+                    competitionKey competitionId,
                     cancellationToken = cancellationToken
                 )
 
@@ -185,7 +195,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                 | false, v | true, v when v < fixture.LastUpdated -> true
                 | _ -> false
 
-            let fixtureUpdates = ResizeArray<UpdatedFixtureDto>()
+            let fixtureUpdates = ResizeArray<(FixtureDto * string)>()
 
             let mapGoals (g: GoalsDto) =
                 match g.HomeTeam, g.AwayTeam with
@@ -193,7 +203,14 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                 | _ -> None
 
             for fixture in matches.Matches |> Array.filter isUpdated do
-                fixtureUpdates.Add({
+                let! (previousFixture, tag) =
+                    dapr.GetStateAndETagAsync<FixtureDto>(
+                        StoreName,
+                        fixtureKey fixture.Id,
+                        cancellationToken = cancellationToken
+                    )
+
+                let newFixture: FixtureDto = {
                     FixtureId = fixture.Id
                     CompetitionId = competitionId
                     HomeTeamId = fixture.HomeTeam.Id
@@ -207,25 +224,31 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                     Penalties = mapGoals fixture.Score.Penalties
                     Winner = fixture.Score.Winner
                     Duration = fixture.Score.Duration
-                })
+                }
+
+                if newFixture <> previousFixture then
+                    fixtureUpdates.Add((newFixture, tag))
+
                 fixtureUpdatesLookup.[fixture.Id] <- fixture.LastUpdated
 
             if fixtureUpdates.Count > 0 then
                 do! dapr.PublishEventAsync<FixturesUpdatedIntegrationEvent>(
-                        "live-update-pubsub",
-                        "fixtures-updates",
-                        { Fixtures = fixtureUpdates.ToArray() },
+                        PubsubName,
+                        FixtureUpdatesTopicName,
+                        { Fixtures = fixtureUpdates |> Seq.map fst |> Seq.toArray },
                         cancellationToken
                     )
                 let! _ =
                     dapr.TrySaveStateAsync(
-                        "live-update-state",
-                        $"competition-%d{competitionId}",
+                        StoreName,
+                        competitionKey competitionId,
                         fixtureUpdatesLookup,
                         tag,
                         cancellationToken = cancellationToken
                     )
-                ()
+                for (f, t) in fixtureUpdates do
+                    let! _ = dapr.TrySaveStateAsync(StoreName, fixtureKey f.FixtureId, f, t, cancellationToken = cancellationToken)
+                    ()
 
             setLastUpdate()
 
