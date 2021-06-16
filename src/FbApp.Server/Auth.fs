@@ -12,6 +12,7 @@ open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Options
 open Newtonsoft.Json
 open Saturn
+open Saturn.Endpoint
 
 let [<Literal>] AdministratorRole = "Administrator"
 

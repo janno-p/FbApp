@@ -6,9 +6,9 @@ open FbApp.Server.Configuration
 open FbApp.Server
 open FSharp.Control.Tasks
 open Giraffe
-open Saturn
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
+open Saturn.Endpoint
 
 type CompetitionItem =
     {

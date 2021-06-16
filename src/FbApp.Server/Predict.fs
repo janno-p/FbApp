@@ -6,6 +6,7 @@ open FbApp.Server.Repositories
 open FSharp.Control.Tasks
 open Giraffe
 open Saturn
+open Saturn.Endpoint
 open System
 open System.Collections.Generic
 

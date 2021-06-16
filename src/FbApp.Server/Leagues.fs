@@ -5,6 +5,7 @@ open FbApp.Domain
 open FSharp.Control.Tasks
 open Giraffe
 open Saturn
+open Saturn.Endpoint
 open System
 
 let private getLeague (code: string) : HttpHandler =

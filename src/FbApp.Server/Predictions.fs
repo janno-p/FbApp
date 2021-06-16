@@ -4,6 +4,7 @@ open FbApp.Server.Repositories
 open FSharp.Control.Tasks
 open Giraffe
 open Saturn
+open Saturn.Endpoint
 
 let private fixName (name: string) =
     name.Split([|' '|], 2).[0]
