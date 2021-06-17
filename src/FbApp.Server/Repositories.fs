@@ -326,7 +326,7 @@ module Fixtures =
         let! teams =
             collection.Aggregate(
                 PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
-                    (sprintf """{ $match: { CompetitionId: CSUUID("%O"), Stage: "ROUND_OF_16" } }""" competitionId),
+                    (sprintf """{ $match: { CompetitionId: CSUUID("%O"), Stage: "LAST_16" } }""" competitionId),
                     """{ $project: { _id: 0, TeamId: ["$HomeTeam.ExternalId", "$AwayTeam.ExternalId"] } }""",
                     """{ $unwind: "$TeamId" }"""
                 )
@@ -352,11 +352,11 @@ module Predictions =
 
     let ofStage (competitionId: Guid, stage: string) =
         match stage with
-        | "ROUND_OF_16"
-        | "QUARTER_FINALS"
-        | "SEMI_FINALS" ->
+        | "LAST_16"
+        | "QUARTER_FINAL"
+        | "SEMI_FINAL" ->
             task {
-                let qualName = if stage = "ROUND_OF_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINALS" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
+                let qualName = if stage = "LAST_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINAL" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
                         (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
@@ -428,9 +428,9 @@ module Predictions =
 
     let private getColName = function
         | "GROUP_STAGE" -> "QualifiersRoundOf16"
-        | "ROUND_OF_16" -> "QualifiersRoundOf8"
-        | "QUARTER_FINALS" -> "QualifiersRoundOf4"
-        | "SEMI_FINALS" -> "QualifiersRoundOf2"
+        | "LAST_16" -> "QualifiersRoundOf8"
+        | "QUARTER_FINAL" -> "QualifiersRoundOf4"
+        | "SEMI_FINAL" -> "QualifiersRoundOf2"
         | "FINAL" -> "Winner"
         | x -> failwithf "Unexpected value: `%s`" x
 

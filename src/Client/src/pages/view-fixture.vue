@@ -182,11 +182,11 @@ export default {
             switch (stage) {
             case "GROUP_STAGE":
                 return "Alagrupimäng"
-            case "ROUND_OF_16":
+            case "LAST_16":
                 return "1/16 finaal"
-            case "QUARTER_FINALS":
+            case "QUARTER_FINAL":
                 return "Veerandfinaal"
-            case "SEMI_FINALS":
+            case "SEMI_FINAL":
                 return "Poolfinaal"
             case "FINAL":
                 return "Finaal"

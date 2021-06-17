@@ -8,7 +8,6 @@ let [<Literal>] AggregateName = "Fixture"
 type Error =
     | FixtureAlreadyAdded
     | UnknownFixture
-    | UnexpectedStage of string
 
 type FixtureStatus =
     | Scheduled

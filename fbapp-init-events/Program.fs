@@ -103,7 +103,12 @@ let main _ =
             logger.LogCritical(e, $"Error occurred while initializing '%s{projectionsSettings.DomainEventsName}' projection")
             raise e
 
-        let settings = PersistentSubscriptionSettings(resolveLinkTos = true, startFrom = StreamPosition.Start)
+        let settings =
+            PersistentSubscriptionSettings(
+                resolveLinkTos = true,
+                startFrom = StreamPosition.Start,
+                minCheckPointCount = 1
+            )
 
         try
             logger.LogInformation($"Trying to create '%s{subscriptionGroupsSettings.Projections}' subscription group ...")

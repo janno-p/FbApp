@@ -263,8 +263,8 @@ let projectFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                 do! Predictions.updateQualifiers (input.CompetitionId, "GROUP_STAGE", fixtureModel.HomeTeam.ExternalId, true)
                 do! Predictions.updateQualifiers (input.CompetitionId, "GROUP_STAGE", fixtureModel.AwayTeam.ExternalId, true)
 
-            if stage = "ROUND_OF_16" then
-                let! numFixtures = Fixtures.getFixtureCount (input.CompetitionId, "ROUND_OF_16")
+            if stage = "LAST_16" then
+                let! numFixtures = Fixtures.getFixtureCount (input.CompetitionId, "LAST_16")
                 if numFixtures = 8L then
                     do! updateQualifiedTeams competition
 

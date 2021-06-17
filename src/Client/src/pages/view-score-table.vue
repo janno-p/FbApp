@@ -14,9 +14,8 @@
         >
             <q-tr slot="body" slot-scope="props" :props="props">
                 <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                    <template v-if="col.name === 'total'">
-                        {{ col.value[0] }}
-                        <q-icon :name="ratioIcon(col.value[1])" :color="ratioColor(col.value[1])" :title="ratioTitle(col.value[1])" />
+                    <template v-if="col.name === 'ratio'">
+                        <q-icon :name="ratioIcon(col.value)" :color="ratioColor(col.value)" :title="ratioTitle(col.value)" />
                     </template>
                     <template v-else>
                         {{ col.value }}
@@ -38,6 +37,14 @@ export default {
             isLoading: true,
             standings: null,
             columns: [
+                {
+                    name: "ratio",
+                    required: true,
+                    label: "",
+                    align: "center",
+                    field: "ratio",
+                    sortable: false
+                },
                 {
                     name: "pos",
                     required: true,
@@ -100,7 +107,7 @@ export default {
                     name: "total",
                     label: "Kokku",
                     align: "right",
-                    field: (r) => [r.total, r.ratio],
+                    field: "total",
                     sortable: true
                 }
             ],

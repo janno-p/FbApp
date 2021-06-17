@@ -7,6 +7,7 @@ open FbApp.Server
 open FbApp.Server.Configuration
 open FSharp.Control.Tasks
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
@@ -63,8 +64,7 @@ let updateFixtures: HttpHandler =
         let! evt = ctx.BindJsonAsync<FixturesUpdatedIntegrationEvent>()
         for fixture in evt.Fixtures do
             let competitionGuid = Competitions.createId fixture.CompetitionId
-            let fixtureId = Fixtures.createId (competitionGuid, fixture.FixtureId)
-            let! result =
+            let maybeCommand =
                 match fixture.Stage with
                 | "GROUP_STAGE" ->
                     Fixtures.UpdateFixture {
@@ -73,31 +73,41 @@ let updateFixtures: HttpHandler =
                         ExtraTime = mapGoals fixture.ExtraTime
                         Penalties = mapGoals fixture.Penalties
                         }
-                    |> CommandHandlers.fixturesHandler (fixtureId, Any)
-                | "ROUND_OF_16" | "QUARTER_FINALS" | "SEMI_FINALS" | "FINAL" ->
-                    Fixtures.UpdateQualifiers {
-                        CompetitionId = competitionGuid
-                        ExternalId = fixture.FixtureId
-                        HomeTeamId = fixture.HomeTeamId |> Option.defaultValue 0L
-                        AwayTeamId = fixture.AwayTeamId |> Option.defaultValue 0L
-                        Date = fixture.UtcDate
-                        Stage = fixture.Stage
-                        Status = fixture.Status
-                        FullTime = mapGoals fixture.FullTime
-                        ExtraTime = mapGoals fixture.ExtraTime
-                        Penalties = mapGoals fixture.Penalties
-                        }
-                    |> CommandHandlers.fixturesHandler (fixtureId, Any)
+                    |> Some
+                | "LAST_16" | "QUARTER_FINAL" | "SEMI_FINAL" | "FINAL" ->
+                    match fixture.HomeTeamId, fixture.AwayTeamId with
+                    | Some(homeTeamId), Some(awayTeamId) ->
+                        Fixtures.UpdateQualifiers {
+                            CompetitionId = competitionGuid
+                            ExternalId = fixture.FixtureId
+                            HomeTeamId = homeTeamId
+                            AwayTeamId = awayTeamId
+                            Date = fixture.UtcDate
+                            Stage = fixture.Stage
+                            Status = fixture.Status
+                            FullTime = mapGoals fixture.FullTime
+                            ExtraTime = mapGoals fixture.ExtraTime
+                            Penalties = mapGoals fixture.Penalties
+                            }
+                        |> Some
+                    | _ ->
+                        None
                 | _ ->
-                    TaskResult.FromResult(Error (DomainError (Fixtures.Error.UnexpectedStage fixture.Stage)))
+                    logger.LogError($"Unknown stage value for fixture %A{id}: %s{fixture.Stage}")
+                    None
 
-            match result with
-            | Error(err) ->
-                logger.LogError($"Failed to update fixture %A{id}: %A{err}")
-            | Ok _ ->
+            match maybeCommand with
+            | Some command ->
+                let fixtureId = Fixtures.createId (competitionGuid, fixture.FixtureId)
+                match! CommandHandlers.fixturesHandler (fixtureId, Any) command with
+                | Ok _ ->
+                    ()
+                | Error err ->
+                    logger.LogError($"Failed to update fixture %A{id}: %A{err}")
+            | None ->
                 ()
 
-        return! ServerErrors.INTERNAL_ERROR "" next ctx
+        return! Successful.OK "" next ctx
     })
 
 let mainRouter = router {
@@ -135,6 +145,8 @@ let initializeEventStore (sp: IServiceProvider) = task {
 }
 
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
+    services.AddRouting() |> ignore
+
     services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
 
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
@@ -168,21 +180,12 @@ let configureApp (app: IApplicationBuilder) =
     app.UseRouting() |> ignore
     app.UseCloudEvents() |> ignore
 
-    app.Use(fun ctx next -> unitTask {
-        ctx.Request.EnableBuffering()
-        let log = ctx.RequestServices.GetRequiredService<ILogger<obj>>()
-        log.LogWarning("After cloudenvets")
-        use mem = new MemoryStream()
-        do! ctx.Request.Body.CopyToAsync(mem)
-        mem.Position <- 0L
-        ctx.Request.Body.Position <- 0L
-        log.LogWarning(System.Text.Encoding.UTF8.GetString(mem.ToArray()))
-        return! next.Invoke()
-    }) |> ignore
-
     app.UseEndpoints(fun endpoints ->
         endpoints.MapSubscribeHandler() |> ignore
+        endpoints.MapGiraffeEndpoints(mainRouter) |> ignore
     ) |> ignore
+
+    app.UseGiraffe(index)
 
     let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
     let subscriptionsSettings = app.ApplicationServices.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
@@ -219,7 +222,7 @@ jsonSettings.ContractResolver <- CamelCasePropertyNamesContractResolver()
 
 
 let app = application {
-    use_endpoint_router mainRouter
+    no_router
     memory_cache
     use_gzip
     app_config configureApp
