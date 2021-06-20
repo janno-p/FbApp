@@ -5,20 +5,6 @@
 </template>
 
 <script>
-import { mapActions } from "vuex"
-
-export default {
-    name: "App",
-
-    async created () {
-        await this.authenticate()
-        this.$router.push("/")
-    },
-
-    methods: {
-        ...mapActions([
-            "authenticate"
-        ])
-    }
-}
+import App from './App.vue.ts'
+export default App
 </script>

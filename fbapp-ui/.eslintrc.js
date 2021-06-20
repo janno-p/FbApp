@@ -1,50 +1,73 @@
+const path = require('path')
+
 module.exports = {
     root: true,
+
     parserOptions: {
-        parser: 'babel-eslint',
+        extraFileExtensions: ['.vue'],
+        parser: '@typescript-eslint/parser',
+        project: path.resolve(__dirname, './tsconfig.json'),
+        tsconfigRootDir: __dirname,
+        ecmaVersion: 2018,
         sourceType: 'module'
     },
+
     env: {
         browser: true
     },
+
     extends: [
-        // https://github.com/vuejs/eslint-plugin-vue#priority-a-essential-error-prevention
-        // consider switching to `plugin:vue/strongly-recommended` or `plugin:vue/recommended` for stricter rules.
-        'plugin:vue/essential',
-        // https://github.com/standard/standard/blob/master/docs/RULES-en.md
+        'eslint:recommended',
+        'plugin:@typescript-eslint/recommended',
+        'plugin:@typescript-eslint/recommended-requiring-type-checking',
+        'plugin:vue/vue3-recommended',
         'standard'
     ],
-    // required to lint *.vue files
+
     plugins: [
+        '@typescript-eslint',
         'vue'
     ],
+
     globals: {
-        'ga': true, // Google Analytics
-        'cordova': true,
-        '__statics': true
+        ga: 'readonly',
+        cordova: 'readonly',
+        __statics: 'readonly',
+        __QUASAR_SSR__: 'readonly',
+        __QUASAR_SSR_SERVER__: 'readonly',
+        __QUASAR_SSR_CLIENT__: 'readonly',
+        __QUASAR_SSR_PWA__: 'readonly',
+        process: 'readonly',
+        Capacitor: 'readonly',
+        chrome: 'readonly'
     },
-    // add your custom rules here
-    'rules': {
-        // allow async-await
+
+    rules: {
         'generator-star-spacing': 'off',
+        'arrow-parens': 'off',
+        'one-var': 'off',
+        'no-void': 'off',
+        'multiline-ternary': 'off',
 
-        // allow paren-less arrow functions
-        'arrow-parens': 0,
-        'one-var': 0,
+        'import/first': 'off',
+        'import/named': 'error',
+        'import/namespace': 'error',
+        'import/default': 'error',
+        'import/export': 'error',
+        'import/extensions': 'off',
+        'import/no-unresolved': 'off',
+        'import/no-extraneous-dependencies': 'off',
+        'prefer-promise-reject-errors': 'off',
 
-        'import/first': 0,
-        'import/named': 2,
-        'import/namespace': 2,
-        'import/default': 2,
-        'import/export': 2,
-        'import/extensions': 0,
-        'import/no-unresolved': 0,
-        'import/no-extraneous-dependencies': 0,
+        indent: ['error', 4],
+        quotes: ['error', 'single', { avoidEscape: true }],
+        semi: ['error', 'never'],
 
-        // allow debugger during development
-        'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0,
+        '@typescript-eslint/explicit-function-return-type': 'off',
+        '@typescript-eslint/explicit-module-boundary-types': 'off',
 
-        "indent": ["error", 4],
-        "quotes": ["error", "double"]
+        'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+
+        'vue/html-indent': ['error', 4]
     }
-};
+}
