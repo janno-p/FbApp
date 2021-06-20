@@ -177,10 +177,12 @@ export default defineComponent({
 
         return {
             columns,
+            isLoading,
             pagination,
             ratioColor,
             ratioIcon,
-            ratioTitle
+            ratioTitle,
+            standings
         }
     }
 })

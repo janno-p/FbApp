@@ -1,8 +1,8 @@
 <template>
     <q-header>
         <q-toolbar
+            class="glossy"
             color="primary"
-            :glossy="true"
             :inverted="false"
         >
             <router-link

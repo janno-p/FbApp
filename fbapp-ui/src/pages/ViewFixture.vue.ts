@@ -1,11 +1,10 @@
 import dayjs from 'dayjs'
 import { api } from 'src/boot/axios'
-import { GameResult } from 'src/hooks/authentication'
 import { computed, defineComponent, nextTick, onMounted, onUnmounted, ref } from 'vue'
 
 interface IFixturePredictionType {
     name: string
-    result: GameResult | null
+    result: string | null
 }
 
 interface IQualifierPredictionType {
@@ -63,13 +62,13 @@ export default defineComponent({
 
         const fixtureStatus = computed(() => {
             if (!fixture.value?.fullTime) {
-                return 'NONE'
+                return 'None'
             } else if (isHomeWin.value) {
-                return 'HOME'
+                return 'HomeWin'
             } else if (isAwayWin.value) {
-                return 'AWAY'
+                return 'AwayWin'
             } else {
-                return 'TIE'
+                return 'Tie'
             }
         })
 
@@ -153,11 +152,8 @@ export default defineComponent({
         function runUpdate () {
             setTimeout(() => {
                 if (!isDestroyed.value) {
-                    try {
-                        void updateFixture()
-                    } finally {
-                        runUpdate()
-                    }
+                    void updateFixture()
+                        .finally(() => runUpdate())
                 }
             }, 30000)
         }
@@ -172,11 +168,11 @@ export default defineComponent({
 
         function predictionText (prediction: IFixturePredictionType) {
             switch (prediction.result) {
-            case 'HOME':
+            case 'HomeWin':
                 return fixture.value?.homeTeam.name
-            case 'AWAY':
+            case 'AwayWin':
                 return fixture.value?.awayTeam.name
-            case 'TIE':
+            case 'Tie':
                 return 'Draw'
             }
         }
@@ -250,14 +246,14 @@ export default defineComponent({
 
         onMounted(() => {
             void nextTick(() => {
-                try {
-                    void api.get<IFixtureResponse>('/fixtures/timely').then((response) => {
+                void api.get<IFixtureResponse>('/fixtures/timely')
+                    .then((response) => {
                         fixture.value = response.data
                     })
-                } finally {
-                    runUpdate()
-                    isInitializing.value = false
-                }
+                    .finally(() => {
+                        runUpdate()
+                        isInitializing.value = false
+                    })
             })
         })
 
@@ -270,6 +266,7 @@ export default defineComponent({
             awayGoals,
             awayQualifiesIcon,
             awayQualifiesResultClass,
+            fixture,
             fixtureTitle,
             formatDate,
             formatStage,
@@ -278,6 +275,11 @@ export default defineComponent({
             homeQualifiesIcon,
             homeQualifiesResultClass,
             isCorrectResultPrediction,
+            isInitializing,
+            isLoadingFixture,
+            isPreFixture,
+            openNext,
+            openPrevious,
             predictionText
         }
     }

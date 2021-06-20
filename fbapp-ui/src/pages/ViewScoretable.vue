@@ -15,7 +15,7 @@
         <q-table
             v-else
             v-model:pagination="pagination"
-            :data="standings"
+            :rows="standings"
             :columns="columns"
             row-key="name"
             hide-bottom

@@ -5,15 +5,17 @@
             :key="entry.version"
             class="q-mb-sm"
         >
-            <q-list-header>Versioon {{ entry.version }}</q-list-header>
+            <q-item-label header>
+                Versioon {{ entry.version }}
+            </q-item-label>
             <q-item
                 v-for="(change, i) in entry.changes"
                 :key="i"
             >
-                <q-item-side>
-                    <q-item-tile icon="check" />
-                </q-item-side>
-                <q-item-main :label="change" />
+                <q-item-section side>
+                    <q-icon name="check" />
+                </q-item-section>
+                <q-item-section>{{ change }}</q-item-section>
             </q-item>
         </q-list>
     </q-page>

@@ -1,21 +1,20 @@
 <template>
     <q-page>
         <q-tabs
-            color="secondary"
+            class="text-cyan"
+            align="left"
             inverted
         >
-            <template #title>
-                <q-route-tab
-                    icon="mdi-soccer-field"
-                    to="/competition/fixtures"
-                    title="Mängude tulemused"
-                />
-                <q-route-tab
-                    icon="list_alt"
-                    to="/competition/score-table"
-                    title="Ennustuste punktitabel"
-                />
-            </template>
+            <q-route-tab
+                icon="mdi-soccer-field"
+                to="/competition/fixtures"
+                title="Mängude tulemused"
+            />
+            <q-route-tab
+                icon="list_alt"
+                to="/competition/score-table"
+                title="Ennustuste punktitabel"
+            />
         </q-tabs>
         <router-view />
     </q-page>
