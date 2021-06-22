@@ -51,16 +51,31 @@ const predictions = ref<IPredictionType>()
 const competitionStatus = ref('')
 const isGoogleReady = ref(false)
 
+function cleanPictureUrl (url?: string) {
+    if (url) {
+        const indexOf = url.lastIndexOf('=')
+        if (indexOf >= 0) {
+            return url.substring(0, indexOf)
+        } else {
+            return url
+        }
+    } else {
+        return ''
+    }
+}
+
 function setUser (payload?: IUserType) {
     isSignedIn.value = !!payload
     email.value = payload ? payload.email : ''
-    imageUrl.value = payload ? payload.picture : ''
+    imageUrl.value = cleanPictureUrl(payload?.picture)
     name.value = payload ? payload.name : ''
     roles.value = payload ? payload.roles : []
     if (payload) {
-        localStorage.setItem('XSRF-TOKEN', payload.xsrfToken)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        api.defaults.headers = { ...api.defaults.headers, 'X-XSRF-TOKEN': payload.xsrfToken }
     } else {
-        localStorage.removeItem('XSRF-TOKEN')
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        api.defaults.headers = { ...api.defaults.headers, 'X-XSRF-TOKEN': undefined }
     }
 }
 

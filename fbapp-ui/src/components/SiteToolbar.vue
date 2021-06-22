@@ -45,7 +45,7 @@
                         title="Ava kontrollpaneel"
                         @click="openDashboard"
                     >
-                        <q-icon name="mdi-settings" />
+                        <q-icon name="mdi-cog-outline" />
                     </q-btn>
                     <q-btn
                         flat

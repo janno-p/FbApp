@@ -9,7 +9,7 @@ export default defineComponent({
         const router = useRouter()
 
         const { googleSignIn, googleSignOut, hasDashboard, isGoogleReady, isSignedIn, imageUrl, name } = useAuthentication()
-        const sizedImageUrl = computed(() => `${imageUrl.value}?sz=32`)
+        const sizedImageUrl = computed(() => `${imageUrl.value}=s32-c`)
 
         async function signIn () {
             await googleSignIn()

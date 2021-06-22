@@ -2,34 +2,54 @@
     <q-layout view="hHh Lpr lFf">
         <SiteToolbar />
 
-        <q-layout-drawer
+        <q-drawer
             side="left"
-            :value="true"
+            :model-value="true"
         >
             <q-list
                 no-border
                 link
                 inset-delimiter
             >
-                <q-list-header>Kontrollpaneel</q-list-header>
+                <q-item>
+                    <q-item-label header>
+                        Kontrollpaneel
+                    </q-item-label>
+                </q-item>
                 <q-item to="/dashboard/competitions">
-                    <q-item-side icon="mdi-trophy" />
-                    <q-item-main label="Võistlused" />
+                    <q-item-section side>
+                        <q-icon name="mdi-trophy" />
+                    </q-item-section>
+                    <q-item-section>
+                        <q-item-label>Võistlused</q-item-label>
+                    </q-item-section>
                 </q-item>
                 <q-item to="/dashboard/leagues">
-                    <q-item-side icon="mdi-view-list" />
-                    <q-item-main label="Ennustusliigad" />
+                    <q-item-section side>
+                        <q-icon name="mdi-view-list" />
+                    </q-item-section>
+                    <q-item-section>
+                        <q-item-label>Ennustusliigad</q-item-label>
+                    </q-item-section>
                 </q-item>
                 <q-item>
-                    <q-item-side icon="mdi-account-multiple" />
-                    <q-item-main label="Meeskonnad" />
+                    <q-item-section side>
+                        <q-icon name="mdi-account-multiple" />
+                    </q-item-section>
+                    <q-item-section>
+                        <q-item-label>Meeskonnad</q-item-label>
+                    </q-item-section>
                 </q-item>
                 <q-item>
-                    <q-item-side icon="mdi-soccer-field" />
-                    <q-item-main label="Mängud" />
+                    <q-item-section side>
+                        <q-icon name="mdi-soccer-field" />
+                    </q-item-section>
+                    <q-item-section>
+                        <q-item-label>Mängud</q-item-label>
+                    </q-item-section>
                 </q-item>
             </q-list>
-        </q-layout-drawer>
+        </q-drawer>
 
         <q-page-container>
             <router-view />
