@@ -15,6 +15,13 @@ spec:
             name: fbapp
             port:
               number: 80
+        path: /api/
+        pathType: Prefix
+      - backend:
+          service:
+            name: fbapp-ui
+            port:
+              number: 80
         path: /
         pathType: Prefix
   tls:
