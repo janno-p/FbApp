@@ -22,11 +22,12 @@
                         <q-item class="q-pa-md">
                             <q-item-section side>
                                 <q-btn
+                                    v-if="fixture.previousFixtureId"
+                                    type="a"
                                     round
                                     icon="arrow_back"
                                     title="Eelmine mäng"
-                                    :disabled="!fixture.previousFixtureId"
-                                    @click="openPrevious"
+                                    :to="{ name: 'fixture', params: { fixtureId: fixture.previousFixtureId } }"
                                 />
                             </q-item-section>
                             <q-item-section>
@@ -39,11 +40,12 @@
                             </q-item-section>
                             <q-item-section side>
                                 <q-btn
+                                    v-if="fixture.nextFixtureId"
+                                    type="a"
                                     round
                                     icon="arrow_forward"
                                     title="Järgmine mäng"
-                                    :disabled="!fixture.nextFixtureId"
-                                    @click="openNext"
+                                    :to="{ name: 'fixture', params: { fixtureId: fixture.nextFixtureId } }"
                                 />
                             </q-item-section>
                         </q-item>
@@ -154,7 +156,9 @@
                                     <q-item-section
                                         side
                                     >
-                                        <q-item-label class="q-px-md">{{ predictionText(prediction) }}</q-item-label>
+                                        <q-item-label class="q-px-md">
+                                            {{ predictionText(prediction) }}
+                                        </q-item-label>
                                     </q-item-section>
                                 </q-item>
                             </template>
@@ -166,10 +170,13 @@
                                 >
                                     <q-item-section
                                         side
-                                        :icon="homeQualifiesIcon(prediction)"
                                         class="q-px-md"
-                                        :color="homeQualifiesResultClass(prediction)"
-                                    />
+                                    >
+                                        <q-icon
+                                            :name="homeQualifiesIcon(prediction)"
+                                            :color="homeQualifiesResultClass(prediction)"
+                                        />
+                                    </q-item-section>
                                     <q-item-section>
                                         <q-item-label class="text-center">
                                             {{ prediction.name }}
@@ -177,10 +184,13 @@
                                     </q-item-section>
                                     <q-item-section
                                         side
-                                        :icon="awayQualifiesIcon(prediction)"
                                         class="q-px-md"
-                                        :color="awayQualifiesResultClass(prediction)"
-                                    />
+                                    >
+                                        <q-icon
+                                            :name="awayQualifiesIcon(prediction)"
+                                            :color="awayQualifiesResultClass(prediction)"
+                                        />
+                                    </q-item-section>
                                 </q-item>
                             </template>
                         </template>

@@ -49,11 +49,13 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('layouts/CompetitionLayout.vue'),
                 children: [
                     {
+                        name: 'timely-fixture',
                         path: 'fixtures',
                         component: () => import('pages/ViewFixture.vue')
                     },
                     {
-                        path: 'fixtures/:fixture_id',
+                        name: 'fixture',
+                        path: 'fixtures/:fixtureId',
                         component: () => import('pages/ViewFixture.vue')
                     },
                     {

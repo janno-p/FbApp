@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { api } from 'src/boot/axios'
-import { computed, defineComponent, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, defineComponent, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 interface IFixturePredictionType {
     name: string
@@ -187,15 +188,37 @@ export default defineComponent({
             }
         }
 
+        const route = useRoute()
+        const router = useRouter()
+
+        const fixtureId = computed(() => {
+            const fixtureId: string | undefined = route.params.fixtureId as string | undefined
+            return fixtureId
+        })
+
+        watch(fixtureId, async (id) => {
+            try {
+                if (id) {
+                    await loadFixture(id)
+                } else {
+                    const response = await api.get<IFixtureResponse>('/fixtures/timely')
+                    fixture.value = response.data
+                }
+            } finally {
+                runUpdate()
+                isInitializing.value = false
+            }
+        }, { immediate: true })
+
         async function openPrevious () {
             if (fixture.value?.previousFixtureId) {
-                await loadFixture(fixture.value.previousFixtureId)
+                await router.push({ name: 'fixture', params: { fixtureId: fixture.value.previousFixtureId } })
             }
         }
 
         async function openNext () {
             if (fixture.value?.nextFixtureId) {
-                await loadFixture(fixture.value.nextFixtureId)
+                await router.push({ name: 'fixture', params: { fixtureId: fixture.value.nextFixtureId } })
             }
         }
 
@@ -244,19 +267,6 @@ export default defineComponent({
 
         window.addEventListener('keyup', handleKeyboardInput)
 
-        onMounted(() => {
-            void nextTick(() => {
-                void api.get<IFixtureResponse>('/fixtures/timely')
-                    .then((response) => {
-                        fixture.value = response.data
-                    })
-                    .finally(() => {
-                        runUpdate()
-                        isInitializing.value = false
-                    })
-            })
-        })
-
         onUnmounted(() => {
             window.removeEventListener('keyup', handleKeyboardInput)
             isDestroyed.value = true
@@ -278,8 +288,6 @@ export default defineComponent({
             isInitializing,
             isLoadingFixture,
             isPreFixture,
-            openNext,
-            openPrevious,
             predictionText
         }
     }
