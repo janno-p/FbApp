@@ -46,6 +46,15 @@ export default defineComponent({
                 sortable: true
             },
             {
+                name: 'total',
+                label: 'Kokku',
+                align: 'right',
+                field: 'total',
+                sortable: true,
+                style: 'border-right: 1px solid rgba(0, 0, 0, 0.12)',
+                headerStyle: 'border-right: 1px solid rgba(0, 0, 0, 0.12)'
+            },
+            {
                 name: 'group_stage',
                 label: 'Alagrupivoor',
                 align: 'right',
@@ -85,13 +94,6 @@ export default defineComponent({
                 label: 'Võitja',
                 align: 'right',
                 field: (r: IPredictionScoreType) => r.points[5],
-                sortable: true
-            },
-            {
-                name: 'total',
-                label: 'Kokku',
-                align: 'right',
-                field: 'total',
                 sortable: true
             }
         ]
