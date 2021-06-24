@@ -22,3 +22,4 @@ nuget Newtonsoft.Json
 nuget Ply
 nuget protobuf-net ~> 2
 nuget Saturn
+nuget XploRe.Util.Uuid prerelease
