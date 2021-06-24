@@ -2,6 +2,32 @@
 nuget Fake.Core.Target //"
 
 open Fake.Core
+open Fake.IO.FileSystemOperators
+
+let kubectlApply (env: string) =
+    Trace.trace $"Applying kubernetes configuration to %s{env}"
+
+    let input = StreamRef.Empty
+
+    let kubectl =
+        ["apply"; "-f"; "-"]
+        |> CreateProcess.fromRawCommand "kubectl"
+        |> CreateProcess.withStandardInput (CreatePipe input)
+        |> Proc.start
+
+    let kustomize =
+        ["build"; __SOURCE_DIRECTORY__ </> "kustomize" </> "overlays" </> env]
+        |> CreateProcess.fromRawCommand "kustomize"
+        |> CreateProcess.withStandardOutput (UseStream (true, input.Value))
+        |> Proc.run
+
+    kubectl.Wait()
+
+    if kustomize.ExitCode <> 0 then
+        failwith "Failed result from Kustomize"
+
+    if kubectl.Result.ExitCode <> 0 then
+        failwith "Failed result from Kubectl"
 
 let deployDockerImage (name: string) =
     Trace.trace $"Building docker image: %s{name}"
@@ -36,6 +62,14 @@ Target.create "fbapp-live-update" (fun _ ->
 
 Target.create "fbapp-ui" (fun _ ->
     deployDockerImage "fbapp-ui"
+)
+
+Target.create "update-production" (fun _ ->
+    kubectlApply "production"
+)
+
+Target.create "update-staging" (fun _ ->
+    kubectlApply "staging"
 )
 
 Target.runOrList ()
