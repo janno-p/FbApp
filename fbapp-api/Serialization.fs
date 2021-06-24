@@ -3,12 +3,11 @@
 open FSharp.Reflection
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
+open System
 open System.IO
 open System.Text
 
 module Converters =
-    // open Giraffe.Common
-    open System
     open System.Collections.Generic
 
     type ListConverter () =
@@ -172,18 +171,17 @@ let serialize o =
         use writer = new JsonTextWriter(new StreamWriter(ms))
         serializer.Serialize(writer, o)
     )
-    let data = ms.ToArray()
-    (eventType o, data)
+    (eventType o, ReadOnlyMemory(ms.ToArray()))
 
-let deserialize (typ, _, data: byte array) =
-    use ms = new MemoryStream(data)
+let deserialize (typ, _, data: ReadOnlyMemory<byte>) =
+    use ms = new MemoryStream(data.ToArray())
     use reader = new JsonTextReader(new StreamReader(ms))
     serializer.Deserialize(reader, typ)
 
 let deserializeOf<'T> (eventType, data) =
     deserialize (typeof<'T>, eventType, data) |> unbox<'T>
 
-let deserializeType (data: byte array) =
-    let json = Encoding.UTF8.GetString(data)
+let deserializeType (data: ReadOnlyMemory<byte>) =
+    let json = Encoding.UTF8.GetString(data.ToArray())
     JsonConvert.DeserializeObject<'T>(json)
     

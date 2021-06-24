@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Guid.fs" />
     <Compile Include="Competitions.Domain.fs" />
     <Compile Include="Fixtures.Domain.fs" />
     <Compile Include="Predictions.Domain.fs" />
@@ -18,7 +19,6 @@
     <Compile Include="Configuration.fs" />
     <Compile Include="CommandHandlers.fs" />
     <Compile Include="Repositories.fs" />
-    <Compile Include="Projection.fs" />
     <Compile Include="ProcessManager.fs" />
     <Compile Include="HttpExtensions.fs" />
     <Compile Include="Auth.fs" />

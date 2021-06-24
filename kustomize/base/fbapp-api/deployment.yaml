@@ -20,7 +20,7 @@ spec:
         app.kubernetes.io/part-of: fbapp
       annotations:
         dapr.io/enabled: "true"
-        dapr.io/app-id: "fbapp"
+        dapr.io/app-id: "fbapp-api-3"
         dapr.io/app-port: "80"
     spec:
       containers:

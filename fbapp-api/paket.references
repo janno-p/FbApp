@@ -1,9 +1,9 @@
 Dapr.AspNetCore
-EventStore.Client
+EventStore.Client.Grpc.PersistentSubscriptions
+EventStore.Client.Grpc.Streams
 FSharp.Core
 Giraffe
 MongoDB.Driver
 Newtonsoft.Json
 Ply
 Saturn
-XploRe.Util.Uuid
