@@ -12,20 +12,14 @@ open Grpc.Core
 
 
 [<CLIMutable>]
-type ProjectionsSettings = {
+type EventsSettings = {
     ApplicationName: string
-    DomainEventsName: string
-    }
-
-
-[<CLIMutable>]
-type SubscriptionGroupsSettings = {
-    Projections: string
     ProcessManager: string
+    ProjectionName: string
     }
 
 
-let getQuery (projectionsSettings: ProjectionsSettings) =
+let getQuery (eventsSettings: EventsSettings) =
     (sprintf """fromAll()
 .when({
     $any: function (state, ev) {
@@ -33,7 +27,7 @@ let getQuery (projectionsSettings: ProjectionsSettings) =
             linkTo("%s", ev)
         }
     }
-})""" projectionsSettings.ApplicationName projectionsSettings.DomainEventsName)
+})""" eventsSettings.ApplicationName eventsSettings.ProjectionName)
 
 
 let configureServices () =
@@ -47,8 +41,7 @@ let configureServices () =
             .AddEnvironmentVariables()
             .Build()
 
-    services.Configure<ProjectionsSettings>(configuration.GetSection("Projections")) |> ignore
-    services.Configure<SubscriptionGroupsSettings>(configuration.GetSection("SubscriptionGroups")) |> ignore
+    services.Configure<EventsSettings>(configuration.GetSection("Events")) |> ignore
 
     let connectionString = configuration.GetConnectionString("Default")
     services.AddEventStoreProjectionManagementClient(connectionString) |> ignore
@@ -89,18 +82,17 @@ let main _ =
     let projectionManagementClient = serviceProvider.GetRequiredService<EventStoreProjectionManagementClient>()
     let subscriptionsClient = serviceProvider.GetRequiredService<EventStorePersistentSubscriptionsClient>()
 
-    let projectionsSettings = serviceProvider.GetRequiredService<IOptions<ProjectionsSettings>>().Value
-    let subscriptionGroupsSettings = serviceProvider.GetRequiredService<IOptions<SubscriptionGroupsSettings>>().Value
+    let eventsSettings = serviceProvider.GetRequiredService<IOptions<EventsSettings>>().Value
 
     let task = unitTask {
         try
-            logger.LogInformation($"Trying to create '%s{projectionsSettings.DomainEventsName}' projection (if not exists)")
-            do! projectionManagementClient.CreateContinuousAsync(projectionsSettings.DomainEventsName, getQuery projectionsSettings)
+            logger.LogInformation($"Trying to create '%s{eventsSettings.ProjectionName}' projection (if not exists)")
+            do! projectionManagementClient.CreateContinuousAsync(eventsSettings.ProjectionName, getQuery eventsSettings)
         with
         | Conflict ->
-            logger.LogInformation($"Event projection '%s{projectionsSettings.DomainEventsName}' already exists")
+            logger.LogInformation($"Event projection '%s{eventsSettings.ProjectionName}' already exists")
         | e ->
-            logger.LogCritical(e, $"Error occurred while initializing '%s{projectionsSettings.DomainEventsName}' projection")
+            logger.LogCritical(e, $"Error occurred while initializing '%s{eventsSettings.ProjectionName}' projection")
             raise e
 
         let settings =
@@ -111,23 +103,13 @@ let main _ =
             )
 
         try
-            logger.LogInformation($"Trying to create '%s{subscriptionGroupsSettings.Projections}' subscription group ...")
-            do! subscriptionsClient.CreateAsync(projectionsSettings.DomainEventsName, subscriptionGroupsSettings.Projections, settings)
+            logger.LogInformation($"Trying to create '%s{eventsSettings.ProcessManager}' subscription group ...")
+            do! subscriptionsClient.CreateAsync(eventsSettings.ProjectionName, eventsSettings.ProcessManager, settings)
         with
         | AlreadyExists ->
-            logger.LogInformation($"Subscription group '%s{subscriptionGroupsSettings.Projections}' already exists")
+            logger.LogInformation($"Subscription group '%s{eventsSettings.ProcessManager}' already exists")
         | e ->
-            logger.LogCritical(e, $"Error occurred while initializing '%s{subscriptionGroupsSettings.Projections}' subscription group")
-            raise e
-
-        try
-            logger.LogInformation($"Trying to create '%s{subscriptionGroupsSettings.ProcessManager}' subscription group (if not exists)")
-            do! subscriptionsClient.CreateAsync(projectionsSettings.DomainEventsName, subscriptionGroupsSettings.ProcessManager, settings)
-        with
-        | AlreadyExists ->
-            logger.LogInformation($"Subscription group '%s{subscriptionGroupsSettings.ProcessManager}' already exists")
-        | e ->
-            logger.LogCritical(e, $"Error occurred while initializing '%s{subscriptionGroupsSettings.ProcessManager}' subscription group")
+            logger.LogCritical(e, $"Error occurred while initializing '%s{eventsSettings.ProcessManager}' subscription group")
             raise e
     }
 

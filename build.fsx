@@ -4,13 +4,13 @@ nuget Fake.Core.Target //"
 open Fake.Core
 open Fake.IO.FileSystemOperators
 
-let kubectlApply (env: string) =
+let kubectlExec (command: string) (env: string) =
     Trace.trace $"Applying kubernetes configuration to %s{env}"
 
     let input = StreamRef.Empty
 
     let kubectl =
-        ["apply"; "-f"; "-"]
+        [command; "-f"; "-"]
         |> CreateProcess.fromRawCommand "kubectl"
         |> CreateProcess.withStandardInput (CreatePipe input)
         |> Proc.start
@@ -64,12 +64,20 @@ Target.create "fbapp-ui" (fun _ ->
     deployDockerImage "fbapp-ui"
 )
 
+Target.create "delete-production" (fun _ ->
+    kubectlExec "delete" "production"
+)
+
 Target.create "update-production" (fun _ ->
-    kubectlApply "production"
+    kubectlExec "apply" "production"
+)
+
+Target.create "delete-staging" (fun _ ->
+    kubectlExec "delete" "staging"
 )
 
 Target.create "update-staging" (fun _ ->
-    kubectlApply "staging"
+    kubectlExec "apply" "staging"
 )
 
 Target.runOrList ()

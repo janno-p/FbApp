@@ -2,7 +2,7 @@ module FbApp.Api.Program
 
 
 open Dapr
-open EventStore.ClientAPI
+open EventStore.Client
 open FbApp.Api
 open FbApp.Api.Aggregate
 open FbApp.Api.Configuration
@@ -12,12 +12,9 @@ open FSharp.Control.Tasks
 open Giraffe
 open Giraffe.EndpointRouting
 open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.FileProviders
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
@@ -26,14 +23,12 @@ open Newtonsoft.Json.Serialization
 open Saturn
 open Saturn.Endpoint
 open System
-open System.IO
 
 
 [<CLIMutable>]
-type AppBootstrapInfo =
-    {
-        CompetitionStatus: string
-        User: Auth.User
+type AppBootstrapInfo = {
+    CompetitionStatus: string
+    User: Auth.User
     }
 
 
@@ -133,11 +128,16 @@ let mainRouter = router {
 }
 
 
-let initializeEventStore (sp: IServiceProvider) = task {
+let initializeEventStore (sp: IServiceProvider) =
     let options = sp.GetService<IOptions<EventStoreOptions>>().Value
-    let! connection = createEventStoreConnection options
-    return connection
-}
+    let settings = EventStoreClientSettings.Create(options.Uri)
+    new EventStoreClient(settings)
+
+
+let initEventStoreSubscriptionsClient (sp: IServiceProvider) =
+    let options = sp.GetService<IOptions<EventStoreOptions>>().Value
+    let settings = EventStoreClientSettings.Create(options.Uri)
+    new EventStorePersistentSubscriptionsClient(settings)
 
 
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
@@ -150,7 +150,8 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.Configure<EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
     services.Configure<SubscriptionsSettings>(context.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
 
-    services.AddSingleton<IEventStoreConnection>((fun sp -> (initializeEventStore sp).Result)) |> ignore
+    services.AddSingleton<EventStoreClient>(initializeEventStore) |> ignore
+    services.AddSingleton<EventStorePersistentSubscriptionsClient>(initEventStoreSubscriptionsClient) |> ignore
 
 
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
@@ -164,16 +165,6 @@ let configureApp (app: IApplicationBuilder) =
     app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
     |> ignore
 
-    let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
-
-    if env.IsProduction() then
-        app.UseStaticFiles(
-            StaticFileOptions(
-                FileProvider = new PhysicalFileProvider(Path.GetFullPath("wwwroot")),
-                RequestPath = PathString.Empty
-            ))
-        |> ignore
-
     app.UseRouting() |> ignore
     app.UseCloudEvents() |> ignore
 
@@ -185,23 +176,31 @@ let configureApp (app: IApplicationBuilder) =
     let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
     let subscriptionsSettings = app.ApplicationServices.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
 
-    let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
-    let eventStoreConnection = app.ApplicationServices.GetService<IEventStoreConnection>()
-
-    Projection.connectSubscription eventStoreConnection loggerFactory subscriptionsSettings
-    ProcessManager.connectSubscription eventStoreConnection loggerFactory authOptions subscriptionsSettings
+    let client = app.ApplicationServices.GetService<EventStoreClient>()
 
     CommandHandlers.competitionsHandler <-
-        makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository eventStoreConnection Competitions.AggregateName)
+        makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository client Competitions.AggregateName)
 
     CommandHandlers.predictionsHandler <-
-        makeHandler { Decide = Predictions.decide; Evolve = Predictions.evolve } (makeDefaultRepository eventStoreConnection Predictions.AggregateName)
+        makeHandler { Decide = Predictions.decide; Evolve = Predictions.evolve } (makeDefaultRepository client Predictions.AggregateName)
 
     CommandHandlers.fixturesHandler <-
-        makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (makeDefaultRepository eventStoreConnection Fixtures.AggregateName)
+        makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (makeDefaultRepository client Fixtures.AggregateName)
 
     CommandHandlers.leaguesHandler <-
-        makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository eventStoreConnection Leagues.AggregateName)
+        makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository client Leagues.AggregateName)
+
+    let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
+    let subscriptionsClient = app.ApplicationServices.GetService<EventStorePersistentSubscriptionsClient>()
+
+    let processManagerInitTask =
+        ProcessManager.connectSubscription
+            subscriptionsClient
+            loggerFactory
+            authOptions
+            subscriptionsSettings
+
+    processManagerInitTask.Wait()
 
     app
 

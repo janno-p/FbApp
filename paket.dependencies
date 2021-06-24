@@ -4,9 +4,9 @@ storage: none
 framework: net50
 
 nuget Dapr.AspNetCore
-nuget EventStore.Client
 nuget EventStore.Client.Grpc.PersistentSubscriptions
 nuget EventStore.Client.Grpc.ProjectionManagement
+nuget EventStore.Client.Grpc.Streams
 nuget Flurl.Http
 nuget FSharp.Core
 nuget Giraffe
@@ -22,4 +22,3 @@ nuget Newtonsoft.Json
 nuget Ply
 nuget protobuf-net ~> 2
 nuget Saturn
-nuget XploRe.Util.Uuid prerelease

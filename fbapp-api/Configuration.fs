@@ -14,6 +14,5 @@ type GoogleOptions = {
 [<CLIMutable>]
 type SubscriptionsSettings = {
     StreamName: string
-    ProjectionsGroup: string
-    ProcessManagerGroup: string
+    GroupName: string
     }
