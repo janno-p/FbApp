@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fbapp
+  name: fbapp-api
   labels:
-    app.kubernetes.io/name: fbapp
+    app.kubernetes.io/name: fbapp-api
     app.kubernetes.io/component: backend
     app.kubernetes.io/part-of: fbapp
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: fbapp
+      app.kubernetes.io/name: fbapp-api
       app.kubernetes.io/component: backend
       app.kubernetes.io/part-of: fbapp
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: fbapp
+        app.kubernetes.io/name: fbapp-api
         app.kubernetes.io/component: backend
         app.kubernetes.io/part-of: fbapp
       annotations:
@@ -24,8 +24,8 @@ spec:
         dapr.io/app-port: "80"
     spec:
       containers:
-      - name: fbapp
-        image: localhost:32000/fbapp:registry
+      - name: fbapp-api
+        image: localhost:32000/fbapp-api:registry
         imagePullPolicy: Always
         ports:
         - containerPort: 80
