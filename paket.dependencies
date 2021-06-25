@@ -1,24 +1,48 @@
-source https://api.nuget.org/v3/index.json
+group api
 
-storage: none
-framework: net50
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
 
-nuget Dapr.AspNetCore
-nuget EventStore.Client.Grpc.PersistentSubscriptions
-nuget EventStore.Client.Grpc.ProjectionManagement
-nuget EventStore.Client.Grpc.Streams
-nuget Flurl.Http
-nuget FSharp.Core
-nuget Giraffe
-nuget Grpc.Net.Client
-nuget Microsoft.Extensions.Configuration
-nuget Microsoft.Extensions.Configuration.EnvironmentVariables
-nuget Microsoft.Extensions.Configuration.Json
-nuget Microsoft.Extensions.DependencyInjection
-nuget Microsoft.Extensions.Hosting
-nuget Microsoft.Extensions.Logging.Console
-nuget MongoDB.Driver
-nuget Newtonsoft.Json
-nuget Ply
-nuget protobuf-net ~> 2
-nuget Saturn
+    nuget Dapr.AspNetCore
+    nuget EventStore.Client.Grpc.PersistentSubscriptions
+    nuget EventStore.Client.Grpc.Streams
+    nuget FSharp.Core
+    nuget Giraffe
+    nuget Grpc.Net.Client
+    nuget MongoDB.Driver
+    nuget Newtonsoft.Json
+    nuget Ply
+    nuget protobuf-net ~> 2
+    nuget Saturn
+    nuget XploRe.Util.Uuid prerelease
+
+group init-events
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget EventStore.Client.Grpc.PersistentSubscriptions
+    nuget EventStore.Client.Grpc.ProjectionManagement
+    nuget FSharp.Core
+    nuget Grpc.Net.Client
+    nuget Microsoft.Extensions.Configuration
+    nuget Microsoft.Extensions.Configuration.EnvironmentVariables
+    nuget Microsoft.Extensions.Configuration.Json
+    nuget Microsoft.Extensions.DependencyInjection
+    nuget Microsoft.Extensions.Logging.Console
+    nuget Ply
+    nuget protobuf-net ~> 2
+
+group live-update
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget Dapr.AspNetCore
+    nuget Flurl.Http
+    nuget FSharp.Core
+    nuget Microsoft.Extensions.Hosting
+    nuget Ply

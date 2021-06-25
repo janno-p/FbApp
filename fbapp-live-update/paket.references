@@ -1,3 +1,5 @@
+group live-update
+
 Dapr.AspNetCore
 Flurl.Http
 FSharp.Core

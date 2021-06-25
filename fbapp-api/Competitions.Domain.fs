@@ -2,6 +2,7 @@
 module FbApp.Api.Domain.Competitions
 
 open System
+open XploRe.Util
 
 let [<Literal>] AggregateName = "Competition"
 
@@ -69,5 +70,4 @@ let competitionsNamespace =
     Guid.Parse("1dc53967-8c3b-49a9-9496-27a2267bbef7")
 
 let createId (externalId: int64) =
-    // Uuid.NewNameBasedV5(competitionsNamespace.ToUuid(), externalId.ToString()).ToGuid()
-    Guid.createDeterministicGuid competitionsNamespace (externalId.ToString())
+    Uuid.NewNameBasedV5(competitionsNamespace.ToUuid(), externalId.ToString()).ToGuid()
