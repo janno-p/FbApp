@@ -1,28 +1,6 @@
 import { boot } from 'quasar/wrappers'
 import useAuthentication from 'src/hooks/authentication'
 
-declare global {
-    interface Window {
-        gapi: {
-            auth2: {
-                init(options: unknown): {
-                    then(onInit: (() => void), onError: ((e: unknown) => void)): void
-                }
-                getAuthInstance(): {
-                    signIn(): Promise<{
-                        getAuthResponse(): {
-                            // eslint-disable-next-line camelcase
-                            id_token: string
-                        }
-                    }>
-                    disconnect(): void
-                }
-            }
-            load(name: string, cb: () => void): void
-        }
-    }
-}
-
 export default boot(() => {
     return new Promise((resolve, reject) => {
         const gapi = window.gapi
