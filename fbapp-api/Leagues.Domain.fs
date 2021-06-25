@@ -1,6 +1,7 @@
 ﻿module FbApp.Api.Domain.Leagues
 
 open System
+open XploRe.Util
 
 let [<Literal>] AggregateName = "League"
 
@@ -39,5 +40,4 @@ let leaguesGuid = Guid.Parse("866b5bbe-3053-4717-ad46-30966dc9fe32")
 
 let createId (competitionId: Guid, leagueCode: string) =
     let id = sprintf "%s-%s" (competitionId.ToString("N")) leagueCode
-    // Uuid.NewNameBasedV5(leaguesGuid.ToUuid(), id).ToGuid()
-    Guid.createDeterministicGuid leaguesGuid id
+    Uuid.NewNameBasedV5(leaguesGuid.ToUuid(), id).ToGuid()

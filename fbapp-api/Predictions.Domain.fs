@@ -2,6 +2,7 @@
 module FbApp.Api.Domain.Predictions
 
 open System
+open XploRe.Util
 
 let [<Literal>] AggregateName = "Prediction"
 
@@ -126,5 +127,4 @@ let predictionsGuid = Guid.Parse("2945d861-0b2f-4783-914b-97988b98c76b")
 
 let createId (competitionId: Guid, Email email) =
     let id = sprintf "%s-%s" (competitionId.ToString("N")) email
-    // Uuid.NewNameBasedV5(predictionsGuid.ToUuid(), id).ToGuid()
-    Guid.createDeterministicGuid predictionsGuid id
+    Uuid.NewNameBasedV5(predictionsGuid.ToUuid(), id).ToGuid()

@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Guid.fs" />
     <Compile Include="Competitions.Domain.fs" />
     <Compile Include="Fixtures.Domain.fs" />
     <Compile Include="Predictions.Domain.fs" />
