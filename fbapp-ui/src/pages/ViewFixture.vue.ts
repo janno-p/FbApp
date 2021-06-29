@@ -52,13 +52,21 @@ export default defineComponent({
         const isLoadingFixture = ref(false)
 
         const homeGoals = computed(() => {
-            const eth = fixture.value?.extraTime ? fixture.value.extraTime[0] : 0
-            return fixture.value?.fullTime ? (fixture.value.fullTime[0] + eth) : null
+            if (fixture.value?.penalties) {
+                const suffix = fixtureStatus.value === 'HomeWin' ? '*' : ''
+                return `${fixture.value.fullTime[0] - fixture.value.penalties[0]}${suffix}`
+            } else {
+                return fixture.value?.fullTime ? fixture.value.fullTime[0] : null
+            }
         })
 
         const awayGoals = computed(() => {
-            const eta = fixture.value?.extraTime ? fixture.value.extraTime[1] : 0
-            return fixture.value?.fullTime ? (fixture.value.fullTime[1] + eta) : null
+            if (fixture.value?.penalties) {
+                const suffix = fixtureStatus.value === 'AwayWin' ? '*' : ''
+                return `${fixture.value.fullTime[1] - fixture.value.penalties[1]}${suffix}`
+            } else {
+                return fixture.value?.fullTime ? fixture.value.fullTime[1] : null
+            }
         })
 
         const fixtureStatus = computed(() => {
