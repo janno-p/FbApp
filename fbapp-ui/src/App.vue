@@ -1,6 +1,11 @@
 <template>
     <router-view v-if="isReady" />
-    <p v-else>Tegelen, tegelen ...</p>
+    <p v-else>
+        Tegelen, tegelen ...
+    </p>
 </template>
 
-<script src="./App.vue.ts" />
+<script>
+import App from './App.vue.ts'
+export default App
+</script>

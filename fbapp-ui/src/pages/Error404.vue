@@ -22,4 +22,7 @@
     </div>
 </template>
 
-<script src="./Error404.vue.ts" />
+<script>
+import Error404 from './Error404.vue.ts'
+export default Error404
+</script>

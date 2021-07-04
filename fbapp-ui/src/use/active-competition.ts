@@ -26,7 +26,7 @@ api.get<ActiveCompetitionDto>('/api/competitions', { validateStatus: (status) =>
 
 const isActiveCompetition = computed(() => !isLoading.value && competition.value !== undefined)
 
-export default function useActiveCompetition() {
+export default function useActiveCompetition () {
     return {
         competition: readonly(competition),
         isActiveCompetition,

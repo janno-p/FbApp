@@ -148,11 +148,11 @@ export default boot(({ app }) => {
     app.config.globalProperties.$auth = authService
 })
 
-function logout() {
+function logout () {
     return authService.signOut()
 }
 
-export function useAuth() {
+export function useAuth () {
     return {
         state: authService.state,
         logout

@@ -37,7 +37,7 @@ export default defineComponent({
         AddCompetition
     },
 
-    setup() {
+    setup () {
         const columns: ITableColumn<ICompetition>[] = [
             {
                 name: 'description',
@@ -57,14 +57,14 @@ export default defineComponent({
             rowsPerPage: 0
         }
 
-        const rows = ref(new Array<ICompetition>())
-        const selected = ref(new Array<ICompetition>())
+        const rows = ref<ICompetition[]>([])
+        const selected = ref<ICompetition[]>([])
 
-        function addCompetition() {
+        function addCompetition () {
             isModalOpen.value = true
         }
 
-        function competitionAdded(...args: unknown[]) {
+        function competitionAdded (...args: unknown[]) {
             console.log(args)
         }
 

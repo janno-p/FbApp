@@ -99,6 +99,9 @@ module.exports = configure(function (ctx) {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
                         return args
                     })
+            },
+            env: {
+                API: '/api'
             }
         },
 
@@ -108,7 +111,13 @@ module.exports = configure(function (ctx) {
                 key: fs.readFileSync(path.resolve('./ssl/server.key')),
                 cert: fs.readFileSync(path.resolve('./ssl/server.crt'))
             },
-            public: 'localhost:8090'
+            public: 'localhost:8090',
+            proxy: {
+                '/api': {
+                    target: 'https://jnx.era.ee',
+                    changeOrigin: true
+                }
+            }
         },
 
         // https://v2.quasar.dev/quasar-cli/quasar-conf-js#Property%3A-framework

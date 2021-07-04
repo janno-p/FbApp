@@ -1,14 +1,14 @@
 ﻿<template>
     <q-page class="q-pa-lg">
         <q-table
+            v-model:selected="selected"
+            v-model:pagination="pagination"
             title="Võistlused"
             :columns="columns"
             selection="single"
             :rows="rows"
             :loading="isDataLoading"
             row-key="id"
-            v-model:selected="selected"
-            v-model:pagination="pagination"
             hide-bottom
         >
             <template #top-right>
@@ -31,4 +31,7 @@
     </q-page>
 </template>
 
-<script src="./Competitions.vue.ts" />
+<script>
+import DashboardCompetitions from './Competitions.vue.ts'
+export default DashboardCompetitions
+</script>

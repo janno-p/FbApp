@@ -5,9 +5,17 @@
     >
         <q-card style="min-width: 500px">
             <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6">Võistluse lisamine</div>
+                <div class="text-h6">
+                    Võistluse lisamine
+                </div>
                 <q-space />
-                <q-btn v-close-popup icon="close" flat round dense />
+                <q-btn
+                    v-close-popup
+                    icon="close"
+                    flat
+                    round
+                    dense
+                />
             </q-card-section>
 
             <div class="q-pa-md">
@@ -84,4 +92,7 @@
     </q-dialog>
 </template>
 
-<script src="./AddCompetition.vue.ts" />
+<script>
+import AddCompetition from './AddCompetition.vue.ts'
+export default AddCompetition
+</script>

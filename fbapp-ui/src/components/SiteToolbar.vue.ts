@@ -6,12 +6,12 @@ import { useRouter } from 'vue-router'
 export default defineComponent({
     name: 'SiteToolbar',
 
-    setup() {
+    setup () {
         const router = useRouter()
         const { isLoading, competition } = useActiveCompetition()
         const { logout, state } = useAuth()
 
-        function goHome() {
+        function goHome () {
             return router.push({ name: 'home' })
         }
 

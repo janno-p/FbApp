@@ -10,10 +10,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="5.0.1" />
-    <PackageReference Include="Giraffe" Version="5.0.0" />
-    <PackageReference Include="Saturn" Version="0.15.0-preview*" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="1.0.0-preview.11.*" />
+    <None Include="appsettings.Development.json" />
+    <None Include="appsettings.json" />
+    <None Include="paket.references" />
   </ItemGroup>
+
+  <Import Project="..\.paket\Paket.Restore.targets" />
 
 </Project>

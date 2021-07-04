@@ -1,0 +1,13 @@
+group api
+
+Dapr.AspNetCore
+EventStore.Client.Grpc.PersistentSubscriptions
+EventStore.Client.Grpc.Streams
+FSharp.Core
+Giraffe
+Grpc.Net.Client
+MongoDB.Driver
+Newtonsoft.Json
+Ply
+Saturn
+XploRe.Util.Uuid

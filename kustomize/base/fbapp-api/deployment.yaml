@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fbapp-api
+  labels:
+    app.kubernetes.io/name: fbapp-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: fbapp
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fbapp-api
+      app.kubernetes.io/component: backend
+      app.kubernetes.io/part-of: fbapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fbapp-api
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: fbapp
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "fbapp-api-3"
+        dapr.io/app-port: "80"
+    spec:
+      containers:
+      - name: fbapp-api
+        image: localhost:32000/fbapp-api:registry
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: Authentication__AdminEmails__0
+          valueFrom:
+            secretKeyRef:
+              name: fbapp
+              key: adminEmail
+        - name: Authentication__FootballDataToken
+          valueFrom:
+            secretKeyRef:
+              name: fbapp
+              key: footballDataToken
+        - name: Authentication__Google__ClientId
+          valueFrom:
+            secretKeyRef:
+              name: fbapp
+              key: googleClientId
+        - name: Authentication__Google__ClientSecret
+          valueFrom:
+            secretKeyRef:
+              name: fbapp
+              key: googleClientSecret
+      initContainers:
+      - name: fbapp-init-events
+        image: localhost:32000/fbapp-init-events:registry
+        imagePullPolicy: Always

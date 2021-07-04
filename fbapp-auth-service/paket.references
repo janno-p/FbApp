@@ -1,0 +1,12 @@
+group auth
+FSharp.Core
+Giraffe
+Microsoft.AspNetCore.Authentication.Google
+Microsoft.AspNetCore.Identity.EntityFrameworkCore
+Microsoft.EntityFrameworkCore
+Npgsql.EntityFrameworkCore.PostgreSQL
+OpenIddict.AspNetCore
+OpenIddict.EntityFrameworkCore
+OpenIddict.Quartz
+Quartz.Extensions.Hosting
+Saturn

@@ -21,15 +21,15 @@ export default defineComponent({
         'update:model-value'
     ],
 
-    setup(props, { emit }) {
+    setup (props, { emit }) {
         const initialYear = new Date().getFullYear()
         const seasonOptions = [...Array(5).keys()].map((v) => initialYear - v).map((value) => value.toString())
 
         const modelValueProxy = computed({
-            get() {
+            get () {
                 return props.modelValue
             },
-            set(value: boolean) {
+            set (value: boolean) {
                 emit('update:model-value', value)
             }
         })

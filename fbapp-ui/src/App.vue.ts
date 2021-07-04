@@ -4,7 +4,7 @@ import { useAuth } from './boot/auth'
 export default defineComponent({
     name: 'App',
 
-    setup() {
+    setup () {
         const { state } = useAuth()
         const isReady = computed(() => !!state.value)
         return { isReady }

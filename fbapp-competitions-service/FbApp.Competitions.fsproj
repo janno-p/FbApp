@@ -6,14 +6,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Giraffe" Version="5.0.0" />
-    <PackageReference Include="Saturn" Version="0.15.0-preview*" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Include="Competitions.Dto.fs" />
     <Compile Include="Competitions.Api.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="appsettings.Development.json" />
+    <None Include="appsettings.json" />
+    <None Include="paket.references" />
+  </ItemGroup>
+
+  <Import Project="..\.paket\Paket.Restore.targets" />
 
 </Project>

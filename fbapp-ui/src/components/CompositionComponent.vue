@@ -2,7 +2,11 @@
     <div>
         <p>{{ title }}</p>
         <ul>
-            <li v-for="todo in todos" :key="todo.id" @click="increment">
+            <li
+                v-for="todo in todos"
+                :key="todo.id"
+                @click="increment"
+            >
                 {{ todo.id }} - {{ todo.content }}
             </li>
         </ul>
@@ -12,4 +16,7 @@
     </div>
 </template>
 
-<script src="./CompositionComponent.vue.ts" />
+<script>
+import CompositionComponent from './CompositionComponent.vue.ts'
+export default CompositionComponent
+</script>

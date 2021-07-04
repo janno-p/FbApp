@@ -20,12 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="EventStore.Client.Grpc.Streams" Version="21.2.0" />
-    <PackageReference Include="Giraffe" Version="5.0.0" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.37.0" />
-    <PackageReference Include="MongoDB.Driver" Version="2.12.3" />
-    <PackageReference Include="Saturn" Version="0.15.0-preview*" />
-    <PackageReference Include="XploRe.Util.Uuid" Version="1.0.0-dev.53" />
+    <None Include="appsettings.Development.json" />
+    <None Include="appsettings.json" />
+    <None Include="paket.references" />
   </ItemGroup>
+
+  <Import Project="..\.paket\Paket.Restore.targets" />
 
 </Project>

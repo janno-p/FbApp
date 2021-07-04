@@ -12,4 +12,7 @@
     </q-page>
 </template>
 
-<script src="./Changelog.vue.ts" />
+<script>
+import Changelog from './Changelog.vue.ts'
+export default Changelog
+</script>

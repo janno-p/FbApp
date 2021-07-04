@@ -4,7 +4,7 @@ import { defineComponent } from 'vue'
 export default defineComponent({
     name: 'CompetitionView',
 
-    setup() {
+    setup () {
         const { isActiveCompetition, isLoading } = useActiveCompetition()
         return { isActiveCompetition, isLoading }
     }

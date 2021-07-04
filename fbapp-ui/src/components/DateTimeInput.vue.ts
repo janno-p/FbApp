@@ -16,12 +16,12 @@ export default defineComponent({
         'update:model-value'
     ],
 
-    setup(props, { emit }) {
+    setup (props, { emit }) {
         const dateProxy = computed({
-            get() {
+            get () {
                 return props.modelValue
             },
-            set(value: string) {
+            set (value: string) {
                 emit('update:model-value', value)
             }
         })

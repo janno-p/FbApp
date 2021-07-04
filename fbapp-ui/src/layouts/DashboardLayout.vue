@@ -2,7 +2,12 @@
     <q-layout view="hHh Lpr lFf">
         <SiteToolbar />
 
-        <transition appear enter-active-class="animated fadeIn" leave-active-class="animated fadeOut" mode="out-in">
+        <transition
+            appear
+            enter-active-class="animated fadeIn"
+            leave-active-class="animated fadeOut"
+            mode="out-in"
+        >
             <q-drawer
                 class="q-pa-md"
                 :model-value="true"
@@ -11,8 +16,15 @@
                 :breakpoint="500"
             >
                 <q-scroll-area class="fit">
-                    <q-list padding class="menu-list">
-                        <q-item v-ripple clickable :to="{ name: 'competitions' }">
+                    <q-list
+                        padding
+                        class="menu-list"
+                    >
+                        <q-item
+                            v-ripple
+                            clickable
+                            :to="{ name: 'competitions' }"
+                        >
                             <q-item-section avatar>
                                 <q-icon name="mdi-trophy" />
                             </q-item-section>
@@ -22,7 +34,11 @@
                             </q-item-section>
                         </q-item>
 
-                        <q-item v-ripple active clickable>
+                        <q-item
+                            v-ripple
+                            active
+                            clickable
+                        >
                             <q-item-section avatar>
                                 <q-icon name="mdi-view-list" />
                             </q-item-section>
@@ -32,7 +48,10 @@
                             </q-item-section>
                         </q-item>
 
-                        <q-item v-ripple clickable>
+                        <q-item
+                            v-ripple
+                            clickable
+                        >
                             <q-item-section avatar>
                                 <q-icon name="mdi-account-multiple" />
                             </q-item-section>
@@ -42,7 +61,10 @@
                             </q-item-section>
                         </q-item>
 
-                        <q-item v-ripple clickable>
+                        <q-item
+                            v-ripple
+                            clickable
+                        >
                             <q-item-section avatar>
                                 <q-icon name="mdi-soccer-field" />
                             </q-item-section>
@@ -58,12 +80,23 @@
 
         <q-page-container>
             <router-view v-slot="{ Component }">
-                <transition appear enter-active-class="animated fadeIn" leave-active-class="animated fadeOut" mode="out-in">
-                    <component :is="Component" key="Component.type.name" />
+                <transition
+                    appear
+                    enter-active-class="animated fadeIn"
+                    leave-active-class="animated fadeOut"
+                    mode="out-in"
+                >
+                    <component
+                        :is="Component"
+                        key="Component.type.name"
+                    />
                 </transition>
             </router-view>
         </q-page-container>
     </q-layout>
 </template>
 
-<script src="./DashboardLayout.vue.ts" />
+<script>
+import DashboardLayout from './DashboardLayout.vue.ts'
+export default DashboardLayout
+</script>

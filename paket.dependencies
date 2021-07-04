@@ -1,0 +1,102 @@
+group api
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget Dapr.AspNetCore
+    nuget EventStore.Client.Grpc.PersistentSubscriptions
+    nuget EventStore.Client.Grpc.Streams
+    nuget FSharp.Core
+    nuget Giraffe
+    nuget Grpc.Net.Client
+    nuget MongoDB.Driver
+    nuget Newtonsoft.Json
+    nuget Ply
+    nuget protobuf-net ~> 2
+    nuget Saturn
+    nuget XploRe.Util.Uuid prerelease
+
+group auth
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget FSharp.Core
+    nuget Giraffe
+    nuget Microsoft.AspNetCore.Authentication.Google
+    nuget Microsoft.AspNetCore.Identity.EntityFrameworkCore
+    nuget Microsoft.EntityFrameworkCore
+    nuget Npgsql.EntityFrameworkCore.PostgreSQL
+    nuget OpenIddict.AspNetCore
+    nuget OpenIddict.EntityFrameworkCore
+    nuget OpenIddict.Quartz
+    nuget Quartz.Extensions.Hosting
+    nuget Saturn
+
+group competitions
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget FSharp.Core
+    nuget Giraffe
+    nuget Saturn
+
+group init-events
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget EventStore.Client.Grpc.PersistentSubscriptions
+    nuget EventStore.Client.Grpc.ProjectionManagement
+    nuget FSharp.Core
+    nuget Grpc.Net.Client
+    nuget Microsoft.Extensions.Configuration
+    nuget Microsoft.Extensions.Configuration.EnvironmentVariables
+    nuget Microsoft.Extensions.Configuration.Json
+    nuget Microsoft.Extensions.DependencyInjection
+    nuget Microsoft.Extensions.Logging.Console
+    nuget Ply
+    nuget protobuf-net ~> 2
+
+group live-update
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget Dapr.AspNetCore
+    nuget Flurl.Http
+    nuget FSharp.Core
+    nuget Microsoft.Extensions.Hosting
+    nuget Ply
+
+group proxy
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget FSharp.Core
+    nuget Giraffe
+    nuget Saturn
+    nuget Yarp.ReverseProxy
+
+group web
+
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net50
+
+    nuget EventStore.Client.Grpc.Streams
+    nuget FSharp.Core
+    nuget Giraffe
+    nuget Grpc.Net.Client
+    nuget MongoDB.Driver
+    nuget protobuf-net ~> 2
+    nuget Saturn
+    nuget XploRe.Util.Uuid

@@ -21,4 +21,7 @@
     </q-item>
 </template>
 
-<script src="./EssentialLink.vue.ts" />
+<script>
+import EssentialLink from './EssentialLink.vue.ts'
+export default EssentialLink
+</script>
