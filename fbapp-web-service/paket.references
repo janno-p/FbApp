@@ -3,6 +3,7 @@ EventStore.Client.Grpc.Streams
 FSharp.Core
 Giraffe
 Grpc.Net.Client
+Microsoft.Tye.Extensions.Configuration
 MongoDB.Driver
 Saturn
 XploRe.Util.Uuid

@@ -8,13 +8,13 @@ open FbApp.Web.Configuration
 open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.FileProviders
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open MongoDB.Driver
 open Saturn
 open System.IO
 open Microsoft.AspNetCore.HttpOverrides
@@ -33,7 +33,7 @@ let appBootstrap : HttpHandler =
         let user =
             Auth.getUser ctx
         let! competitionStatus =
-            Predict.getCompetitionStatus ()
+            Predict.getCompetitionStatus (ctx.RequestServices.GetRequiredService<IMongoDatabase>())
         let dto =
             {
                 CompetitionStatus = competitionStatus
@@ -64,15 +64,29 @@ let mainRouter = router {
     })
 }
 
+let initializeMongoDb (sp: IServiceProvider) =
+    let configuration = sp.GetService<IConfiguration>()
+    let client =
+        match configuration.GetConnectionString("mongodb") with
+        | null -> MongoClient()
+        | value -> MongoClient(value)
+    client.GetDatabase("fbapp")
+
 let initializeEventStore (sp: IServiceProvider) =
     let configuration = sp.GetService<IConfiguration>()
-    createEventStoreClient (EventStoreConnectionString configuration.["EventStore:Uri"])
+    let connectionString =
+        configuration.GetConnectionString("eventstore")
+        |> Option.ofObj
+        |> Option.defaultValue configuration.["EventStore:Uri"]
+        |> EventStoreConnectionString
+    createEventStoreClient connectionString
 
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
-    services.AddSingleton<EventStore.Client.EventStoreClient>(fun sp -> initializeEventStore sp) |> ignore
+    services.AddSingleton<EventStore.Client.EventStoreClient>(initializeEventStore) |> ignore
+    services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
 
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
@@ -87,14 +101,14 @@ let app = application {
     use_gzip
 
     app_config (fun app ->
-        app.UseForwardedHeaders(new ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
+        app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
         |> ignore
 
         let env = Environment.getWebHostEnvironment app
 
         if env.IsProduction() then
             app.UseStaticFiles(
-                new StaticFileOptions(
+                StaticFileOptions(
                     FileProvider = new PhysicalFileProvider(Path.GetFullPath("wwwroot")),
                     RequestPath = PathString.Empty
                 ))
@@ -103,9 +117,10 @@ let app = application {
         let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
         let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
         let eventStoreClient = app.ApplicationServices.GetService<EventStore.Client.EventStoreClient>()
+        let mongoDb = app.ApplicationServices.GetRequiredService<IMongoDatabase>()
 
-        (Projection.connectSubscription eventStoreClient loggerFactory).Wait()
-        (ProcessManager.connectSubscription eventStoreClient loggerFactory authOptions).Wait()
+        (Projection.connectSubscription eventStoreClient mongoDb loggerFactory).Wait()
+        (ProcessManager.connectSubscription eventStoreClient mongoDb loggerFactory authOptions).Wait()
 
         CommandHandlers.competitionsHandler <-
             makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository eventStoreClient Competitions.AggregateName)

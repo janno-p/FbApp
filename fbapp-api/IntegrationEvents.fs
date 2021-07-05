@@ -27,21 +27,21 @@ type Value<'t> () =
 type OptionConverter () =
     inherit JsonConverter()
 
-    override _.CanConvert (typ) =
+    override _.CanConvert typ =
         typ.IsGenericType && typ.GetGenericTypeDefinition() = typedefof<option<_>>
 
     override _.WriteJson (writer, value, serializer) =
         let value =
             if value |> isNull then null else
             let innerType = value.GetType().GetGenericArguments().[0]
-            let valueWrapperType = (typedefof<Value<_>>).MakeGenericType([|innerType|])
+            let valueWrapperType = typedefof<Value<_>>.MakeGenericType([|innerType|])
             let valueWrapper: IValue = Activator.CreateInstance(valueWrapperType) |> unbox
             let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
             valueWrapper.SetValue(fields.[0])
             valueWrapper
         serializer.Serialize(writer, value)
 
-    override __.ReadJson(reader, typ, _, serializer) =
+    override _.ReadJson(reader, typ, _, serializer) =
         let innerType = typ.GetGenericArguments().[0]
         let innerType =
             if innerType.IsValueType then typedefof<Nullable<_>>.MakeGenericType([|innerType|])
@@ -50,7 +50,7 @@ type OptionConverter () =
         if reader.TokenType = JsonToken.Null then
             FSharpValue.MakeUnion(cases.[0], [||])
         else
-            let valueType = (typedefof<Value<_>>).MakeGenericType([|innerType|])
+            let valueType = typedefof<Value<_>>.MakeGenericType([|innerType|])
             let value: IValue = serializer.Deserialize(reader, valueType) |> unbox
             FSharpValue.MakeUnion(cases.[1], [|value.GetValue()|])
 

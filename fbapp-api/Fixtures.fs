@@ -3,6 +3,8 @@
 open FbApp.Api.Repositories
 open FSharp.Control.Tasks
 open Giraffe
+open Microsoft.Extensions.DependencyInjection
+open MongoDB.Driver
 open Saturn.Endpoint
 open System
 
@@ -77,20 +79,20 @@ with
 
 let getFixture (id: Guid) : HttpHandler =
     (fun next ctx -> task {
-        let! fixture = Fixtures.get id
+        let! fixture = Fixtures.get (ctx.RequestServices.GetRequiredService<IMongoDatabase>()) id
         let dto = FixtureDto.FromProjection(fixture)
         return! Successful.OK dto next ctx
     })
 
 let getFixtureStatus (id: Guid) : HttpHandler =
     (fun next ctx -> task {
-        let! dto = Fixtures.getFixtureStatus id
+        let! dto = Fixtures.getFixtureStatus (ctx.RequestServices.GetRequiredService<IMongoDatabase>()) id
         return! Successful.OK dto next ctx
     })
 
 let getTimelyFixture : HttpHandler =
     (fun next ctx -> task {
-        let! fixture = Fixtures.getTimelyFixture ()
+        let! fixture = Fixtures.getTimelyFixture (ctx.RequestServices.GetRequiredService<IMongoDatabase>())
         let dto = FixtureDto.FromProjection(fixture)
         return! Successful.OK dto next ctx
     })

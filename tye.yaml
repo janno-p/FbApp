@@ -38,22 +38,26 @@ services:
 
   - name: eventstore
     image: eventstore/eventstore
-    args: '--insecure --run-projections=All --enable-atom-pub-over-http'
+    args: --insecure --run-projections=All
     bindings:
-      - name: http
-        port: 2113
+      - containerPort: 2113
+        protocol: esdb
+        connectionString: ${protocol}://${host}:${port}?tls=false
 
   - name: mongodb
     image: bitnami/mongodb
     bindings:
-      - port: 27017
+      - containerPort: 27017
+        protocol: mongodb
+        connectionString: ${protocol}://${host}:${port}
 
   - name: postgres
     image: postgres
     args: postgres -N 1000
     bindings:
-      - port: 5432
+      - containerPort: 5432
         protocol: tcp
+        connectionString: Host=${host};Port=${port};Database=${env:POSTGRES_DB};User Id=${env:POSTGRES_USER};Password=${env:POSTGRES_PASSWORD};
     env:
       - name: POSTGRES_USER
         value: postgres
@@ -61,6 +65,8 @@ services:
         value: password
       - name: POSTGRES_DB
         value: fbapp
+      - name: POSTGRES_HOST_AUTH_METHOD
+        value: md5
     volumes:
       - source: ./.postgres
         target: /var/lib/postgresql/data

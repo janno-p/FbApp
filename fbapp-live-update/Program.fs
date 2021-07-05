@@ -20,7 +20,7 @@ open System.Collections.Generic
 type OptionConverter () =
     inherit JsonConverter()
 
-    override _.CanConvert (typ) =
+    override _.CanConvert typ =
         typ.IsGenericType && typ.GetGenericTypeDefinition() = typedefof<option<_>>
 
     override _.WriteJson (writer, value, serializer) =
@@ -30,7 +30,7 @@ type OptionConverter () =
             fields.[0]
         serializer.Serialize(writer, value)
 
-    override __.ReadJson(reader, typ, _, serializer) =
+    override _.ReadJson(reader, typ, _, serializer) =
         let innerType = typ.GetGenericArguments().[0]
         let innerType =
             if innerType.IsValueType then typedefof<Nullable<_>>.MakeGenericType([|innerType|])
@@ -195,7 +195,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                 | false, v | true, v when v < fixture.LastUpdated -> true
                 | _ -> false
 
-            let fixtureUpdates = ResizeArray<(FixtureDto * string)>()
+            let fixtureUpdates = ResizeArray<FixtureDto * string>()
 
             let mapGoals (g: GoalsDto) =
                 match g.HomeTeam, g.AwayTeam with
@@ -203,7 +203,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                 | _ -> None
 
             for fixture in matches.Matches |> Array.filter isUpdated do
-                let! (previousFixture, tag) =
+                let! previousFixture, tag =
                     dapr.GetStateAndETagAsync<FixtureDto>(
                         StoreName,
                         fixtureKey fixture.Id,
@@ -246,7 +246,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                         tag,
                         cancellationToken = cancellationToken
                     )
-                for (f, t) in fixtureUpdates do
+                for f, t in fixtureUpdates do
                     let! _ = dapr.TrySaveStateAsync(StoreName, fixtureKey f.FixtureId, f, t, cancellationToken = cancellationToken)
                     ()
 
@@ -279,7 +279,7 @@ module Program =
 
     let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
         services.Configure<ApiSettings>(context.Configuration.GetSection("Api")) |> ignore
-        services.AddDaprClient() |> ignore
+        services.AddDaprClient()
         services.AddHostedService<Worker>() |> ignore
 
     let createHostBuilder args =

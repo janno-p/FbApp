@@ -5,6 +5,8 @@ open FbApp.Api.Domain
 open FbApp.Api.Repositories
 open FSharp.Control.Tasks
 open Giraffe
+open Microsoft.Extensions.DependencyInjection
+open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
 open System
@@ -70,7 +72,7 @@ let private mapTeams (competition: ReadModels.Competition) =
 
 let private getFixtures: HttpHandler =
     (fun next context -> task {
-        match! Competitions.tryGetActive () with
+        match! Competitions.tryGetActive (context.RequestServices.GetRequiredService<IMongoDatabase>()) with
         | Some activeCompetition ->
             let fixtures =
                 {
@@ -93,17 +95,17 @@ let private savePredictions: HttpHandler =
     (fun next context -> task {
         let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
         let user = Auth.createUser context.User context
-        let! competition = Competitions.get dto.CompetitionId
+        let! competition = Competitions.get (context.RequestServices.GetRequiredService<IMongoDatabase>()) dto.CompetitionId
         match competition with
         | Some(competition) when competition.Date > DateTimeOffset.Now ->
             let command = Predictions.Register (dto, user.Name, user.Email)
             let id = Predictions.createId (dto.CompetitionId, Predictions.Email user.Email)
             let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED id next context
+            | Ok _ -> return! Successful.ACCEPTED id next context
             | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
             | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
-        | Some(_) ->
+        | Some _ ->
             return! RequestErrors.BAD_REQUEST "Competition has already begun" next context
         | None ->
             return! RequestErrors.BAD_REQUEST "Invalid competition id" next context
@@ -111,10 +113,11 @@ let private savePredictions: HttpHandler =
 
 let private getCurrentPrediction: HttpHandler =
     (fun next context -> task {
-        match! Competitions.tryGetActive () with
+        let db = context.RequestServices.GetRequiredService<IMongoDatabase>()
+        match! Competitions.tryGetActive db with
         | Some activeCompetition ->
             let user = Auth.createUser context.User context
-            let! prediction = Predictions.get (activeCompetition.Id, user.Email)
+            let! prediction = Predictions.get db (activeCompetition.Id, user.Email)
             match prediction with
             | Some(prediction) ->
                 let mapFixture (fixture: ReadModels.PredictionFixtureResult) : PredictionFixtureDto =
@@ -142,8 +145,8 @@ let private getCurrentPrediction: HttpHandler =
             return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
-let getCompetitionStatus () = task {
-    match! Competitions.tryGetActive () with
+let getCompetitionStatus db = task {
+    match! Competitions.tryGetActive db with
     | Some competition ->
         return if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
     | None ->

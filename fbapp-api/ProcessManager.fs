@@ -17,14 +17,14 @@ open System.Collections.Generic
 module Result =
     let unwrap f = function
         | Ok(x) -> x
-        | Error(x) -> failwithf "%A" (f x)
+        | Error(x) -> failwith $"%A{f x}"
 
 
 let (|Nullable|_|) (x: Nullable<_>) =
     if x.HasValue then Some(x.Value) else None
 
 
-let upsertCompetition (logger: ILogger) (metadata: Metadata) (e: ResolvedEvent) (model: Competitions.Created) = unitTask {
+let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEvent) (model: Competitions.Created) = unitTask {
     try
         let competitionModel: ReadModels.Competition =
             {
@@ -37,23 +37,23 @@ let upsertCompetition (logger: ILogger) (metadata: Metadata) (e: ResolvedEvent) 
                 Version = metadata.AggregateSequenceNumber
                 Date = model.Date.ToOffset(TimeSpan.Zero)
             }
-        do! Competitions.insert competitionModel
+        do! Competitions.insert db competitionModel
     with :? MongoWriteException as ex ->
         logger.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 }
 
 
-let processCompetitions (logger: ILogger) (authOptions: AuthOptions) (md: Metadata) (e: ResolvedEvent) = task {
+let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
         try
-            do! args |> upsertCompetition logger md e
+            do! args |> upsertCompetition (logger, db) md e
             let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
-            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
+            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
             let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
-            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
+            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
             let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
-            let groups = groups |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
+            let groups = groups |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
                     (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
@@ -76,7 +76,7 @@ let processCompetitions (logger: ILogger) (authOptions: AuthOptions) (md: Metada
                         ExternalId = team.ExternalId
                     } : ReadModels.Team)
             |> List.toArray
-        do! Competitions.updateTeams (md.AggregateId, md.AggregateSequenceNumber) teamProjections
+        do! Competitions.updateTeams db (md.AggregateId, md.AggregateSequenceNumber) teamProjections
     | Competitions.FixturesAssigned fixtures ->
         let fixtureProjections =
             fixtures |> List.map (fun t ->
@@ -87,7 +87,7 @@ let processCompetitions (logger: ILogger) (authOptions: AuthOptions) (md: Metada
                     ExternalId = t.ExternalId
                 } : ReadModels.CompetitionFixture
             ) |> List.toArray
-        do! Competitions.updateFixtures (md.AggregateId, md.AggregateSequenceNumber) fixtureProjections
+        do! Competitions.updateFixtures db (md.AggregateId, md.AggregateSequenceNumber) fixtureProjections
         for fixture in fixtures do
             try
                 let fixtureId = Fixtures.createId (md.AggregateId, fixture.ExternalId)
@@ -106,7 +106,7 @@ let processCompetitions (logger: ILogger) (authOptions: AuthOptions) (md: Metada
             with :? WrongExpectedVersionException as ex ->
                 logger.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Competitions.GroupsAssigned groups ->
-        do! (dict groups) |> Competitions.updateGroups (md.AggregateId, md.AggregateSequenceNumber)
+        do! (dict groups) |> Competitions.updateGroups db (md.AggregateId, md.AggregateSequenceNumber)
 }
 
 
@@ -123,14 +123,14 @@ let private mapActualResult (status, fullTime, extraTime: int array, penalties: 
     | _ -> null
 
 
-let private mapFixtureResult competitionId (x: Predictions.FixtureResultRegistration) = task {
+let private mapFixtureResult db competitionId (x: Predictions.FixtureResultRegistration) = task {
     let mapResult = function
         | Predictions.HomeWin -> "HomeWin"
         | Predictions.Tie -> "Tie"
         | Predictions.AwayWin -> "AwayWin"
 
     let fixtureId = Fixtures.createId (competitionId, x.Id)
-    let! result = Fixtures.getFixtureStatus fixtureId
+    let! result = Fixtures.getFixtureStatus db fixtureId
 
     let result = mapActualResult (result.Status, result.FullTime, result.ExtraTime, result.Penalties)
 
@@ -145,10 +145,10 @@ let private mapFixtureResult competitionId (x: Predictions.FixtureResultRegistra
 }
 
 
-let acceptPrediction (metadata: Metadata) (model: Predictions.PredictionRegistration) = unitTask {
+let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegistration) = unitTask {
     let fixtureTasks =
         model.Fixtures
-        |> Seq.map (mapFixtureResult model.CompetitionId)
+        |> Seq.map (mapFixtureResult db model.CompetitionId)
         |> Seq.toArray
 
     let! fixtures = System.Threading.Tasks.Task.WhenAll(fixtureTasks)
@@ -164,7 +164,7 @@ let acceptPrediction (metadata: Metadata) (model: Predictions.PredictionRegistra
                         Result = fixture.PredictedResult
                     }
                 let id = Fixtures.createId (model.CompetitionId, fixture.FixtureId)
-                do! Fixtures.addPrediction id prediction
+                do! Fixtures.addPrediction db id prediction
             })
 
     let! _ = System.Threading.Tasks.Task.WhenAll(updates)
@@ -184,54 +184,54 @@ let acceptPrediction (metadata: Metadata) (model: Predictions.PredictionRegistra
             Leagues = [||]
             Version = metadata.AggregateSequenceNumber
         }
-    do! Predictions.insert prediction
+    do! Predictions.insert db prediction
 }
 
 
-let processPredictions (logger: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+let processPredictions (logger: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Predictions.Event> (e.Event.EventType, e.Event.Data) with
     | Predictions.Registered args ->
-        let! competition = Competitions.get args.CompetitionId
+        let! competition = Competitions.get db args.CompetitionId
         if md.Timestamp > competition.Value.Date then
             let id = Predictions.createId (args.CompetitionId, Predictions.Email args.Email)
             let! _ = CommandHandlers.predictionsHandler (id, Aggregate.Any) Predictions.Decline
             ()
         else
             try
-                do! acceptPrediction md args
+                do! acceptPrediction db md args
             with :? MongoWriteException as ex ->
                 logger.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Predictions.Declined ->
-        do! Predictions.delete md.AggregateId
+        do! Predictions.delete db md.AggregateId
 }
 
 
-let updateFixtureOrder competitionId = task {
-    let! fixtures = Fixtures.getFixtureOrder competitionId
+let updateFixtureOrder db competitionId = task {
+    let! fixtures = Fixtures.getFixtureOrder db competitionId
     match fixtures |> Seq.toList with
     | [] | [_] -> ()
     | [x;y] ->
         if x.PreviousId.HasValue || x.NextId <> Nullable(y.Id) then
-            do! Fixtures.setAdjacentFixtures x.Id (None, Some(y.Id))
+            do! Fixtures.setAdjacentFixtures db x.Id (None, Some(y.Id))
         if y.PreviousId <> Nullable(x.Id) || y.NextId.HasValue then
-            do! Fixtures.setAdjacentFixtures y.Id (Some(x.Id), None)
+            do! Fixtures.setAdjacentFixtures db y.Id (Some(x.Id), None)
     | fixtures ->
         let x, y = match fixtures with x::y::_ -> x, y | _ -> failwith "never"
         if x.PreviousId.HasValue || x.NextId <> Nullable(y.Id) then
-            do! Fixtures.setAdjacentFixtures x.Id (None, Some(y.Id))
+            do! Fixtures.setAdjacentFixtures db x.Id (None, Some(y.Id))
         for w in fixtures |> List.windowed 3 do
             let p, x, n = match w with [p; x; n] -> p, x, n | _ -> failwith "never"
             if x.PreviousId <> Nullable(p.Id) || x.NextId <> Nullable(n.Id) then
-                do! Fixtures.setAdjacentFixtures x.Id (Some(p.Id), Some(n.Id))
+                do! Fixtures.setAdjacentFixtures db x.Id (Some(p.Id), Some(n.Id))
         let x, y = match fixtures |> List.rev with x::y::_ -> x, y | _ -> failwith "never"
         if x.PreviousId <> Nullable(y.Id) || x.NextId.HasValue then
-            do! Fixtures.setAdjacentFixtures x.Id (Some(y.Id), None)
+            do! Fixtures.setAdjacentFixtures db x.Id (Some(y.Id), None)
 }
 
 
-let getResultPredictions (input: Fixtures.AddFixtureInput) = task {
+let getResultPredictions db (input: Fixtures.AddFixtureInput) = task {
     if input.Stage <> "GROUP_STAGE" then return [||] else
-    let! predictions = Predictions.ofFixture input.CompetitionId input.ExternalId
+    let! predictions = Predictions.ofFixture db input.CompetitionId input.ExternalId
     let predictions =
         predictions
         |> Seq.map
@@ -246,9 +246,9 @@ let getResultPredictions (input: Fixtures.AddFixtureInput) = task {
 }
 
 
-let getQualificationPredictions (input: Fixtures.AddFixtureInput) = task {
+let getQualificationPredictions db (input: Fixtures.AddFixtureInput) = task {
     if input.Stage = "GROUP_STAGE" then return [||] else
-    let! predictions = Predictions.ofStage (input.CompetitionId, input.Stage)
+    let! predictions = Predictions.ofStage db (input.CompetitionId, input.Stage)
     let result =
         predictions
         |> Seq.map (fun x ->
@@ -263,40 +263,40 @@ let getQualificationPredictions (input: Fixtures.AddFixtureInput) = task {
 }
 
 
-let updateQualifiedTeams (competition: ReadModels.Competition) = task {
-    let! qualifiedTeams = Fixtures.getQualifiedTeams competition.Id
+let updateQualifiedTeams db (competition: ReadModels.Competition) = task {
+    let! qualifiedTeams = Fixtures.getQualifiedTeams db competition.Id
     let unqualifiedTeams = competition.Teams |> Seq.map (fun x -> x.ExternalId) |> Seq.except qualifiedTeams |> Seq.toArray
-    do! Predictions.setUnqualifiedTeams (competition.Id, unqualifiedTeams)
+    do! Predictions.setUnqualifiedTeams db (competition.Id, unqualifiedTeams)
 }
 
 
-let updateScore (fixtureId: Guid, expectedVersion: int64, fullTime, extraTime, penalties) = task {
-    let! fixture = Fixtures.get fixtureId
-    do! Fixtures.updateScore (fixtureId, expectedVersion) (fullTime, extraTime, penalties)
+let updateScore db (fixtureId: Guid, expectedVersion: int64, fullTime, extraTime, penalties) = task {
+    let! fixture = Fixtures.get db fixtureId
+    do! Fixtures.updateScore db (fixtureId, expectedVersion) (fullTime, extraTime, penalties)
     let ps = match penalties with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
     let et = match extraTime with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
     let actualResult = mapActualResult (fixture.Status, [| fullTime.Home; fullTime.Away |], et, ps)
     if fixture.Stage = "GROUP_STAGE" then
         if actualResult |> isNull |> not then
-            do! Predictions.updateResult (fixture.CompetitionId, fixture.ExternalId, actualResult)
+            do! Predictions.updateResult db (fixture.CompetitionId, fixture.ExternalId, actualResult)
     else if fixture.Status = "FINISHED" then
-        do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.HomeTeam.ExternalId, actualResult = "HomeWin")
-        do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.AwayTeam.ExternalId, actualResult = "AwayWin")
+        do! Predictions.updateQualifiers db (fixture.CompetitionId, fixture.Stage, fixture.HomeTeam.ExternalId, actualResult = "HomeWin")
+        do! Predictions.updateQualifiers db (fixture.CompetitionId, fixture.Stage, fixture.AwayTeam.ExternalId, actualResult = "AwayWin")
 }
 
 
-let processFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+let processFixtures (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
     | Fixtures.Added input ->
         try
-            let! competition = Competitions.get input.CompetitionId
+            let! competition = Competitions.get db input.CompetitionId
             let competition = competition |> Option.get
 
             let homeTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.HomeTeamId)
             let awayTeam = competition.Teams |> Array.find (fun t -> t.ExternalId = input.AwayTeamId)
 
-            let! resultPredictions = getResultPredictions input
-            let! qualificationPredictions = getQualificationPredictions input
+            let! resultPredictions = getResultPredictions db input
+            let! qualificationPredictions = getQualificationPredictions db input
 
             let stage = if input.Stage |> String.IsNullOrEmpty then "GROUP_STAGE" else input.Stage
 
@@ -320,41 +320,41 @@ let processFixtures (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Version = md.AggregateSequenceNumber
                 }
 
-            do! Fixtures.insert fixtureModel
-            do! updateFixtureOrder input.CompetitionId
+            do! Fixtures.insert db fixtureModel
+            do! updateFixtureOrder db input.CompetitionId
 
             if stage <> "GROUP_STAGE" then
-                do! Predictions.updateQualifiers (input.CompetitionId, "GROUP_STAGE", fixtureModel.HomeTeam.ExternalId, true)
-                do! Predictions.updateQualifiers (input.CompetitionId, "GROUP_STAGE", fixtureModel.AwayTeam.ExternalId, true)
+                do! Predictions.updateQualifiers db (input.CompetitionId, "GROUP_STAGE", fixtureModel.HomeTeam.ExternalId, true)
+                do! Predictions.updateQualifiers db (input.CompetitionId, "GROUP_STAGE", fixtureModel.AwayTeam.ExternalId, true)
 
             if stage = "LAST_16" then
-                let! numFixtures = Fixtures.getFixtureCount (input.CompetitionId, "LAST_16")
+                let! numFixtures = Fixtures.getFixtureCount db (input.CompetitionId, "LAST_16")
                 if numFixtures = 8L then
-                    do! updateQualifiedTeams competition
+                    do! updateQualifiedTeams db competition
 
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
     | Fixtures.ScoreChanged (homeGoals, awayGoals) ->
-        do! updateScore (md.AggregateId, md.AggregateSequenceNumber, { Home = homeGoals; Away = awayGoals }, None, None)
+        do! updateScore db (md.AggregateId, md.AggregateSequenceNumber, { Home = homeGoals; Away = awayGoals }, None, None)
 
     | Fixtures.ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties } ->
-        do! updateScore (md.AggregateId, md.AggregateSequenceNumber, fullTime, extraTime, penalties)
+        do! updateScore db (md.AggregateId, md.AggregateSequenceNumber, fullTime, extraTime, penalties)
 
     | Fixtures.StatusChanged status ->
-        let! fixture = Fixtures.get md.AggregateId
-        do! Fixtures.updateStatus (md.AggregateId, md.AggregateSequenceNumber) status
+        let! fixture = Fixtures.get db md.AggregateId
+        do! Fixtures.updateStatus db (md.AggregateId, md.AggregateSequenceNumber) status
         let actualResult = mapActualResult (status.ToString(), fixture.FullTime, fixture.ExtraTime, fixture.Penalties)
         if fixture.Stage = "GROUP_STAGE" then
             if actualResult |> isNull |> not then
-                do! Predictions.updateResult (fixture.CompetitionId, fixture.ExternalId, actualResult)
+                do! Predictions.updateResult db (fixture.CompetitionId, fixture.ExternalId, actualResult)
         else if status = Fixtures.Finished then
-            do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.HomeTeam.ExternalId, actualResult = "HomeWin")
-            do! Predictions.updateQualifiers (fixture.CompetitionId, fixture.Stage, fixture.AwayTeam.ExternalId, actualResult = "AwayWin")
+            do! Predictions.updateQualifiers db (fixture.CompetitionId, fixture.Stage, fixture.HomeTeam.ExternalId, actualResult = "HomeWin")
+            do! Predictions.updateQualifiers db (fixture.CompetitionId, fixture.Stage, fixture.AwayTeam.ExternalId, actualResult = "AwayWin")
 }
 
 
-let processLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
+let processLeagues (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
     match deserializeOf<Leagues.Event> (e.Event.EventType, e.Event.Data) with
     | Leagues.Created input ->
         try
@@ -365,27 +365,27 @@ let processLeagues (log: ILogger) (md: Metadata) (e: ResolvedEvent) = task {
                     Code = input.Code
                     Name = input.Name
                 }
-            do! Leagues.insert leagueModel
+            do! Leagues.insert db leagueModel
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
 
     | Leagues.PredictionAdded predictionId ->
-        do! Predictions.addToLeague (predictionId, md.AggregateId)
+        do! Predictions.addToLeague db (predictionId, md.AggregateId)
 }
 
 
-let eventAppeared (logger: ILogger, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) = unitTask {
+let eventAppeared (logger: ILogger, db, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) = unitTask {
     try
         logger.LogInformation($"Event %A{e.Event.EventId} of type %s{e.Event.EventType} appeared in stream %s{e.Event.EventStreamId}")
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
-            do! processCompetitions logger authOptions md e
+            do! processCompetitions (logger, db) authOptions md e
         | Some(md) when md.AggregateName = Predictions.AggregateName ->
-            do! processPredictions logger md e
+            do! processPredictions (logger, db) md e
         | Some(md) when md.AggregateName = Fixtures.AggregateName ->
-            do! processFixtures logger md e
+            do! processFixtures (logger, db) md e
         | Some(md) when md.AggregateName = Leagues.AggregateName ->
-            do! processLeagues logger md e
+            do! processLeagues (logger, db) md e
         | _ -> ()
         do! subscription.Ack(e)
         logger.LogInformation($"Event %A{e.Event.EventId} handled")
@@ -398,14 +398,14 @@ let eventAppeared (logger: ILogger, authOptions: AuthOptions) (subscription: Per
 type private Marker = class end
 
 
-let connectSubscription (client: EventStorePersistentSubscriptionsClient) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) (subscriptionsSettings: SubscriptionsSettings) = unitTask {
+let connectSubscription (client: EventStorePersistentSubscriptionsClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) (subscriptionsSettings: SubscriptionsSettings) = unitTask {
     let logger = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
     logger.LogInformation("Initializing process manager")
     let! _ =
         client.SubscribeAsync(
             subscriptionsSettings.StreamName,
             subscriptionsSettings.GroupName,
-            (fun sub e _ _ -> eventAppeared (logger, authOptions) sub e),
+            (fun sub e _ _ -> eventAppeared (logger, db, authOptions) sub e),
             autoAck = false
         )
     logger.LogInformation("Process manager initialized")

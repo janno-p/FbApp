@@ -2,19 +2,14 @@
 
 open FSharp.Control.Tasks
 open MongoDB.Bson
+open MongoDB.Bson.Serialization
+open MongoDB.Bson.Serialization.Serializers
 open MongoDB.Driver
 open System
 open System.Collections.Generic
 open System.Linq
 
-let private settings =
-    MongoClientSettings(
-        GuidRepresentation = GuidRepresentation.Standard,
-        Server = MongoServerAddress("mongo")
-    )
-
-let private mongo = MongoClient(settings)
-let private db = mongo.GetDatabase("fbapp")
+do BsonSerializer.RegisterSerializer(GuidSerializer(GuidRepresentation.Standard))
 
 module FindFluent =
     let trySingleAsync (x: IFindFluent<_,_>) = task {
@@ -173,53 +168,54 @@ module Competitions =
     type Builders = Builders<ReadModels.Competition>
     type FieldDefinition = FieldDefinition<ReadModels.Competition>
 
-    let private collection = db.GetCollection<ReadModels.Competition>("competitions")
+    let private getCollection (db: IMongoDatabase) =
+        db.GetCollection<ReadModels.Competition>("competitions")
 
     let private filterByIdAndVersion (id, ver) =
         Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
-    let tryGetActive () = task {
+    let tryGetActive db = task {
         let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2018L)
-        return! collection.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
+        return! (getCollection db).Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
-    let get (competitionId: Guid) = task {
+    let get db (competitionId: Guid) = task {
         let f = Builders.Filter.Eq((fun x -> x.Id), competitionId)
-        return! collection.Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
+        return! (getCollection db).Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
-    let insert competition = task {
-        let! _ = collection.InsertOneAsync(competition)
+    let insert db competition = task {
+        let! _ = (getCollection db).InsertOneAsync(competition)
         ()
     }
 
-    let updateTeams (id, version) (teams: ReadModels.Team []) = task {
+    let updateTeams db (id, version) (teams: ReadModels.Team []) = task {
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
                     .Set((fun x -> x.Teams), teams)
-        let! _ = collection.UpdateOneAsync(filterByIdAndVersion (id, version), u)
+        let! _ = (getCollection db).UpdateOneAsync(filterByIdAndVersion (id, version), u)
         ()
     }
 
-    let updateFixtures (id, version) (fixtures: ReadModels.CompetitionFixture []) = task {
+    let updateFixtures db (id, version) (fixtures: ReadModels.CompetitionFixture []) = task {
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
                     .Set((fun x -> x.Fixtures), fixtures)
-        let! _ = collection.UpdateOneAsync(filterByIdAndVersion (id, version), u)
+        let! _ = (getCollection db).UpdateOneAsync(filterByIdAndVersion (id, version), u)
         ()
     }
 
-    let updateGroups (id, version) (groups: IDictionary<_,_>) = task {
+    let updateGroups db (id, version) (groups: IDictionary<_,_>) = task {
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
                     .Set((fun x -> x.Groups), groups)
-        let! _ = collection.UpdateOneAsync(filterByIdAndVersion (id, version), u)
+        let! _ = (getCollection db).UpdateOneAsync(filterByIdAndVersion (id, version), u)
         ()
     }
 
-    let getAll () = task {
+    let getAll db = task {
         let sort = Builders.Sort.Ascending(FieldDefinition.op_Implicit("Description"))
-        return! collection.Find(Builders.Filter.Empty).Sort(sort).ToListAsync()
+        return! (getCollection db).Find(Builders.Filter.Empty).Sort(sort).ToListAsync()
     }
 
 module Fixtures =
@@ -229,76 +225,77 @@ module Fixtures =
     type FieldDefinition = FieldDefinition<ReadModels.Fixture>
     type ProjectionDefinition<'T> = ProjectionDefinition<ReadModels.Fixture, 'T>
 
-    let private collection = db.GetCollection<ReadModels.Fixture>("fixtures")
+    let private getCollection (db: IMongoDatabase) =
+        db.GetCollection<ReadModels.Fixture>("fixtures")
 
-    let insert fixture = task {
-        let! _ = collection.InsertOneAsync(fixture)
+    let insert db fixture = task {
+        let! _ = (getCollection db).InsertOneAsync(fixture)
         ()
     }
 
-    let updateScore (id, version) (fullTime: Fixtures.FixtureGoals, extraTime: Fixtures.FixtureGoals option, penalties: Fixtures.FixtureGoals option) = task {
+    let updateScore db (id, version) (fullTime: Fixtures.FixtureGoals, extraTime: Fixtures.FixtureGoals option, penalties: Fixtures.FixtureGoals option) = task {
         let f = Builders.Filter.Eq((fun x -> x.Id), id)
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
                     .Set((fun x -> x.FullTime), [| fullTime.Home; fullTime.Away |])
                     .Set((fun x -> x.ExtraTime), extraTime |> Option.fold (fun _ u -> [| u.Home; u.Away |]) null)
                     .Set((fun x -> x.Penalties), penalties |> Option.fold (fun _ u -> [| u.Home; u.Away |]) null)
-        let! _ = collection.UpdateOneAsync(f, u)
+        let! _ = (getCollection db).UpdateOneAsync(f, u)
         ()
     }
 
-    let updateStatus (id, version) (status: Fixtures.FixtureStatus) = task {
+    let updateStatus db (id, version) (status: Fixtures.FixtureStatus) = task {
         let f = Builders.Filter.Eq((fun x -> x.Id), id)
         let u = Builders.Update
                     .Set((fun x -> x.Version), version)
                     .Set((fun x -> x.Status), status.ToString())
-        let! _ = collection.UpdateOneAsync(f, u)
+        let! _ = (getCollection db).UpdateOneAsync(f, u)
         ()
     }
 
-    let addPrediction id (prediction: ReadModels.FixtureResultPrediction) = task {
+    let addPrediction db id (prediction: ReadModels.FixtureResultPrediction) = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
         let update = Builders.Update.Push(FieldDefinition.op_Implicit "ResultPredictions", prediction)
-        let! _ = collection.UpdateOneAsync(idFilter, update)
+        let! _ = (getCollection db).UpdateOneAsync(idFilter, update)
         ()
     }
 
-    let get id = task {
+    let get db id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        return! collection.Find(idFilter).SingleAsync()
+        return! (getCollection db).Find(idFilter).SingleAsync()
     }
 
-    let getFixtureStatus id = task {
+    let getFixtureStatus db id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
         let projection = ProjectionDefinition<ReadModels.FixtureStatus>.op_Implicit """{ Status: 1, FullTime: 1, ExtraTime: 1, Penalties: 1, _id: 0 }"""
-        return! collection.Find(idFilter).Project(projection).SingleAsync()
+        return! (getCollection db).Find(idFilter).Project(projection).SingleAsync()
     }
 
-    let getTimelyFixture () = task {
+    let getTimelyFixture db = task {
         let pipelines =
             let now = DateTimeOffset.UtcNow.Ticks
             PipelineDefinition<_,ReadModels.Fixture>.Create(
-                (sprintf """{
-                    $addFields: {
-                        rank: {
-                            $let: {
-                                vars: {
-                                    diffStart: { $abs: { $subtract: [ %d, { $arrayElemAt: [ "$Date", 0 ] } ] } },
-                                    diffEnd: { $abs: { $subtract: [ %d, { $sum: [ 63000000000, { $arrayElemAt: [ "$Date", 0 ] } ] } ] } }
-                                },
-                                in: { $cond: { if: { $eq: [ "$Status", "IN_PLAY" ] }, then: -1, else: { $multiply: [ 1, { $min: ["$$diffStart", "$$diffEnd" ] } ] } } }
-                            }
-                        }
-                    }
-                }""" now now),
+                $"""{{
+                    $addFields: {{
+                        rank: {{
+                            $let: {{
+                                vars: {{
+                                    diffStart: {{ $abs: {{ $subtract: [ %d{now}, {{ $arrayElemAt: [ "$Date", 0 ] }} ] }} }},
+                                    diffEnd: {{ $abs: {{ $subtract: [ %d{now}, {{ $sum: [ 63000000000, {{ $arrayElemAt: [ "$Date", 0 ] }} ] }} ] }} }}
+                                }},
+                                in: {{ $cond: {{ if: {{ $eq: [ "$Status", "IN_PLAY" ] }}, then: -1, else: {{ $multiply: [ 1, {{ $min: ["$$diffStart", "$$diffEnd" ] }} ] }} }} }}
+                            }}
+                        }}
+                    }}
+                }}""",
                 """{ $sort: { rank: 1 } }""",
                 """{ $limit: 1 }""",
                 """{ $addFields: { rank: "$$REMOVE" } }"""
             )
-        return! collection.Aggregate(pipelines).SingleAsync()
+        return! (getCollection db).Aggregate(pipelines).SingleAsync()
     }
 
-    let getFixtureOrder competitionId = task {
+    let getFixtureOrder db competitionId = task {
         let filter = Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId)
         let projection = ProjectionDefinition<ReadModels.FixtureOrder>.op_Implicit """{ Id: 1, PreviousId: 1, NextId: 1 }"""
         let sort =
@@ -306,27 +303,27 @@ module Fixtures =
                 Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Date.0"),
                 Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Id")
             )
-        return! collection.Find(filter).Sort(sort).Project(projection).ToListAsync()
+        return! (getCollection db).Find(filter).Sort(sort).Project(projection).ToListAsync()
     }
 
-    let setAdjacentFixtures id (previousId, nextId) = task {
+    let setAdjacentFixtures db id (previousId, nextId) = task {
         let previousId = previousId |> Option.toNullable
         let nextId = nextId |> Option.toNullable
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
         let update = Builders.Update.Set((fun x -> x.PreviousId), previousId).Set((fun x -> x.NextId), nextId)
-        let! _ = collection.UpdateOneAsync(idFilter, update)
+        let! _ = (getCollection db).UpdateOneAsync(idFilter, update)
         ()
     }
 
-    let getFixtureCount (competitionId: Guid, stage: string) = task {
-        return! collection.CountDocumentsAsync(FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), Stage: { $eq: "%s" } }""" competitionId stage))
+    let getFixtureCount db (competitionId: Guid, stage: string) = task {
+        return! (getCollection db).CountDocumentsAsync(FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), Stage: {{ $eq: "%s{stage}" }} }}""")
     }
 
-    let getQualifiedTeams (competitionId: Guid) = task {
+    let getQualifiedTeams db (competitionId: Guid) = task {
         let! teams =
-            collection.Aggregate(
+            (getCollection db).Aggregate(
                 PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
-                    (sprintf """{ $match: { CompetitionId: CSUUID("%O"), Stage: "LAST_16" } }""" competitionId),
+                    $"""{{ $match: {{ CompetitionId: CSUUID("{competitionId}"), Stage: "LAST_16" }} }}""",
                     """{ $project: { _id: 0, TeamId: ["$HomeTeam.ExternalId", "$AwayTeam.ExternalId"] } }""",
                     """{ $unwind: "$TeamId" }"""
                 )
@@ -341,18 +338,19 @@ module Predictions =
     type FieldDefinition = FieldDefinition<ReadModels.Prediction>
     type ProjectionDefinition<'T> = ProjectionDefinition<ReadModels.Prediction, 'T>
 
-    let private collection = db.GetCollection<ReadModels.Prediction>("predictions")
+    let private getCollection (db: IMongoDatabase) =
+        db.GetCollection<ReadModels.Prediction>("predictions")
 
-    let ofFixture (competitionId: Guid) (externalFixtureId: int64) = task {
+    let ofFixture db (competitionId: Guid) (externalFixtureId: int64) = task {
         let pipelines =
             PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionFixture>.Create(
-                (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") }, "Fixtures.FixtureId": { $eq: %d } } }""" competitionId externalFixtureId),
-                (sprintf """{ $project: { Name: 1, Fixtures: { $filter: { input: "$Fixtures", as: "fixture", cond: { $eq: ["$$fixture.FixtureId", %d] } } } } }""" externalFixtureId)
+                $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }}, "Fixtures.FixtureId": {{ $eq: %d{externalFixtureId} }} }} }}""",
+                $"""{{ $project: {{ Name: 1, Fixtures: {{ $filter: {{ input: "$Fixtures", as: "fixture", cond: {{ $eq: ["$$fixture.FixtureId", %d{externalFixtureId}] }} }} }} }} }}"""
             )
-        return! collection.Aggregate(pipelines).ToListAsync()
+        return! (getCollection db).Aggregate(pipelines).ToListAsync()
     }
 
-    let ofStage (competitionId: Guid, stage: string) =
+    let ofStage db (competitionId: Guid, stage: string) =
         match stage with
         | "LAST_16"
         | "QUARTER_FINAL"
@@ -361,47 +359,47 @@ module Predictions =
                 let qualName = if stage = "LAST_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINAL" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
-                        (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
-                        (sprintf """{ $project: { Name: 1, Qualifiers: "$%s" } }""" qualName)
+                        $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",
+                        $"""{{ $project: {{ Name: 1, Qualifiers: "$%s{qualName}" }} }}"""
                     )
-                return! collection.Aggregate(pipelines).ToListAsync()
+                return! (getCollection db).Aggregate(pipelines).ToListAsync()
             }
         | "FINAL" ->
             task {
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
-                        (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
+                        $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",
                         """{ $project: { Name: 1, Qualifiers: ["$Winner"] } }"""
                     )
-                return! collection.Aggregate(pipelines).ToListAsync()
+                return! (getCollection db).Aggregate(pipelines).ToListAsync()
             }
         | _ -> task { return ResizeArray<_>() }
 
     let private idToGuid (competitionId, email) =
         Predictions.createId (competitionId, Predictions.Email email)
 
-    let delete id = task {
+    let delete db id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        let! _ = collection.DeleteOneAsync(idFilter)
+        let! _ = (getCollection db).DeleteOneAsync(idFilter)
         ()
     }
 
-    let insert prediction = task {
-        let! _ = collection.InsertOneAsync(prediction)
+    let insert db prediction = task {
+        let! _ = (getCollection db).InsertOneAsync(prediction)
         ()
     }
 
-    let get id = task {
+    let get db id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), (idToGuid id))
-        return! collection.Find(idFilter) |> FindFluent.trySingleAsync
+        return! (getCollection db).Find(idFilter) |> FindFluent.trySingleAsync
     }
 
-    let getById id = task {
+    let getById db id = task {
         let idFilter = Builders.Filter.Eq((fun x -> x.Id), id)
-        return! collection.Find(idFilter).SingleAsync()
+        return! (getCollection db).Find(idFilter).SingleAsync()
     }
 
-    let find (competitionId: Guid) (term: string) = task {
+    let find db (competitionId: Guid) (term: string) = task {
         let filter =
             Builders.Filter.And(
                 Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId),
@@ -409,19 +407,19 @@ module Predictions =
             )
         let project =
             ProjectionDefinition<ReadModels.PredictionItem>.op_Implicit """{ _id: 1, Name: 1 }"""
-        return! collection.Find(filter).Project(project).ToListAsync()
+        return! (getCollection db).Find(filter).Project(project).ToListAsync()
     }
 
-    let addToLeague (predictionId, leagueId) = task {
+    let addToLeague db (predictionId, leagueId) = task {
         let filter = Builders.Filter.Eq((fun x -> x.Id), predictionId)
         let update = Builders.Update.AddToSet(FieldDefinition.op_Implicit "Leagues", leagueId)
-        let! _ = collection.UpdateOneAsync(filter, update)
+        let! _ = (getCollection db).UpdateOneAsync(filter, update)
         ()
     }
 
-    let updateResult (competitionId, fixtureId: int64, actualResult) = task {
+    let updateResult db (competitionId, fixtureId: int64, actualResult) = task {
         let! _ = 
-            collection.UpdateManyAsync(
+            (getCollection db).UpdateManyAsync(
                 (fun x -> x.CompetitionId = competitionId && x.Fixtures.Any(fun y -> y.FixtureId = fixtureId)),
                 Builders.Update.Set((fun x -> x.Fixtures.ElementAt(-1).ActualResult), actualResult)
             )
@@ -434,29 +432,29 @@ module Predictions =
         | "QUARTER_FINAL" -> "QualifiersRoundOf4"
         | "SEMI_FINAL" -> "QualifiersRoundOf2"
         | "FINAL" -> "Winner"
-        | x -> failwithf "Unexpected value: `%s`" x
+        | x -> failwith $"Unexpected value: `%s{x}`"
 
-    let updateQualifiers (competitionId: Guid, stage: string, teamId: int64, hasQualified: bool) = task {
+    let updateQualifiers db (competitionId: Guid, stage: string, teamId: int64, hasQualified: bool) = task {
         let colName = getColName stage
         let! _ =
-            collection.UpdateManyAsync(
-                FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), "%s._id": %d }""" competitionId colName teamId),
-                UpdateDefinition.op_Implicit (sprintf """{ $set: { "%s.$.HasQualified": %b } }""" colName hasQualified)
+            (getCollection db).UpdateManyAsync(
+                FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), "%s{colName}._id": %d{teamId} }}""",
+                UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{colName}.$.HasQualified": %b{hasQualified} }} }}"""
             )
         ()
     }
 
-    let setUnqualifiedTeams (competitionId: Guid, teams: int64 array) = task {
+    let setUnqualifiedTeams db (competitionId: Guid, teams: int64 array) = task {
         let teamList = String.Join(",", teams)
 
         let updateQualifiers name = task {
             let! _ =
-                collection.UpdateManyAsync(
-                    FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O") }""" competitionId),
-                    UpdateDefinition.op_Implicit (sprintf """{ $set: { "%s.$[q].HasQualified": false } }""" name),
+                (getCollection db).UpdateManyAsync(
+                    FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}") }}""",
+                    UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{name}.$[q].HasQualified": false }} }}""",
                     UpdateOptions(
                         ArrayFilters = [
-                            ArrayFilterDefinition<ReadModels.Prediction>.op_Implicit (sprintf """{ $and: [ { "q.HasQualified": { $eq: null } }, { "q._id": { $in: [%s] } } ] }""" teamList)
+                            ArrayFilterDefinition<ReadModels.Prediction>.op_Implicit $"""{{ $and: [ {{ "q.HasQualified": {{ $eq: null }} }}, {{ "q._id": {{ $in: [%s{teamList}] }} }} ] }}"""
                         ]
                     )
                 )
@@ -469,17 +467,17 @@ module Predictions =
         do! updateQualifiers "QualifiersRoundOf2"
 
         let! _ =
-            collection.UpdateManyAsync(
-                FilterDefinition.op_Implicit (sprintf """{ CompetitionId: CSUUID("%O"), "Winner.HasQualified": { $eq: null }, "Winner._id": { $in: [%s] } }""" competitionId teamList),
+            (getCollection db).UpdateManyAsync(
+                FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), "Winner.HasQualified": {{ $eq: null }}, "Winner._id": {{ $in: [%s{teamList}] }} }}""",
                 UpdateDefinition.op_Implicit """{ $set: { "Winner.HasQualified": false } }"""
             )
         ()
     }
 
-    let getScoreTable (competitionId: Guid) = task {
-        return! collection.Aggregate(
+    let getScoreTable db (competitionId: Guid) = task {
+        return! (getCollection db).Aggregate(
             PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionScore>.Create(
-                (sprintf """{ $match: { CompetitionId: { $eq: CSUUID("%O") } } }""" competitionId),
+                $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",
                 """{ $addFields: {
                     q32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $eq: [ "$$f.PredictedResult", "$$f.ActualResult" ] }, then: 1, else: 0 } } } } },
                     c32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $ne: [ "$$f.ActualResult", null ] }, then: 1, else: 0 } } } } },
@@ -511,17 +509,18 @@ module Predictions =
     }
 
 module Leagues =
-    let private collection = db.GetCollection<ReadModels.League>("leagues")
+    let private getCollection (db: IMongoDatabase) =
+        db.GetCollection<ReadModels.League>("leagues")
 
     type Builders = Builders<ReadModels.League>
     type FieldDefinition = FieldDefinition<ReadModels.League>
 
-    let getAll () = task {
+    let getAll db = task {
         let sort = Builders.Sort.Ascending(FieldDefinition.op_Implicit "Name")
-        return! collection.Find(Builders.Filter.Empty).Sort(sort).ToListAsync()
+        return! (getCollection db).Find(Builders.Filter.Empty).Sort(sort).ToListAsync()
     }
 
-    let insert league = task {
-        let! _ = collection.InsertOneAsync(league)
+    let insert db league = task {
+        let! _ = (getCollection db).InsertOneAsync(league)
         ()
     }

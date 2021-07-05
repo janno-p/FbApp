@@ -297,8 +297,8 @@ type TimeFrame =
 with
     override this.ToString() =
         match this with
-        | Previous v -> sprintf "p%d" v
-        | Next v -> sprintf "n%d" v
+        | Previous v -> $"p%d{v}"
+        | Next v -> $"n%d{v}"
 
 type CompetitionFixtureFilter =
     | Range of DateTimeOffset * DateTimeOffset
@@ -307,7 +307,7 @@ with
     override this.ToString() =
         match this with
         | Range (s, e) -> sprintf "dateFrom=%s&dateTo=%s" (s.ToString("yyyy-MM-dd")) (e.ToString("yyyy-MM-dd"))
-        | Matchday n -> sprintf "matchday=%d" n
+        | Matchday n -> $"matchday=%d{n}"
 
 type FixturesFilter =
     | TimeFrame of TimeFrame
@@ -315,15 +315,15 @@ type FixturesFilter =
 with
     override this.ToString() =
         match this with
-        | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
-        | League name -> sprintf "league=%s" name
+        | TimeFrame tf -> $"timeFrame=%s{tf.ToString()}"
+        | League name -> $"league=%s{name}"
 
 type FixtureFilter =
     | HeadToHead of int
 with
     override this.ToString() =
         match this with
-        | HeadToHead n -> sprintf "head2head=%d" n
+        | HeadToHead n -> $"head2head=%d{n}"
 
 type Venue =
     | Home
@@ -341,9 +341,9 @@ type TeamFixturesFilter =
 with
     override this.ToString() =
         match this with
-        | Season year -> sprintf "season=%d" year
-        | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
-        | Venue v -> sprintf "venue=%s" (v.ToString())
+        | Season year -> $"season=%d{year}"
+        | TimeFrame tf -> $"timeFrame=%s{tf.ToString()}"
+        | Venue v -> $"venue=%s{v.ToString()}"
 
 let serializer = JsonSerializer()
 serializer.Converters.Add(OptionConverter())
@@ -380,25 +380,25 @@ let private apiCall<'T> authToken (uri: string) = task {
 
 /// List all available competitions.
 let getCompetitions authToken = task {
-    let uri = sprintf "competitions/%i" 2018L
+    let uri = $"competitions/{2018L}"
     let! comp = apiCall<Competition> authToken uri
     return comp |> Result.map (fun x -> [| x |])
 }
 
 /// List all teams for a certain competition.
 let getCompetitionTeams authToken (competitionId: Id) = task {
-    let uri = sprintf "competitions/%d/teams" competitionId
+    let uri = $"competitions/%d{competitionId}/teams"
     return! apiCall<CompetitionTeams> authToken uri
 }
 
 /// List all fixtures for a certain competition.
 let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
-    let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
+    let uri = $"competitions/%d{competitionId}/matches%s{filters |> toQuery}"
     return! apiCall<CompetitionFixtures> authToken uri
 }
 
 /// Show league table / current standing.
 let getCompetitionLeagueTable authToken (competitionId: Id) = task {
-    let uri = sprintf "competitions/%d/standings" competitionId
+    let uri = $"competitions/%d{competitionId}/standings"
     return! apiCall<CompetitionLeagueTable> authToken uri
 }

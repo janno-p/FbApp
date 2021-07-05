@@ -19,7 +19,7 @@ type FixtureStatus =
     | Canceled
     | Unknown of string
 with
-    static member FromString (value) =
+    static member FromString value =
         match value with
         | "SCHEDULED" -> Scheduled
         | "TIMED" -> Timed
@@ -108,7 +108,7 @@ let decide : State option -> Command -> Result<Event list, Error> =
     (fun state -> function
         | AddFixture input ->
             match state with
-            | Some(_) -> Error(FixtureAlreadyAdded)
+            | Some _ -> Error(FixtureAlreadyAdded)
             | None -> Ok([Added input])
         | UpdateFixture input ->
             match state with

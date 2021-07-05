@@ -20,14 +20,14 @@ type EventsSettings = {
 
 
 let getQuery (eventsSettings: EventsSettings) =
-    (sprintf """fromAll()
-.when({
-    $any: function (state, ev) {
-        if (ev.metadata !== null && ev.metadata.applicationName === "%s") {
-            linkTo("%s", ev)
-        }
-    }
-})""" eventsSettings.ApplicationName eventsSettings.ProjectionName)
+    $"""fromAll()
+.when({{
+    $any: function (state, ev) {{
+        if (ev.metadata !== null && ev.metadata.applicationName === "%s{eventsSettings.ApplicationName}") {{
+            linkTo("%s{eventsSettings.ProjectionName}", ev)
+        }}
+    }}
+}})"""
 
 
 let configureServices () =

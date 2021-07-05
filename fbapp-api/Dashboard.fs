@@ -7,6 +7,7 @@ open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
+open MongoDB.Driver
 open Saturn.Endpoint
 
 type CompetitionItem =
@@ -39,14 +40,14 @@ let addCompetition: HttpHandler =
             let id = Competitions.createId input.ExternalId
             let! result = CommandHandlers.competitionsHandler (id, Aggregate.New) command
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED id next context
-            | Error(_) -> return! RequestErrors.CONFLICT "Competition already exists" next context
+            | Ok _ -> return! Successful.ACCEPTED id next context
+            | Error _ -> return! RequestErrors.CONFLICT "Competition already exists" next context
         })
 
 let getCompetitions: HttpHandler =
     (fun next context ->
         task {
-            let! competitions = Repositories.Competitions.getAll ()
+            let! competitions = Repositories.Competitions.getAll (context.RequestServices.GetRequiredService<IMongoDatabase>())
             return! Successful.OK competitions next context
         })
 

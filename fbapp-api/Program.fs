@@ -18,6 +18,7 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
+open MongoDB.Driver
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open Saturn
@@ -37,7 +38,7 @@ let appBootstrap : HttpHandler =
         let user =
             Auth.getUser ctx
         let! competitionStatus =
-            Predict.getCompetitionStatus ()
+            Predict.getCompetitionStatus (ctx.RequestServices.GetRequiredService<IMongoDatabase>())
         let dto =
             {
                 CompetitionStatus = competitionStatus
@@ -128,6 +129,15 @@ let mainRouter = router {
 }
 
 
+let initializeMongoDb (sp: IServiceProvider) =
+    let configuration = sp.GetService<IConfiguration>()
+    let client =
+        match configuration.GetConnectionString("mongodb") with
+        | null -> MongoClient()
+        | value -> MongoClient(value)
+    client.GetDatabase("fbapp")
+
+
 let initializeEventStore (sp: IServiceProvider) =
     let options = sp.GetService<IOptions<EventStoreOptions>>().Value
     let settings = EventStoreClientSettings.Create(options.Uri)
@@ -152,11 +162,13 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
 
     services.AddSingleton<EventStoreClient>(initializeEventStore) |> ignore
     services.AddSingleton<EventStorePersistentSubscriptionsClient>(initEventStoreSubscriptionsClient) |> ignore
+    
+    services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
 
 
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
-          .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName, optional=true, reloadOnChange=true)
+          .AddJsonFile($"appsettings.%s{context.HostingEnvironment.EnvironmentName}.json", optional=true, reloadOnChange=true)
           .AddEnvironmentVariables()
     |> ignore
 
@@ -170,7 +182,7 @@ let configureApp (app: IApplicationBuilder) =
 
     app.UseEndpoints(fun endpoints ->
         endpoints.MapSubscribeHandler() |> ignore
-        endpoints.MapGiraffeEndpoints(mainRouter) |> ignore
+        endpoints.MapGiraffeEndpoints(mainRouter)
     ) |> ignore
 
     let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
@@ -192,10 +204,12 @@ let configureApp (app: IApplicationBuilder) =
 
     let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
     let subscriptionsClient = app.ApplicationServices.GetService<EventStorePersistentSubscriptionsClient>()
+    let mongoDb = app.ApplicationServices.GetRequiredService<IMongoDatabase>()
 
     let processManagerInitTask =
         ProcessManager.connectSubscription
             subscriptionsClient
+            mongoDb
             loggerFactory
             authOptions
             subscriptionsSettings

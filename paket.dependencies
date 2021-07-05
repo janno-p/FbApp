@@ -28,6 +28,7 @@ group auth
     nuget Microsoft.AspNetCore.Authentication.Google
     nuget Microsoft.AspNetCore.Identity.EntityFrameworkCore
     nuget Microsoft.EntityFrameworkCore
+    nuget Microsoft.Tye.Extensions.Configuration
     nuget Npgsql.EntityFrameworkCore.PostgreSQL
     nuget OpenIddict.AspNetCore
     nuget OpenIddict.EntityFrameworkCore
@@ -96,6 +97,7 @@ group web
     nuget FSharp.Core
     nuget Giraffe
     nuget Grpc.Net.Client
+    nuget Microsoft.Tye.Extensions.Configuration
     nuget MongoDB.Driver
     nuget protobuf-net ~> 2
     nuget Saturn

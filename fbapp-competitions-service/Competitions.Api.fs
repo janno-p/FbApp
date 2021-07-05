@@ -36,6 +36,7 @@ let getCompetitionSourcesApi: GetCompetitionSourcesApi =
             if year < (DateTime.Now.Year - 5) then
                 return! Successful.OK [||] next ctx
             else
+                (*
                 let token = AuthOptions.footballDataToken ctx
                 match! FootballData.getCompetitions token [FootballData.Season year] with
                 | Ok competitions ->
@@ -43,4 +44,6 @@ let getCompetitionSourcesApi: GetCompetitionSourcesApi =
                     return! Successful.OK competitions next ctx
                 | Error (_, _, err) ->
                     return! RequestErrors.BAD_REQUEST err.Error next ctx
+                *)
+                return! RequestErrors.BAD_REQUEST "not implemented" next ctx
         }

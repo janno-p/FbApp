@@ -82,7 +82,7 @@ let decide: State option -> Command -> Result<Event list,unit> =
                 | "HOME" -> HomeWin
                 | "TIE" -> Tie
                 | "AWAY" -> AwayWin
-                | other -> failwithf "Invalid result value: %s" other
+                | other -> failwith $"Invalid result value: %s{other}"
             let registration =
                 {
                     Name = name

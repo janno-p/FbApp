@@ -2,11 +2,9 @@
 
 open XploRe.Util
 open System
-open FSharp.Control
 
 module Aggregate =
     open FSharp.Control.Tasks
-    open System
     open System.Threading.Tasks
 
     type Aggregate<'State, 'Command, 'Event, 'Error> =
@@ -32,7 +30,7 @@ module Aggregate =
     type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 
     type CommandHandler<'Command, 'Error> = Uuid * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
-    type LoadAggregateEvents<'Event> = Type * Uuid -> Task<(int64 * 'Event seq)>
+    type LoadAggregateEvents<'Event> = Type * Uuid -> Task<int64 * 'Event seq>
     type CommitAggregateEvents<'Event, 'Error> = Uuid * ExpectedCommitVersion -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
 
     let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
@@ -60,18 +58,16 @@ module Serialization =
     open System.Text
 
     module Converters =
-        // open Giraffe.Common
-        open System
         open System.Collections.Generic
 
         type ListConverter () =
             inherit JsonConverter()
-            override __.CanConvert (typ) =
+            override _.CanConvert typ =
                 typ.IsGenericType && typ.GetGenericTypeDefinition() = typedefof<list<_>>
-            override __.WriteJson (writer, value, serializer) =
+            override _.WriteJson (writer, value, serializer) =
                 let list = value :?> System.Collections.IEnumerable |> Seq.cast
                 serializer.Serialize(writer, list)
-            override __.ReadJson (reader, typ, _, serializer) =
+            override _.ReadJson (reader, typ, _, serializer) =
                 let itemType = typ.GetGenericArguments().[0]
                 let collectionType = typedefof<IEnumerable<_>>.MakeGenericType(itemType)
                 let collection = serializer.Deserialize(reader, collectionType) :?> System.Collections.IEnumerable |> Seq.cast
@@ -84,15 +80,15 @@ module Serialization =
 
         type OptionConverter () =
             inherit JsonConverter()
-            override __.CanConvert (typ) =
+            override _.CanConvert typ =
                 typ.IsGenericType && typ.GetGenericTypeDefinition() = typedefof<option<_>>
-            override __.WriteJson (writer, value, serializer) =
+            override _.WriteJson (writer, value, serializer) =
                 let value =
                     if value |> isNull then null else
                     let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
                     fields.[0]
                 serializer.Serialize(writer, value)
-            override __.ReadJson(reader, typ, _, serializer) =
+            override _.ReadJson(reader, typ, _, serializer) =
                 let innerType = typ.GetGenericArguments().[0]
                 let innerType =
                     if innerType.IsValueType then typedefof<Nullable<_>>.MakeGenericType([|innerType|])
@@ -104,12 +100,12 @@ module Serialization =
 
         type TupleArrayConverter () =
             inherit JsonConverter()
-            override __.CanConvert (typ) =
+            override _.CanConvert typ =
                 FSharpType.IsTuple(typ)
-            override __.WriteJson (writer, value, serializer) =
+            override _.WriteJson (writer, value, serializer) =
                 let values = FSharpValue.GetTupleFields(value)
                 serializer.Serialize(writer, values)
-            override __.ReadJson (reader, typ, _, serializer) =
+            override _.ReadJson (reader, typ, _, serializer) =
                 let advance = reader.Read >> ignore
                 let deserialize typ = serializer.Deserialize(reader, typ)
                 let itemTypes = FSharpType.GetTupleElements(typ)
@@ -135,9 +131,9 @@ module Serialization =
 
         type UnionCaseNameConverter () =
             inherit JsonConverter()
-            override __.CanConvert (typ) =
+            override _.CanConvert typ =
                 FSharpType.IsUnion(typ) || (typ.DeclaringType |> isNull |> not && FSharpType.IsUnion(typ.DeclaringType))
-            override __.WriteJson (writer, value, serializer) =
+            override _.WriteJson (writer, value, serializer) =
                 let typ = value.GetType()
                 let caseInfo, fieldValues = FSharpValue.GetUnionFields(value, typ)
                 writer.WriteStartObject()
@@ -151,7 +147,7 @@ module Serialization =
                     | _ -> fieldValues :> obj
                 serializer.Serialize(writer, value)
                 writer.WriteEndObject()
-            override __.ReadJson (reader, typ, _, serializer) =
+            override _.ReadJson (reader, typ, _, serializer) =
                 let typ = if FSharpType.IsUnion(typ) then typ else typ.DeclaringType
 
                 let fail () = failwith "Invalid token!"
@@ -173,7 +169,7 @@ module Serialization =
                     |> Option.map (fun v -> if (v :?> string) <> n then fail())
 
                 read JsonToken.StartObject |> require |> ignore
-                readProp "case" |> require |> ignore
+                readProp "case" |> require
 
                 let case = read JsonToken.String |> require :?> string
                 readProp "value" |> ignore
@@ -208,15 +204,15 @@ module Serialization =
             if FSharpType.IsUnion(typ) then Some(typ)
             else if typ.DeclaringType |> isNull |> not && FSharpType.IsUnion(typ.DeclaringType) then Some(typ.DeclaringType)
             else None
-        let typeName (typ: System.Type) =
+        let typeName (typ: Type) =
             let name =
                 let n = typ.FullName
                 n.Substring(n.LastIndexOf(".") + 1)
             name.Replace("+Event", "")
         unionType
-        |> Option.fold (fun _ ut ->
+        |> Option.fold (fun _ _ ->
             let unionCase = FSharpValue.GetUnionFields(o, typ) |> fst
-            sprintf "%s.%s" (typeName unionCase.DeclaringType) unionCase.Name
+            $"%s{typeName unionCase.DeclaringType}.%s{unionCase.Name}"
         ) typ.Name
 
     let serialize o : string * ReadOnlyMemory<byte> =
@@ -242,14 +238,8 @@ module Serialization =
 module EventStore =
     open Aggregate
     open FSharp.Control.Tasks
-    open System
 
     let [<Literal>] ApplicationName = "FbApp"
-
-    let epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-
-    let toUnixTime (dateTimeOffset: DateTimeOffset) =
-        Convert.ToInt64((dateTimeOffset.UtcDateTime - epoch).TotalSeconds);
 
     type EventStoreConnectionString =
         EventStoreConnectionString of string
@@ -282,7 +272,7 @@ module EventStore =
                 Uuid = Uuid.Empty
                 EventType = ""
                 Timestamp = now
-                TimestampEpoch = now |> toUnixTime
+                TimestampEpoch = now.ToUnixTimeSeconds()
                 AggregateSequenceNumber = 0L
                 AggregateId = aggregateId
                 AggregateName = aggregateName
@@ -387,7 +377,6 @@ module FootballData =
     open FSharp.Control.Tasks
     open Newtonsoft.Json
     open Newtonsoft.Json.Serialization
-    open System
     open System.Collections.Generic
     open System.Net.Http
 
@@ -468,11 +457,11 @@ module FootballData =
     type private CompetitionLeagueTableConverter () =
         inherit JsonConverter ()
         let expectedType = typeof<CompetitionLeagueTableStandings>
-        override __.CanConvert typ =
+        override _.CanConvert typ =
             expectedType.IsAssignableFrom(typ)
-        override __.WriteJson (_,_,_) =
+        override _.WriteJson (_,_,_) =
             raise (NotImplementedException())
-        override __.ReadJson (reader, typ, _, serializer) =
+        override _.ReadJson (reader, _, _, serializer) =
             match reader.TokenType with
             | JsonToken.StartObject ->
                 Groups (serializer.Deserialize<Dictionary<string, GroupEntry array>>(reader)) |> box
@@ -689,14 +678,14 @@ module FootballData =
     with
         override this.ToString() =
             match this with
-            | Season year -> sprintf "season=%d" year
+            | Season year -> $"season=%d{year}"
 
     type LeagueTableFilter =
         | Matchday of int
     with
         override this.ToString() =
             match this with
-            | Matchday day -> sprintf "matchday=%d" day
+            | Matchday day -> $"matchday=%d{day}"
 
     type TimeFrame =
         | Previous of int
@@ -704,8 +693,8 @@ module FootballData =
     with
         override this.ToString() =
             match this with
-            | Previous v -> sprintf "p%d" v
-            | Next v -> sprintf "n%d" v
+            | Previous v -> $"p%d{v}"
+            | Next v -> $"n%d{v}"
 
     type CompetitionFixtureFilter =
         | TimeFrame of TimeFrame
@@ -714,9 +703,9 @@ module FootballData =
     with
         override this.ToString() =
             match this with
-            | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
+            | TimeFrame tf -> $"timeFrame=%s{tf.ToString()}"
             | TimeFrameRange (s, e) -> sprintf "timeFrameStart=%s&timeFrameEnd=%s" (s.ToString("yyyy-MM-dd")) (e.ToString("yyyy-MM-dd"))
-            | Matchday n -> sprintf "matchday=%d" n
+            | Matchday n -> $"matchday=%d{n}"
 
     type FixturesFilter =
         | TimeFrame of TimeFrame
@@ -724,15 +713,15 @@ module FootballData =
     with
         override this.ToString() =
             match this with
-            | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
-            | League name -> sprintf "league=%s" name
+            | TimeFrame tf -> $"timeFrame=%s{tf.ToString()}"
+            | League name -> $"league=%s{name}"
 
     type FixtureFilter =
         | HeadToHead of int
     with
         override this.ToString() =
             match this with
-            | HeadToHead n -> sprintf "head2head=%d" n
+            | HeadToHead n -> $"head2head=%d{n}"
 
     type Venue =
         | Home
@@ -750,9 +739,9 @@ module FootballData =
     with
         override this.ToString() =
             match this with
-            | Season year -> sprintf "season=%d" year
-            | TimeFrame tf -> sprintf "timeFrame=%s" (tf.ToString())
-            | Venue v -> sprintf "venue=%s" (v.ToString())
+            | Season year -> $"season=%d{year}"
+            | TimeFrame tf -> $"timeFrame=%s{tf.ToString()}"
+            | Venue v -> $"venue=%s{v.ToString()}"
 
     let serializer = JsonSerializer()
     serializer.Converters.Add(OptionConverter())
@@ -790,55 +779,55 @@ module FootballData =
 
     /// List all available competitions.
     let getCompetitions authToken (filters: CompetitionFilter list) = task {
-        let uri = sprintf "competitions%s" (filters |> toQuery)
+        let uri = $"competitions%s{filters |> toQuery}"
         return! apiCall<Competition array> authToken uri
     }
 
     /// List all teams for a certain competition.
     let getCompetitionTeams authToken (competitionId: Id) = task {
-        let uri = sprintf "competitions/%d/teams" competitionId
+        let uri = $"competitions/%d{competitionId}/teams"
         return! apiCall<CompetitionTeams> authToken uri
     }
 
     /// Show league table / current standing.
     let getCompetitionLeagueTable authToken (competitionId: Id) (filters: LeagueTableFilter list) = task {
-        let uri = sprintf "competitions/%d/leagueTable%s" competitionId (filters |> toQuery)
+        let uri = $"competitions/%d{competitionId}/leagueTable%s{filters |> toQuery}"
         return! apiCall<CompetitionLeagueTable> authToken uri
     }
 
     /// List all fixtures for a certain competition.
     let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
-        let uri = sprintf "competitions/%d/fixtures%s" competitionId (filters |> toQuery)
+        let uri = $"competitions/%d{competitionId}/fixtures%s{filters |> toQuery}"
         return! apiCall<CompetitionFixtures> authToken uri
     }
 
     /// List fixtures across a set of competitions.
     let getFixtures authToken (filters: FixturesFilter list) = task {
-        let uri = sprintf "fixtures%s" (filters |> toQuery)
+        let uri = $"fixtures%s{filters |> toQuery}"
         return! apiCall<Fixtures> authToken uri
     }
 
     /// Show one fixture.
     let getFixture authToken (fixtureId: Id) (filters: FixtureFilter list) = task {
-        let uri = sprintf "fixtures/%d%s" fixtureId (filters |> toQuery)
+        let uri = $"fixtures/%d{fixtureId}%s{filters |> toQuery}"
         return! apiCall<Fixture> authToken uri
     }
 
     /// Show all fixtures for a certain team.
     let getTeamFixtures authToken (teamId: Id) (filters: TeamFixturesFilter list) = task {
-        let uri = sprintf "teams/%d/fixtures%s" teamId (filters |> toQuery)
+        let uri = $"teams/%d{teamId}/fixtures%s{filters |> toQuery}"
         return! apiCall<TeamFixtures> authToken uri
     }
 
     /// Show one team.
     let getTeam authToken (teamId: Id) = task {
-        let uri = sprintf "teams/%d" teamId
+        let uri = $"teams/%d{teamId}"
         return! apiCall<CompetitionTeam> authToken uri
     }
 
     /// Show all players for a certain team.
     let getTeamPlayers authToken (teamId: Id) = task {
-        let uri = sprintf "teams/%d/players" teamId
+        let uri = $"teams/%d{teamId}/players"
         return! apiCall<TeamPlayers> authToken uri
     }
 
@@ -872,10 +861,10 @@ module FootballData =
             override this.ToString() =
                 match this with
                 | DateRange (dateFrom, dateTo) -> sprintf "dateFrom=%s&dateTo=%s" (dateFrom.ToString("yyyy-MM-dd")) (dateTo.ToString("yyyy-MM-dd"))
-                | Stage stage -> sprintf "stage=%s" stage
-                | Status status -> sprintf "status=%s" status
-                | Matchday matchday -> sprintf "matchday=%d" matchday
-                | Group group -> sprintf "group=%s" group
+                | Stage stage -> $"stage=%s{stage}"
+                | Status status -> $"status=%s{status}"
+                | Matchday matchday -> $"matchday=%d{matchday}"
+                | Group group -> $"group=%s{group}"
 
         [<CLIMutable>]
         type CompetitionSeason =
@@ -947,6 +936,6 @@ module FootballData =
             }
 
         let getCompetitionMatches authToken (competitionId: Id) (filters: CompetitionMatchFilter list) = task {
-            let uri = sprintf "competitions/%d/matches%s" competitionId (filters |> toQuery)
+            let uri = $"competitions/%d{competitionId}/matches%s{filters |> toQuery}"
             return! apiCall<CompetitionMatches> authToken uri
         }

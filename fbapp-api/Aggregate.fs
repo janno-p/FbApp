@@ -27,7 +27,7 @@ type ExpectedCommitVersion =
 type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 
 type CommandHandler<'Command, 'Error> = Guid * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
-type LoadAggregateEvents<'Event> = Type * Guid -> Task<(int64 * 'Event seq)>
+type LoadAggregateEvents<'Event> = Type * Guid -> Task<int64 * 'Event seq>
 type CommitAggregateEvents<'Event, 'Error> = Guid * ExpectedCommitVersion -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
 
 let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)

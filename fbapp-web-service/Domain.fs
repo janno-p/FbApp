@@ -98,7 +98,7 @@ module Fixtures =
         | Canceled
         | Unknown of string
     with
-        static member FromString (value) =
+        static member FromString value =
             match value with
             | "SCHEDULED" -> Scheduled
             | "TIMED" -> Timed
@@ -187,7 +187,7 @@ module Fixtures =
         (fun state -> function
             | AddFixture input ->
                 match state with
-                | Some(_) -> Error(FixtureAlreadyAdded)
+                | Some _ -> Error(FixtureAlreadyAdded)
                 | None -> Ok([Added input])
             | UpdateFixture input ->
                 match state with
@@ -366,7 +366,7 @@ module Predictions =
                     | "HOME" -> HomeWin
                     | "TIE" -> Tie
                     | "AWAY" -> AwayWin
-                    | other -> failwithf "Invalid result value: %s" other
+                    | other -> failwith $"Invalid result value: %s{other}"
                 let registration =
                     {
                         Name = name

@@ -6,7 +6,6 @@ open FbApp.Core.Serialization
 open FbApp.Domain
 open FbApp.Web.Repositories
 open FSharp.Control.Tasks
-open Giraffe
 open Microsoft.Extensions.Logging
 open FbApp.Web
 open FbApp.Web.Configuration
@@ -14,19 +13,19 @@ open FbApp.Web.Configuration
 module Result =
     let unwrap f = function
         | Ok(x) -> x
-        | Error(x) -> failwithf "%A" (f x)
+        | Error(x) -> failwith $"%A{f x}"
 
 let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata) (e: EventStore.Client.ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
         try
             let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
-            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
+            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
             let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
-            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)
+            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
             let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId []
             let groups =
-                match (groups |> Result.unwrap (fun (_,_,err) -> failwithf "%s" err.Error)).Standings with
+                match (groups |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")).Standings with
                 | FootballData.Groups groups -> groups
                 | _ -> failwith "Leagues are not implemented"
             let command =
@@ -60,10 +59,10 @@ let processCompetitions (log: ILogger) (authOptions: AuthOptions) (md: Metadata)
     | _ -> ()
 }
 
-let processPredictions (md: Metadata) (e: EventStore.Client.ResolvedEvent) = task {
+let processPredictions db (md: Metadata) (e: EventStore.Client.ResolvedEvent) = task {
     match deserializeOf<Predictions.Event> (e.Event.EventType, e.Event.Data) with
     | Predictions.Registered args ->
-        let! competition = Competitions.get args.CompetitionId
+        let! competition = Competitions.get db args.CompetitionId
         if md.Timestamp > competition.Value.Date then
             let id = Predictions.createId (args.CompetitionId, Predictions.Email args.Email)
             let! _ = CommandHandlers.predictionsHandler (id, Aggregate.Any) Predictions.Decline
@@ -71,13 +70,13 @@ let processPredictions (md: Metadata) (e: EventStore.Client.ResolvedEvent) = tas
     | _ -> ()
 }
 
-let eventAppeared (log: ILogger, authOptions: AuthOptions) (e: EventStore.Client.ResolvedEvent) = unitTask {
+let eventAppeared (log: ILogger, db, authOptions: AuthOptions) (e: EventStore.Client.ResolvedEvent) = unitTask {
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
             do! processCompetitions log authOptions md e
         | Some(md) when md.AggregateName = Predictions.AggregateName ->
-            do! processPredictions md e
+            do! processPredictions db md e
         | _ -> ()
     with ex ->
         log.LogError(ex, "Process manager error with event {0} {1}.", e.OriginalStreamId, e.OriginalEventNumber)
@@ -86,8 +85,8 @@ let eventAppeared (log: ILogger, authOptions: AuthOptions) (e: EventStore.Client
 
 type private X = class end
 
-let connectSubscription (client: EventStore.Client.EventStoreClient) (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) = unitTask {
+let connectSubscription (client: EventStore.Client.EventStoreClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) = unitTask {
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    let! _ = client.SubscribeToStreamAsync("domain-events", (fun _ e _ -> eventAppeared (log, authOptions) e))
+    let! _ = client.SubscribeToStreamAsync("domain-events", (fun _ e _ -> eventAppeared (log, db, authOptions) e))
     ()
 }

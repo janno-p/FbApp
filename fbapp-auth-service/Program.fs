@@ -260,7 +260,7 @@ let userinfo: HttpHandler =
     
     
 let logout: HttpHandler =
-    fun next ctx -> task {
+    fun _ ctx -> task {
         let signInManager = Ioc.getSignInManager ctx
         do! signInManager.SignOutAsync()
         
@@ -284,7 +284,11 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.AddAuthorization() |> ignore
 
     services.AddDbContext<ApplicationDbContext>(fun options ->
-        options.UseNpgsql(context.Configuration.GetConnectionString("Default")) |> ignore
+        let connectionString =
+            match context.Configuration.GetConnectionString("postgres") with
+            | null -> context.Configuration.GetConnectionString("Default")
+            | value -> value
+        options.UseNpgsql(connectionString) |> ignore
         options.UseOpenIddict<Guid>() |> ignore
     ) |> ignore
 

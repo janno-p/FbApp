@@ -33,7 +33,7 @@ type ApplicationDbContext(options: DbContextOptions<ApplicationDbContext>) =
 
 type Worker(serviceProvider: IServiceProvider) =
     interface IHostedService with
-        member __.StartAsync(_) = unitTask {
+        member _.StartAsync _ = unitTask {
             use scope = serviceProvider.CreateScope()
 
             let context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
@@ -72,5 +72,5 @@ type Worker(serviceProvider: IServiceProvider) =
             | _ -> ()
         }
 
-        member _.StopAsync(_) =
+        member _.StopAsync _ =
             Task.CompletedTask

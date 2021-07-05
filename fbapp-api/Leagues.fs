@@ -4,12 +4,15 @@ open FbApp.Api
 open FbApp.Api.Domain
 open FSharp.Control.Tasks
 open Giraffe
+open Microsoft.Extensions.DependencyInjection
+open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
 open System
 
 let private getLeague (code: string) : HttpHandler =
     (fun next ctx -> task {
+        code |> ignore
         return! Successful.OK null next ctx
     })
 
@@ -24,8 +27,8 @@ let private addLeague : HttpHandler =
         let id = Leagues.createId (input.CompetitionId, input.Code)
         let! result = CommandHandlers.leaguesHandler (id, Aggregate.New) (Leagues.Create input)
         match result with
-        | Ok(_) -> return! Successful.ACCEPTED id next ctx
-        | Error(_) -> return! RequestErrors.CONFLICT "League already exists" next ctx
+        | Ok _ -> return! Successful.ACCEPTED id next ctx
+        | Error _ -> return! RequestErrors.CONFLICT "League already exists" next ctx
     })
 
 let private addPrediction (leagueId: string, predictionId: string) : HttpHandler =
@@ -34,13 +37,13 @@ let private addPrediction (leagueId: string, predictionId: string) : HttpHandler
         let predictionId = Guid.Parse(predictionId)
         let! result = CommandHandlers.leaguesHandler (leagueId, Aggregate.Any) (Leagues.AddPrediction predictionId)
         match result with
-        | Ok(_) -> return! Successful.ACCEPTED predictionId next ctx
+        | Ok _ -> return! Successful.ACCEPTED predictionId next ctx
         | Error(e) -> return! RequestErrors.BAD_REQUEST e next ctx
     })
 
 let private getLeagues : HttpHandler =
     (fun next ctx -> task {
-        let! leagues = Repositories.Leagues.getAll ()
+        let! leagues = Repositories.Leagues.getAll (ctx.RequestServices.GetRequiredService<IMongoDatabase>())
         return! Successful.OK leagues next ctx
     })
 

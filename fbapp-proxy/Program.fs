@@ -11,8 +11,7 @@ open Saturn
 open System
 open System.Collections.Generic
 open System.Threading.Tasks
-open Yarp.ReverseProxy.Abstractions
-open Yarp.ReverseProxy.Service
+open Yarp.ReverseProxy.Configuration
 
 
 // https://github.com/dotnet/fsharp/pull/11552
@@ -28,7 +27,7 @@ type DaprConfigFilter() =
 
     interface IProxyConfigFilter with
         member _.ConfigureClusterAsync(originalCluster, _) =
-            let newDestinations = Dictionary<string, Destination>(StringComparer.OrdinalIgnoreCase)
+            let newDestinations = Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
 
             let daprPort =
                 match Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") |> Int32.TryParse with
@@ -48,10 +47,10 @@ type DaprConfigFilter() =
             let cluster = originalCluster.``<Clone>$``()
             newDestinations |> initProp cluster (nameof cluster.Destinations)
 
-            ValueTask<Cluster>(cluster)
+            ValueTask<ClusterConfig>(cluster)
 
         member _.ConfigureRouteAsync(originalRoute, _) =
-            ValueTask<ProxyRoute>(originalRoute)
+            ValueTask<RouteConfig>(originalRoute)
 
 
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =

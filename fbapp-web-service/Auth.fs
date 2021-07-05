@@ -83,7 +83,7 @@ let tokenSignIn: HttpHandler =
             let googleOptions = context.GetService<IOptions<GoogleOptions>>().Value
             let! message = context.BindJsonAsync<Message>()
             use client = new HttpClient()
-            let! tokenInfoString = client.GetStringAsync(sprintf "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s" message.IdToken)
+            let! tokenInfoString = client.GetStringAsync $"https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s{message.IdToken}"
             let tokenInfo = JsonConvert.DeserializeObject<TokenInfo>(tokenInfoString)
             if tokenInfo.Aud = googleOptions.ClientId then
                 let claims = [
@@ -123,5 +123,5 @@ let adminPipe: HttpHandler =
         task {
             let user = createUser ctx.User ctx
             if user.Roles |> Array.exists ((=) AdministratorRole) then return! next ctx else
-            return! RequestErrors.FORBIDDEN (sprintf "This action requires '%s' role." AdministratorRole) next ctx
+            return! RequestErrors.FORBIDDEN $"This action requires '%s{AdministratorRole}' role." next ctx
         })

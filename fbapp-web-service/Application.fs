@@ -3,8 +3,17 @@
 open FbApp.Web.Repositories
 open FSharp.Control.Tasks
 open Giraffe
+open MongoDB.Driver
 open Saturn
 open XploRe.Util
+
+[<AutoOpen>]
+module Extensions =
+    open Microsoft.AspNetCore.Http
+    open Microsoft.Extensions.DependencyInjection
+
+    type HttpContext with
+        member this.MongoDb with get() = this.RequestServices.GetRequiredService<IMongoDatabase>()
 
 [<RequireQualifiedAccess>]
 module Dashboard =
@@ -31,7 +40,7 @@ module Dashboard =
                     let! competitions = FootballData.getCompetitions authOptions.FootballDataToken [FootballData.Season year]
                     match competitions with
                     | Ok(competitions) ->
-                        let competitions = competitions |> Array.map (fun x -> { Label = sprintf "%s (%s)" x.Caption x.League; Value = x.Id })
+                        let competitions = competitions |> Array.map (fun x -> { Label = $"%s{x.Caption} (%s{x.League})"; Value = x.Id })
                         return! Successful.OK competitions next context
                     | Error(_,_,err) ->
                         return! RequestErrors.BAD_REQUEST err.Error next context
@@ -45,14 +54,14 @@ module Dashboard =
                 let id = Competitions.createId input.ExternalId
                 let! result = CommandHandlers.competitionsHandler (id, Aggregate.New) command
                 match result with
-                | Ok(_) -> return! Successful.ACCEPTED id next context
-                | Error(_) -> return! RequestErrors.CONFLICT "Competition already exists" next context
+                | Ok _ -> return! Successful.ACCEPTED id next context
+                | Error _ -> return! RequestErrors.CONFLICT "Competition already exists" next context
             })
 
     let getCompetitions: HttpHandler =
         (fun next context ->
             task {
-                let! competitions = Repositories.Competitions.getAll ()
+                let! competitions = context.MongoDb |> Repositories.Competitions.getAll
                 return! Successful.OK competitions next context
             })
 
@@ -137,20 +146,20 @@ module Fixtures =
 
     let getFixture (id: Uuid) : HttpHandler =
         (fun next ctx -> task {
-            let! fixture = Fixtures.get id
+            let! fixture = Fixtures.get ctx.MongoDb id
             let dto = FixtureDto.FromProjection(fixture)
             return! Successful.OK dto next ctx
         })
 
     let getFixtureStatus (id: Uuid) : HttpHandler =
         (fun next ctx -> task {
-            let! dto = Fixtures.getFixtureStatus id
+            let! dto = Fixtures.getFixtureStatus ctx.MongoDb id
             return! Successful.OK dto next ctx
         })
 
     let getTimelyFixture : HttpHandler =
         (fun next ctx -> task {
-            let! fixture = Fixtures.getTimelyFixture ()
+            let! fixture = Fixtures.getTimelyFixture ctx.MongoDb
             let dto = FixtureDto.FromProjection(fixture)
             return! Successful.OK dto next ctx
         })
@@ -168,6 +177,7 @@ module Leagues =
 
     let private getLeague (code: string) : HttpHandler =
         (fun next ctx -> task {
+            code |> ignore
             return! Successful.OK null next ctx
         })
 
@@ -182,8 +192,8 @@ module Leagues =
             let id = Leagues.createId (input.CompetitionId, input.Code)
             let! result = CommandHandlers.leaguesHandler (id, Aggregate.New) (Leagues.Create input)
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED id next ctx
-            | Error(_) -> return! RequestErrors.CONFLICT "League already exists" next ctx
+            | Ok _ -> return! Successful.ACCEPTED id next ctx
+            | Error _ -> return! RequestErrors.CONFLICT "League already exists" next ctx
         })
 
     let private addPrediction (leagueId: string, predictionId: string) : HttpHandler =
@@ -192,13 +202,13 @@ module Leagues =
             let predictionId = Uuid predictionId
             let! result = CommandHandlers.leaguesHandler (leagueId, Aggregate.Any) (Leagues.AddPrediction predictionId)
             match result with
-            | Ok(_) -> return! Successful.ACCEPTED predictionId next ctx
+            | Ok _ -> return! Successful.ACCEPTED predictionId next ctx
             | Error(e) -> return! RequestErrors.BAD_REQUEST e next ctx
         })
 
     let private getLeagues : HttpHandler =
         (fun next ctx -> task {
-            let! leagues = Repositories.Leagues.getAll ()
+            let! leagues = Repositories.Leagues.getAll ctx.MongoDb
             return! Successful.OK leagues next ctx
         })
 
@@ -285,7 +295,7 @@ module Predict =
 
     let private getFixtures: HttpHandler =
         (fun next context -> task {
-            let! activeCompetition = Competitions.getActive ()
+            let! activeCompetition = Competitions.getActive context.MongoDb
             match activeCompetition with
             | Some competition ->
                 let fixtures =
@@ -309,17 +319,17 @@ module Predict =
         (fun next context -> task {
             let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
             let user = Auth.createUser context.User context
-            let! competition = Competitions.get dto.CompetitionId
+            let! competition = Competitions.get context.MongoDb dto.CompetitionId
             match competition with
             | Some(competition) when competition.Date > DateTimeOffset.Now ->
                 let command = Predictions.Register (dto, user.Name, user.Email)
                 let id = Predictions.createId (dto.CompetitionId, Predictions.Email user.Email)
                 let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
                 match result with
-                | Ok(_) -> return! Successful.ACCEPTED id next context
+                | Ok _ -> return! Successful.ACCEPTED id next context
                 | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
                 | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
-            | Some(_) ->
+            | Some _ ->
                 return! RequestErrors.BAD_REQUEST "Competition has already begun" next context
             | None ->
                 return! RequestErrors.BAD_REQUEST "Invalid competition id" next context
@@ -327,11 +337,11 @@ module Predict =
 
     let private getCurrentPrediction: HttpHandler =
         (fun next context -> task {
-            let! activeCompetition = Competitions.getActive ()
+            let! activeCompetition = Competitions.getActive context.MongoDb
             match activeCompetition with
             | Some competition ->
                 let user = Auth.createUser context.User context
-                let! prediction = Predictions.get (competition.Id, user.Email)
+                let! prediction = Predictions.get context.MongoDb (competition.Id, user.Email)
                 match prediction with
                 | Some(prediction) ->
                     let mapFixture (fixture: ReadModels.PredictionFixtureResult) : PredictionFixtureDto =
@@ -360,8 +370,8 @@ module Predict =
                 return! RequestErrors.NOT_FOUND "No active competition" next context
         })
 
-    let getCompetitionStatus () = task {
-        let! competition = Competitions.getActive ()
+    let getCompetitionStatus db = task {
+        let! competition = Competitions.getActive db
         return competition |> Option.map (fun x -> if x.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions")
                            |> Option.defaultValue "accept-predicitions"
     }
@@ -379,10 +389,10 @@ module Predictions =
 
     let getScoreTable : HttpHandler =
         (fun next ctx -> task {
-            let! competition = Competitions.getActive ()
+            let! competition = Competitions.getActive ctx.MongoDb
             match competition with
             | Some competition ->
-                let! scoreTable = Predictions.getScoreTable competition.Id
+                let! scoreTable = Predictions.getScoreTable ctx.MongoDb competition.Id
                 let scoreTable = scoreTable |> Seq.map (fun x -> { x with Name = fixName x.Name }) |> Seq.toArray
                 return! Successful.OK scoreTable next ctx
             | None ->
@@ -391,10 +401,10 @@ module Predictions =
 
     let findPredictions term : HttpHandler =
         (fun next ctx -> task {
-            let! competition = Competitions.getActive ()
+            let! competition = Competitions.getActive ctx.MongoDb
             match competition with
             | Some competition ->
-                let! predictions = Predictions.find competition.Id term
+                let! predictions = Predictions.find ctx.MongoDb competition.Id term
                 return! Successful.OK predictions next ctx
             | None ->
                 return! RequestErrors.NOT_FOUND "No active competition" next ctx
