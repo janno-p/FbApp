@@ -1,4 +1,4 @@
-// import useAuthentication from 'src/hooks/authentication'
+﻿// import useAuthentication from 'src/hooks/authentication'
 import { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
@@ -110,7 +110,7 @@ const routes: RouteRecordRaw[] = [
             }
             */
         ],
-        beforeEnter(to, from, next) {
+        beforeEnter (_to, _from, next) {
             // if has admin role
             return next()
             // else

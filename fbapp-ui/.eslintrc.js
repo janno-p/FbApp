@@ -81,6 +81,7 @@ module.exports = {
             args: 'none'
         }],
 
-        'vue/require-default-prop': 'off'
+        'vue/require-default-prop': 'off',
+        'unicode-bom': 'off'
     }
 }

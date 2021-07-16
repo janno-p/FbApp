@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <q-page class="q-pa-lg">
         <q-table
             v-model:pagination="pagination"

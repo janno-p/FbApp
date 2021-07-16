@@ -1,7 +1,7 @@
-import { AxiosResponse } from 'axios'
+﻿import { AxiosResponse } from 'axios'
 import { Notify } from 'quasar'
 import { api } from 'src/boot/axios'
-import useAuthentication, { GameResult, IPredictionFixtureType, ITeamType } from 'src/hooks/authentication'
+// import useAuthentication, { GameResult, IPredictionFixtureType, ITeamType } from 'src/hooks/authentication'
 import { computed, defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -10,6 +10,10 @@ interface IFixtureType {
     homeTeamId: number
     awayTeamId: number
 }
+
+type ITeamType = Record<string, unknown>
+
+type GameResult = 'HOME' | 'TIE' | 'AWAY'
 
 interface ITeamWithIdType extends ITeamType {
     id: number
@@ -144,7 +148,7 @@ export default defineComponent({
     setup () {
         const stepper = ref<HTMLElement & { next:(() => void) }>()
 
-        const { googleSignIn, loadPredictions, isSignedIn, setPredictions } = useAuthentication()
+        // const { googleSignIn, loadPredictions, isSignedIn, setPredictions } = useAuthentication()
         const router = useRouter()
 
         const teams = ref<ITeamWithIdType[]>([])
@@ -302,9 +306,11 @@ export default defineComponent({
 
             isSaveInProgress.value = true
             try {
+                /*
                 if (!isSignedIn) {
                     await googleSignIn()
                 }
+                */
 
                 const payload = {
                     competitionId: competitionId.value,
@@ -318,6 +324,7 @@ export default defineComponent({
                     winner: mapQualifiers(6)[0]
                 }
                 await api.post('/predict/', payload)
+                /*
                 const predictions = {
                     competitionId: payload.competitionId,
                     teams: teams.value,
@@ -334,6 +341,7 @@ export default defineComponent({
                     winner: payload.winner
                 }
                 setPredictions(predictions)
+                */
                 await router.push('/')
             } catch (error) {
                 const maybeHasResponse = error as { response?: AxiosResponse }
@@ -348,13 +356,17 @@ export default defineComponent({
                             }
                         ]
                     })
-                    await loadPredictions()
+                    // await loadPredictions()
                     return
                 }
                 throw error
             } finally {
                 isSaveInProgress.value = false
             }
+        }
+
+        function toUpperCase (s: string) {
+            return s?.toUpperCase() ?? ''
         }
 
         return {
@@ -371,7 +383,8 @@ export default defineComponent({
             registerPrediction,
             setFixtureResult,
             stepper,
-            steps
+            steps,
+            toUpperCase
         }
     }
 })

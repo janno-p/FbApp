@@ -1,4 +1,4 @@
-import { api } from 'src/boot/axios'
+﻿import { api } from 'src/boot/axios'
 import { computed, defineComponent, ref, watch } from 'vue'
 
 interface ICompetitionFixtureType {

@@ -11,7 +11,7 @@ export default defineComponent({
         ExampleComponent
     },
 
-    setup() {
+    setup () {
         const todos = ref<Todo[]>([
             {
                 id: 1,

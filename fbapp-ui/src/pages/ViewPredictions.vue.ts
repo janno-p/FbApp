@@ -1,10 +1,11 @@
-import useAuthentication from 'src/hooks/authentication'
-import { computed, defineComponent } from 'vue'
+﻿// import useAuthentication from 'src/hooks/authentication'
+import { defineComponent } from 'vue'
 
 export default defineComponent({
     name: 'ViewPredictions',
 
     setup () {
+        /*
         const { isLoadingPredictions, predictions } = useAuthentication()
 
         function findTeam (id?: number) {
@@ -37,5 +38,7 @@ export default defineComponent({
             roundOf2,
             winner
         }
+        */
+        return {}
     }
 })

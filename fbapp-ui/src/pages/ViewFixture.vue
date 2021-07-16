@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="q-pa-lg">
         <q-inner-loading
             v-if="isInitializing"

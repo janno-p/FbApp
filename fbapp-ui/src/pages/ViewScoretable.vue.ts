@@ -1,4 +1,4 @@
-import { api } from 'src/boot/axios'
+﻿import { api } from 'src/boot/axios'
 import { defineComponent, onMounted, ref } from 'vue'
 
 interface IPredictionScoreType {

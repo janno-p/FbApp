@@ -65,6 +65,8 @@ services:
         value: password
       - name: POSTGRES_DB
         value: fbapp
+      - name: POSTGRES_INITDB_ARGS
+        value: --auth-host=md5
       - name: POSTGRES_HOST_AUTH_METHOD
         value: md5
     volumes:

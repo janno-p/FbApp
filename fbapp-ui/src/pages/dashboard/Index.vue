@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <q-page class="q-pa-lg">
         <h4 class="text-faded q-mt-none">
             Kontrollpaneel

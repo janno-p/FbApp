@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <q-page class="q-pa-lg">
         <h4 class="q-mt-none q-mb-sm">
             Minu ennustused

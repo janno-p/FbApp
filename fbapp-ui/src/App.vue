@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <router-view v-if="isReady" />
     <p v-else>
         Tegelen, tegelen ...

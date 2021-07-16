@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <q-page>
         <q-tabs
             class="text-cyan"

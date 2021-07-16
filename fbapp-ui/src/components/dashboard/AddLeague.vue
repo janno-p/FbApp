@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <q-modal
         v-model="isOpen"
         no-backdrop-dismiss

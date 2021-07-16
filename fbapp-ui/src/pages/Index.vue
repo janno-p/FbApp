@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <CompetitionView>
         <q-page class="row items-center justify-evenly">
             <example-component

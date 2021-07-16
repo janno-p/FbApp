@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <q-page class="q-pa-lg">
         <q-stepper
             ref="stepper"
@@ -110,7 +110,7 @@
                                 class="q-pa-xs col-2 col-lg-3 col-md-4 col-sm-6 col-xs-12"
                             >
                                 <q-list>
-                                    <q-list-header>{{ j.toUpperCase() }} alagrupp</q-list-header>
+                                    <q-list-header>{{ toUpperCase(j) }} alagrupp</q-list-header>
                                     <q-item
                                         v-for="(x, k) in g"
                                         :key="k"

@@ -24,7 +24,7 @@ class AuthService {
     private readonly _manager: UserManager
     private _state = ref<IAuthenticatedUser | IAnonymousUser>()
 
-    get state() {
+    get state () {
         return readonly(this._state)
     }
 

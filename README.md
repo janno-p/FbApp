@@ -33,6 +33,33 @@ Restore required tools
 $ dotnet tool restore
 ```
 
+Restore node dependencies
+
+```sh
+$ cd fbapp-ui
+$ yarn
+$ cd ..
+```
+
+Use Google Developer Console to register new application for Google authentication:
+
+* Authorized JavaScript Origins: `https://localhost:8090`
+* Authorized redirect URIs: `https://localhost:8090/connect/google/callback`
+
+Add `fbapp-auth-service/appsettings.user.json` configuration file with credentials provided
+by Google client application registration.
+
+```json
+{
+  "Authentication": {
+    "Google": {
+      "ClientId": "<redacted>",
+      "ClientSecret": "<redacted>"
+    }
+  }
+}
+```
+
 Run development environment
 
 ```sh

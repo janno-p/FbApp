@@ -50,7 +50,7 @@ const log = [
 export default defineComponent({
     name: 'Changelog',
 
-    setup() {
+    setup () {
         return { log }
     }
 })

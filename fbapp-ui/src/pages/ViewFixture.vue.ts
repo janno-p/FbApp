@@ -1,4 +1,4 @@
-import dayjs from 'dayjs'
+﻿import dayjs from 'dayjs'
 import { api } from 'src/boot/axios'
 import { computed, defineComponent, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -83,14 +83,14 @@ export default defineComponent({
 
         const fixtureTitle = computed(() => {
             switch (fixture.value?.status) {
-            case 'IN_PLAY':
-                return 'Käimasolev mäng'
-            case 'FINISHED':
-                return 'Lõppenud mäng'
-            case 'PAUSED':
-                return 'Käimasolev mäng (vaheaeg)'
-            default:
-                return 'Toimumata mäng'
+                case 'IN_PLAY':
+                    return 'Käimasolev mäng'
+                case 'FINISHED':
+                    return 'Lõppenud mäng'
+                case 'PAUSED':
+                    return 'Käimasolev mäng (vaheaeg)'
+                default:
+                    return 'Toimumata mäng'
             }
         })
 
@@ -127,18 +127,18 @@ export default defineComponent({
 
         function formatStage (stage: string) {
             switch (stage) {
-            case 'GROUP_STAGE':
-                return 'Alagrupimäng'
-            case 'LAST_16':
-                return '1/16 finaal'
-            case 'QUARTER_FINAL':
-                return 'Veerandfinaal'
-            case 'SEMI_FINAL':
-                return 'Poolfinaal'
-            case 'FINAL':
-                return 'Finaal'
-            default:
-                return ''
+                case 'GROUP_STAGE':
+                    return 'Alagrupimäng'
+                case 'LAST_16':
+                    return '1/16 finaal'
+                case 'QUARTER_FINAL':
+                    return 'Veerandfinaal'
+                case 'SEMI_FINAL':
+                    return 'Poolfinaal'
+                case 'FINAL':
+                    return 'Finaal'
+                default:
+                    return ''
             }
         }
 
@@ -177,12 +177,12 @@ export default defineComponent({
 
         function predictionText (prediction: IFixturePredictionType) {
             switch (prediction.result) {
-            case 'HomeWin':
-                return fixture.value?.homeTeam.name
-            case 'AwayWin':
-                return fixture.value?.awayTeam.name
-            case 'Tie':
-                return 'Draw'
+                case 'HomeWin':
+                    return fixture.value?.homeTeam.name
+                case 'AwayWin':
+                    return fixture.value?.awayTeam.name
+                case 'Tie':
+                    return 'Draw'
             }
         }
 
@@ -232,12 +232,12 @@ export default defineComponent({
 
         function handleKeyboardInput (event: KeyboardEvent) {
             switch (event.which) {
-            case 37:
-                void openPrevious()
-                break
-            case 39:
-                void openNext()
-                break
+                case 37:
+                    void openPrevious()
+                    break
+                case 39:
+                    void openNext()
+                    break
             }
         }
 
