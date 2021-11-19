@@ -5,6 +5,7 @@ open Giraffe
 open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Saturn
@@ -14,38 +15,49 @@ open System.Threading.Tasks
 open Yarp.ReverseProxy.Configuration
 
 
-// https://github.com/dotnet/fsharp/pull/11552
-let initProp (target: obj) (propertyName: string) (value: obj) =
-    let targetType = target.GetType()
-    match targetType.GetProperty(propertyName) |> Option.ofObj |> Option.bind (fun x -> x.GetSetMethod() |> Option.ofObj) with
-    | None -> failwith $"Could not find property %s{propertyName} setter for type %s{targetType.Name}"
-    | Some prop -> prop.Invoke(target, [| value |]) |> ignore
-
-
-type DaprConfigFilter() =
+type DaprConfigFilter(configuration: IConfiguration) =
     let [<Literal>] DaprPrefix = "dapr:"
+
+    let getConnectionStringName = function
+        | "auth-cluster" -> Some("fbapp-auth")
+        | _ -> None
+
+    let getTyeAddress (clusterId: string) =
+        getConnectionStringName clusterId
+        |> Option.map configuration.GetConnectionString
+        |> Option.bind Option.ofObj
 
     interface IProxyConfigFilter with
         member _.ConfigureClusterAsync(originalCluster, _) =
             let newDestinations = Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
 
-            let daprPort =
-                match Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") |> Int32.TryParse with
-                | true, port -> port
-                | false, _ -> 3500
-
-            originalCluster.Destinations
-            |> Seq.iter (fun kvp ->
-                if kvp.Value.Address.StartsWith(DaprPrefix) then
+            match getTyeAddress originalCluster.ClusterId with
+            | Some(connectionString) ->
+                originalCluster.Destinations
+                |> Seq.tryExactlyOne
+                |> Option.iter (fun kvp ->
                     let destination = kvp.Value.``<Clone>$``()
-                    $"http://localhost:%d{daprPort}%s{kvp.Value.Address.Substring(DaprPrefix.Length)}" |> initProp destination (nameof destination.Address)
+                    destination.Address <- connectionString
                     newDestinations.Add(kvp.Key, destination)
-                else
-                    newDestinations.Add(kvp.Key, kvp.Value)
-            )
+                )
+            | None ->
+                let daprPort =
+                    match Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") |> Int32.TryParse with
+                    | true, port -> port
+                    | false, _ -> 3500
+
+                originalCluster.Destinations
+                |> Seq.iter (fun kvp ->
+                    if kvp.Value.Address.StartsWith(DaprPrefix) then
+                        let destination = kvp.Value.``<Clone>$``()
+                        destination.Address <- $"http://localhost:%d{daprPort}%s{kvp.Value.Address.Substring(DaprPrefix.Length)}"
+                        newDestinations.Add(kvp.Key, destination)
+                    else
+                        newDestinations.Add(kvp.Key, kvp.Value)
+                )
 
             let cluster = originalCluster.``<Clone>$``()
-            newDestinations |> initProp cluster (nameof cluster.Destinations)
+            cluster.Destinations <- newDestinations
 
             ValueTask<ClusterConfig>(cluster)
 

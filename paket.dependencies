@@ -84,6 +84,7 @@ group proxy
 
     nuget FSharp.Core
     nuget Giraffe
+    nuget Microsoft.Tye.Extensions.Configuration
     nuget Saturn
     nuget Yarp.ReverseProxy
 

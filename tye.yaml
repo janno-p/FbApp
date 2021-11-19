@@ -2,33 +2,40 @@
 
 extensions:
   - name: dapr
-    components-path: ./components
-    config: config
+
+ingress:
+  - name: ingress
+    bindings:
+      - port: 8090
+    rules:
+      - path: /.well-known
+        preservePath: true
+        service: fbapp-proxy
+      - path: /api
+        preservePath: true
+        service: fbapp-proxy
+      - path: /connect
+        preservePath: true
+        service: fbapp-proxy
+      - path: /
+        service: fbapp-ui
 
 services:
   - name: fbapp-ui
     executable: node
     workingDirectory: fbapp-ui
-    args: node_modules/yarn/bin/yarn.js quasar dev
+    args: ./node_modules/.bin/vite
     bindings:
-      - port: 8080
-        protocol: https
+      - port: 3000
+        protocol: http
 
   - name: fbapp-proxy
     project: fbapp-proxy/FbApp.Proxy.fsproj
-    bindings:
-      - name: public
-        port: 8090
-        protocol: https
-      - name: dapr
-        port: 7000
-        protocol: http
 
   - name: fbapp-auth
     project: fbapp-auth-service/FbApp.Auth.fsproj
     bindings:
-      - port: 7001
-        protocol: http
+      - connectionString: http://${host}:${port}
 
   - name: fbapp-competitions
     project: fbapp-competitions-service/FbApp.Competitions.fsproj
