@@ -2,7 +2,7 @@ group api
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget Dapr.AspNetCore
     nuget EventStore.Client.Grpc.PersistentSubscriptions
@@ -21,7 +21,7 @@ group auth
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget FSharp.Core
     nuget Giraffe
@@ -40,7 +40,7 @@ group competitions
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget FSharp.Core
     nuget Giraffe
@@ -50,7 +50,7 @@ group init-events
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget EventStore.Client.Grpc.PersistentSubscriptions
     nuget EventStore.Client.Grpc.ProjectionManagement
@@ -68,7 +68,7 @@ group live-update
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget Dapr.AspNetCore
     nuget Flurl.Http
@@ -80,7 +80,7 @@ group proxy
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget FSharp.Core
     nuget Giraffe
@@ -91,7 +91,7 @@ group web
 
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: net50
+    framework: net60
 
     nuget EventStore.Client.Grpc.Streams
     nuget FSharp.Core

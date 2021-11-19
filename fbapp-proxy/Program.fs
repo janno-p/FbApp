@@ -49,7 +49,7 @@ type DaprConfigFilter() =
 
             ValueTask<ClusterConfig>(cluster)
 
-        member _.ConfigureRouteAsync(originalRoute, _) =
+        member _.ConfigureRouteAsync(originalRoute, _, _) =
             ValueTask<RouteConfig>(originalRoute)
 
 
