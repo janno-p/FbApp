@@ -7,6 +7,7 @@ ingress:
   - name: ingress
     bindings:
       - port: 8090
+        protocol: https
     rules:
       - path: /.well-known
         preservePath: true
@@ -35,7 +36,8 @@ services:
   - name: fbapp-auth
     project: fbapp-auth-service/FbApp.Auth.fsproj
     bindings:
-      - connectionString: http://${host}:${port}
+      - connectionString: ${protocol}://${host}:${port}
+        protocol: http
 
   - name: fbapp-competitions
     project: fbapp-competitions-service/FbApp.Competitions.fsproj

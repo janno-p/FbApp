@@ -5,5 +5,9 @@ import 'virtual:windi-devtools'
 
 import './styles/main.css'
 
+import { authService } from './auth'
+
+console.log(authService.state)
+
 const root = document.querySelector('#app')
-const app = Elm.Main.init({ node: root })
+Elm.Main.init({ node: root })

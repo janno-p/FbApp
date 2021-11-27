@@ -1,5 +1,12 @@
 {
   "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "node",
+    "target": "esnext",
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
   "include": [
     "."
