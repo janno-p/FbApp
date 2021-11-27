@@ -1,0 +1,19 @@
+{
+  "[elm]": {
+    "files.encoding": "utf8"
+  },
+  "files.exclude": {
+    ".idea": true,
+    ".ionide": true,
+    "fbapp-ui/elm-stuff": true,
+    "fbapp-ui/node_modules": true
+  },
+  "windicss.includeLanguages": {
+    "elm": {
+      "type": "html",
+      "patterns": [
+        "(\\s+class\\s+\")[^\"]*$"
+      ]
+    }
+  }
+}

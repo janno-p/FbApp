@@ -77,5 +77,5 @@ services:
       - name: POSTGRES_HOST_AUTH_METHOD
         value: md5
     volumes:
-      - source: ./.postgres
+      - source: /tmp/.postgres
         target: /var/lib/postgresql/data

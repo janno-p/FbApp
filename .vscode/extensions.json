@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "elmtooling.elm-ls-vscode",
+    "ionide.ionide-fake",
+    "ionide.ionide-fsharp",
+    "ionide.ionide-paket",
+    "voorjaar.windicss-intellisense"
+  ]
+}
