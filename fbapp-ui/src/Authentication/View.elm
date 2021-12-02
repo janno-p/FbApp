@@ -6,8 +6,8 @@ import Html exposing (Html, button, text)
 import Html.Events exposing (onClick)
 
 
-viewLoginButton : Model -> Html Action
-viewLoginButton model =
+loginButton : Model -> Html Action
+loginButton model =
   case model.user of
     Just user ->
       button [ onClick LogOut ] [ text ("Log out (" ++ user.name ++ ")") ]
