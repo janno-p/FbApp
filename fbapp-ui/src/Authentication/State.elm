@@ -12,7 +12,9 @@ port authenticated : (Json.Decode.Value -> msg) -> Sub msg
 
 init : Model
 init =
-  { user = Nothing }
+  { user = Nothing
+  , status = Loading
+  }
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -24,7 +26,7 @@ update action model =
       )
 
     SetUser user ->
-      ( { model | user = user }
+      ( { model | user = user, status = Ready }
       , Cmd.none
       )
 
