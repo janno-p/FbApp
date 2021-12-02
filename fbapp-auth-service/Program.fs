@@ -257,15 +257,15 @@ let userinfo: HttpHandler =
 
             return! Successful.OK claims next ctx
     }
-    
-    
+
+
 let logout: HttpHandler =
     fun _ ctx -> task {
         let signInManager = Ioc.getSignInManager ctx
         do! signInManager.SignOutAsync()
-        
+
         do! ctx.SignOutAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(RedirectUri = "/"))
-        
+
         return Some ctx
     }
 

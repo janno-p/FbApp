@@ -25,7 +25,7 @@ services:
   - name: fbapp-ui
     executable: node
     workingDirectory: fbapp-ui
-    args: ./node_modules/.bin/vite
+    args: ./node_modules/vite/bin/vite.js
     bindings:
       - port: 3000
         protocol: http
@@ -79,5 +79,5 @@ services:
       - name: POSTGRES_HOST_AUTH_METHOD
         value: md5
     volumes:
-      - source: /tmp/.postgres
+      - source: ../.postgres
         target: /var/lib/postgresql/data

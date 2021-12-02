@@ -7,7 +7,10 @@ import './styles/main.css'
 
 import { authService } from './auth'
 
-console.log(authService.state)
+const app = Elm.Main.init({
+    node: document.querySelector('#app')
+})
 
-const root = document.querySelector('#app')
-Elm.Main.init({ node: root })
+authService.onAuthenticated((user) => {
+    app.ports.authenticated.send(user)
+})

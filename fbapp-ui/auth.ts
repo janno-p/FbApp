@@ -1,27 +1,11 @@
 import { Log, User, UserManager } from 'oidc-client'
-
-interface IAnonymousUser {
-    kind: 'anonymous'
-}
-
-interface IAuthenticatedUser {
-    kind: 'authenticated'
-    user: User
-}
-
-type AuthState =
-    | IAnonymousUser
-    | IAuthenticatedUser
+import { TinyEmitter } from 'tiny-emitter'
 
 const NUMBER_OF_RENEW_RETRIES = 10
 
 class AuthService {
     private readonly _manager: UserManager
-    private _state?: AuthState
-
-    get state() {
-        return this._state
-    }
+    private _emitter = new TinyEmitter()
 
     constructor() {
         this._manager = new UserManager({
@@ -41,32 +25,33 @@ class AuthService {
         this._manager.events.addUserLoaded((user) => {
             Log.info('new user loaded: ', user)
             Log.info('access token: ', user.access_token)
-            this._state = { kind: 'authenticated', user }
+            this.emitAuthenticated(user)
         })
 
         this._manager.events.addUserUnloaded(() => {
             Log.info('user unloaded')
-            this._state = undefined
+            // this._state = undefined
+            this.emitAuthenticated()
         })
 
         this._manager.events.addAccessTokenExpiring(() => {
             Log.info('access token expiring')
         })
 
-        this._manager.events.addAccessTokenExpired(() => {
+        this._manager.events.addAccessTokenExpired(async () => {
             Log.info('access token expired, trying to renew access token')
-            this.renewTokenWithRetries()
-                .then((isAuthenticated) => {
-                    if (!isAuthenticated) {
-                        void this.signOut()
-                    }
-                })
-                .catch((err) => Log.info(err))
+            try {
+                if (!await this.renewTokenWithRetries()) {
+                    await this.signOut()
+                }
+            } catch (err) {
+                Log.info(err)
+            }
         })
 
         this._manager.events.addSilentRenewError((error) => {
             Log.error('silent renew error: ', error)
-            this._state = { kind: 'anonymous' }
+            this.emitAuthenticated()
         })
 
         this._manager.events.addUserSignedOut(() => {
@@ -79,25 +64,31 @@ class AuthService {
 
         Log.info('start loading')
 
-        void this.renewToken()
-            .then((user) => {
-                if (user === null) {
-                    this._state = { kind: 'anonymous' }
-                } else {
-                    this._state = { kind: 'authenticated', user }
-                }
-            })
-            .catch((err) => {
-                Log.error(err)
-                this._state = { kind: 'anonymous' }
-            })
-            .finally(() => {
-                Log.info('loading done')
-            })
+        this.initAuthentication()
+    }
+
+    private emitAuthenticated(user?: User) {
+        this._emitter.emit('authenticated', user)
+    }
+
+    private async initAuthentication() {
+        try {
+            const user = await this.renewToken()
+            if (user === null) {
+                this.emitAuthenticated()
+            } else {
+                this.emitAuthenticated(user)
+            }
+        } catch (err) {
+            Log.error(err)
+            this.emitAuthenticated()
+        } finally {
+            Log.info('loading done')
+        }
     }
 
     private async signOutImpl() {
-        this._state = { kind: 'anonymous' }
+        this.emitAuthenticated()
         const response = await this._manager.signoutRedirect()
         Log.info('signed out', response)
     }
@@ -116,7 +107,7 @@ class AuthService {
                 attempt = (attempt || 0) + 1
                 if (attempt < NUMBER_OF_RENEW_RETRIES) {
                     Log.info(`Token renewal timed out (retry ${attempt})`)
-                    return await this.renewTokenWithRetries(attempt)
+                    return this.renewTokenWithRetries(attempt)
                 } else {
                     Log.info('Token renewal timed out (giving up)')
                 }
@@ -129,13 +120,17 @@ class AuthService {
         return this.renewTokenWithRetries()
     }
 
-    signOut (): Promise<void> {
+    async signOut (): Promise<void> {
         try {
-            return this.signOutImpl()
+            await this.signOutImpl()
         } catch (err) {
             Log.info(err)
             return Promise.resolve()
         }
+    }
+
+    onAuthenticated(callback: (user?: User) => void) {
+        this._emitter.on('authenticated', callback)
     }
 }
 

@@ -13,6 +13,7 @@ open System
 open System.Collections.Generic
 open System.Threading.Tasks
 open Yarp.ReverseProxy.Configuration
+open Microsoft.AspNetCore.HttpOverrides
 
 
 type DaprConfigFilter(configuration: IConfiguration) =
@@ -65,6 +66,25 @@ type DaprConfigFilter(configuration: IConfiguration) =
             ValueTask<RouteConfig>(originalRoute)
 
 
+let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBearerOptions) =
+    // configuration.Bind("JwtBearer", options);
+    options.Authority <- configuration.GetConnectionString("fbapp-auth")
+    options.TokenValidationParameters.ValidateAudience <- false
+    options.TokenValidationParameters.ValidIssuer <- "https://localhost:8090/"
+    options.RequireHttpsMetadata <- false
+    options.SaveToken <- true
+    options.Events <-
+        JwtBearerEvents(
+            OnAuthenticationFailed = (fun context ->
+                context.NoResult()
+                context.Response.StatusCode <- StatusCodes.Status500InternalServerError
+                context.Response.ContentType <- "text/plain"
+                context.Response.WriteAsync(context.Exception.ToString())
+            )
+        )
+    options.Validate()
+
+
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     let configuration = context.Configuration
 
@@ -76,6 +96,12 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
         .AddConfigFilter<DaprConfigFilter>()
     |> ignore
 
+    services.AddAuthentication(fun cfg ->
+        cfg.DefaultScheme <- JwtBearerDefaults.AuthenticationScheme
+        cfg.DefaultChallengeScheme <- JwtBearerDefaults.AuthenticationScheme)
+       .AddJwtBearer(configureJwtAuthentication configuration)
+    |> ignore
+
 
 let routes = router {
     get "/dapr/config" (obj() |> Successful.OK)
@@ -84,6 +110,8 @@ let routes = router {
 
 let configureApplication (app: IApplicationBuilder) =
     let env = Environment.getWebHostEnvironment app
+
+    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = ForwardedHeaders.All)) |> ignore
 
     if env.IsDevelopment() then
         app.UseDeveloperExceptionPage() |> ignore
@@ -101,30 +129,10 @@ let configureApplication (app: IApplicationBuilder) =
     app
 
 
-let configureJwtAuthentication (options: JwtBearerOptions) =
-    // configuration.Bind("JwtBearer", options);
-    options.Authority <- "http://localhost:7001"
-    options.TokenValidationParameters.ValidateAudience <- false
-    options.TokenValidationParameters.ValidIssuer <- "https://localhost:8090/"
-    options.RequireHttpsMetadata <- false
-    options.SaveToken <- true
-    options.Events <-
-        JwtBearerEvents(
-            OnAuthenticationFailed = (fun context ->
-                context.NoResult()
-                context.Response.StatusCode <- StatusCodes.Status500InternalServerError
-                context.Response.ContentType <- "text/plain"
-                context.Response.WriteAsync(context.Exception.ToString())
-            )
-        )
-    options.Validate()
-
-
 let app = application {
     no_router
     app_config configureApplication
     host_config (fun host -> host.ConfigureServices(configureServices))
-    use_jwt_authentication_with_config configureJwtAuthentication
 }
 
 

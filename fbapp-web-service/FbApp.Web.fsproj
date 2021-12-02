@@ -1,9 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Core.fs" />
