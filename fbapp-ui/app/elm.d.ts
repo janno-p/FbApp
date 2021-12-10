@@ -1,4 +1,6 @@
 ﻿declare module '*.elm' {
+    import { User } from 'oidc-client'
+
     interface IElmMain {
         ports: {
             onStoreChange: {
@@ -12,7 +14,7 @@
 
     export const Elm: {
         Main: {
-            init(args: { node: Element }): IElmMain
+            init(args: { node: Element, flags: User }): IElmMain
         }
     }
 }

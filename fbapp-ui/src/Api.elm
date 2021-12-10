@@ -68,13 +68,7 @@ application :
 application userDecoder config =
   let
     init flags url navKey =
-      let
-        maybeUser =
-          Decode.decodeValue Decode.string flags
-            |> Result.andThen (Decode.decodeString (storageDecoder userDecoder))
-            |> Result.toMaybe
-      in
-      config.init maybeUser url navKey
+      config.init (decodeFromChange userDecoder flags) url navKey
   in
   Browser.application
     { init = init
@@ -84,11 +78,6 @@ application userDecoder config =
     , update = config.update
     , view = config.view
     }
-
-
-storageDecoder : Decoder (Cred -> user) -> Decoder user
-storageDecoder userDecoder =
-  Decode.field "user" (decoderFromCred userDecoder)
 
 
 -- HTTP

@@ -8,6 +8,7 @@ import Json.Decode exposing (Value)
 import Page
 import Page.Blank as Blank
 import Page.Home as Home
+import Page.LoggingOut as LoggingOut
 import Page.NotFound as NotFound
 import Route exposing (Route)
 import Session exposing (Session)
@@ -22,6 +23,7 @@ type Model
   = Redirect Session
   | NotFound Session
   | Home Home.Model
+  | LoggingOut Session
 
 
 init : Maybe User -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -58,6 +60,9 @@ view model =
     Home home ->
       viewPage Page.Home GotHomeMsg (Home.view home)
 
+    LoggingOut _ ->
+      Page.view user Page.Other LoggingOut.view
+
 
 -- UPDATE
 
@@ -81,6 +86,9 @@ toSession page =
     Home home ->
       Home.toSession home
 
+    LoggingOut session ->
+      session
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -100,7 +108,7 @@ changeRouteTo maybeRoute model =
       ( model, Nav.load "/connect/google" )
 
     Just Route.Logout ->
-      ( model, Api.logout )
+      ( LoggingOut session, Api.logout )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -155,6 +163,9 @@ subscriptions model =
 
     Home home ->
       Sub.map GotHomeMsg (Home.subscriptions home)
+
+    LoggingOut _ ->
+      Sub.none
 
 
 -- MAIN
