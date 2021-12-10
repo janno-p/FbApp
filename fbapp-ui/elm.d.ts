@@ -1,8 +1,11 @@
 ﻿declare module '*.elm' {
     interface IElmMain {
         ports: {
-            authenticated: {
+            onStoreChange: {
                 send(args: any): void
+            },
+            signOut: {
+                subscribe(callback: (args: any) => Promise<void>): void
             }
         }
     }

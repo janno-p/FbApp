@@ -21,6 +21,7 @@ type Requirements = OpenIddictConstants.Requirements
 [<AllowNullLiteral>]
 type ApplicationUser() =
     inherit IdentityUser<Guid>()
+    member val PictureUrl = Unchecked.defaultof<string> with get, set
 
 [<AllowNullLiteral>]
 type ApplicationRole() =

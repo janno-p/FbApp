@@ -11,6 +11,8 @@ const app = Elm.Main.init({
     node: document.querySelector('#app')
 })
 
+app.ports.signOut.subscribe(() => authService.signOut())
+
 authService.onAuthenticated((user) => {
-    app.ports.authenticated.send(user)
+    app.ports.onStoreChange.send(user)
 })

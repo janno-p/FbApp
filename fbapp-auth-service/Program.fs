@@ -20,17 +20,21 @@ open Quartz
 open Saturn
 open System
 open System.Collections.Generic
+open System.Net.Http.Json
 open System.Security.Claims
 
 
 module Ioc =
     let private get (ctx: HttpContext) = ctx.RequestServices.GetRequiredService<_>()
     type private H<'a> = HttpContext -> 'a
-    let getUserManager: H<UserManager<ApplicationUser>> = get
-    let getSignInManager: H<SignInManager<ApplicationUser>> = get
+    let userManager: H<UserManager<ApplicationUser>> = get
+    let signInManager: H<SignInManager<ApplicationUser>> = get
     let openIddictApplicationManager: H<IOpenIddictApplicationManager> = get
     let openIddictAuthorizationManager: H<IOpenIddictAuthorizationManager> = get
     let openIddictScopeManager: H<IOpenIddictScopeManager> = get
+    let httpClientFactory: H<System.Net.Http.IHttpClientFactory> = get
+    let httpClient: H<System.Net.Http.HttpClient> = (fun ctx -> (ctx |> httpClientFactory).CreateClient(""))
+    let configuration: H<IConfiguration> = get
 
 
 let toListAsync (source: IAsyncEnumerable<_>) = task {
@@ -61,6 +65,9 @@ let getDestinations (principal: ClaimsPrincipal) (claim: Claim) = seq {
     | OpenIddictConstants.Claims.Role ->
         yield OpenIddictConstants.Destinations.AccessToken
         if principal.HasScope(OpenIddictConstants.Scopes.Roles) then
+            yield OpenIddictConstants.Destinations.IdentityToken
+    | OpenIddictConstants.Claims.Picture ->
+        if principal.HasScope(OpenIddictConstants.Scopes.Profile) then
             yield OpenIddictConstants.Destinations.IdentityToken
     | "AspNet.Identity.SecurityStamp" ->
         ()
@@ -93,7 +100,7 @@ let authorize: HttpHandler =
                 ]))
                 return Some ctx
             | _ ->
-                let userManager = ctx |> Ioc.getUserManager
+                let userManager = ctx |> Ioc.userManager
                 let! user = userManager.GetUserAsync(result.Principal)
                 if user = null then
                     failwith "The user details cannot be retrieved"
@@ -116,7 +123,7 @@ let authorize: HttpHandler =
                         request.GetScopes()
                     ) |> toListAsync
 
-                let signInManager = ctx |> Ioc.getSignInManager
+                let signInManager = ctx |> Ioc.signInManager
                 let! principal = signInManager.CreateUserPrincipalAsync(user)
 
                 principal.SetScopes(request.GetScopes()) |> ignore
@@ -161,7 +168,7 @@ let exchangeToken: HttpHandler =
                 let! authenticateResult = ctx.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)
                 let principal = authenticateResult.Principal
 
-                let userManager = ctx |> Ioc.getUserManager
+                let userManager = ctx |> Ioc.userManager
                 match! userManager.GetUserAsync(principal) with
                 | null ->
                     do! ctx.ForbidAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(dict [
@@ -170,7 +177,7 @@ let exchangeToken: HttpHandler =
                     ]))
                     return Some ctx
                 | user ->
-                    let signInManager = ctx |> Ioc.getSignInManager
+                    let signInManager = ctx |> Ioc.signInManager
                     match! signInManager.CanSignInAsync(user) with
                     | false ->
                         do! ctx.ForbidAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(dict [
@@ -190,7 +197,7 @@ let exchangeToken: HttpHandler =
 
 let googleLogin: HttpHandler =
     fun _ ctx -> task {
-        let signInManager = ctx |> Ioc.getSignInManager
+        let signInManager = ctx |> Ioc.signInManager
         let redirectUrl = $"%s{ctx.Request.Scheme}://%s{ctx.Request.Host.Value}/connect/google/complete"
         let properties = signInManager.ConfigureExternalAuthenticationProperties(GoogleDefaults.AuthenticationScheme, redirectUrl)
         do! ctx.ChallengeAsync(GoogleDefaults.AuthenticationScheme, properties)
@@ -198,36 +205,81 @@ let googleLogin: HttpHandler =
     }
 
 
+[<AllowNullLiteral>]
+type Source () =
+    member val ``type`` = Unchecked.defaultof<string> with get, set
+    member val id = Unchecked.defaultof<string> with get, set
+
+
+[<AllowNullLiteral>]
+type Metadata () =
+    member val primary = false with get, set
+    member val source = Unchecked.defaultof<Source> with get, set
+
+
+[<AllowNullLiteral>]
+type Photo () =
+    member val metadata = Unchecked.defaultof<Metadata> with get, set
+    member val url = Unchecked.defaultof<string> with get, set
+
+
+[<AllowNullLiteral>]
+type PeopleApiPhotos () =
+    member val resourceName = Unchecked.defaultof<string> with get, set
+    member val etag = Unchecked.defaultof<string> with get, set
+    member val photos = ResizeArray<Photo>() with get, set
+
+
+let getPictureUrl (googleAccountId: string) (ctx: HttpContext) = task {
+    let httpClient = ctx |> Ioc.httpClient
+    let configuration = ctx |> Ioc.configuration
+    let googleApiKey = configuration["Google:ApiKey"]
+    let! response = httpClient.GetFromJsonAsync<PeopleApiPhotos>($"https://people.googleapis.com/v1/people/%s{googleAccountId}?personFields=photos&key=%s{googleApiKey}")
+    return
+        match response with
+        | null -> null
+        | _ -> response.photos |> Seq.tryHead |> Option.map (fun p -> p.url) |> Option.toObj
+}
+
+
 let googleResponse: HttpHandler =
     fun next ctx -> task {
-        let signInManager = ctx |> Ioc.getSignInManager
-        let userManager = ctx |> Ioc.getUserManager
+        let signInManager = ctx |> Ioc.signInManager
+        let userManager = ctx |> Ioc.userManager
 
         match! signInManager.GetExternalLoginInfoAsync() with
         | null ->
             return! googleLogin next ctx
         | info ->
             let! result = signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false)
-            if not result.Succeeded then
+            let! pictureUrl = ctx |> getPictureUrl (info.Principal.FindFirstValue(ClaimTypes.NameIdentifier))
+            if result.Succeeded then
+                let! user = userManager.FindByNameAsync(info.Principal.FindFirstValue(ClaimTypes.Email))
+                user.PictureUrl <- pictureUrl
+                let! _ = userManager.UpdateAsync(user)
+                ()
+            else
                 let user = ApplicationUser()
                 user.Email <- info.Principal.FindFirst(ClaimTypes.Email).Value
                 user.UserName <- info.Principal.FindFirst(ClaimTypes.Email).Value
+                user.PictureUrl <- pictureUrl
 
                 let! identityResult = userManager.CreateAsync(user)
                 if identityResult.Succeeded then
+                    let! _ = userManager.UpdateAsync(user)
                     let! identityResult = userManager.AddLoginAsync(user, info)
                     if identityResult.Succeeded then
                         let! _ = signInManager.SignInAsync(user, false)
-                        ()
+                        () 
 
-            return! redirectTo false "/" next ctx
+            return! redirectTo false "/" next ctx 
     }
 
 
 // [Authorize(AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)]
 let userinfo: HttpHandler =
     fun next ctx -> task {
-        let userManager = Ioc.getUserManager ctx
+        let userManager = Ioc.userManager ctx
         match! userManager.GetUserAsync(ctx.User) with
         | null ->
             return! RequestErrors.FORBIDDEN OpenIddictConstants.Errors.InvalidToken next ctx
@@ -236,6 +288,7 @@ let userinfo: HttpHandler =
 
             let! subject = userManager.GetUserIdAsync(user)
             claims.[OpenIddictConstants.Claims.Subject] <- box subject
+            claims.[OpenIddictConstants.Claims.Picture] <- box user.PictureUrl
 
             if ctx.User.HasScope(OpenIddictConstants.Scopes.Email) then
                 let! email = userManager.GetEmailAsync(user)
@@ -261,7 +314,7 @@ let userinfo: HttpHandler =
 
 let logout: HttpHandler =
     fun _ ctx -> task {
-        let signInManager = Ioc.getSignInManager ctx
+        let signInManager = Ioc.signInManager ctx
         do! signInManager.SignOutAsync()
 
         do! ctx.SignOutAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(RedirectUri = "/"))
@@ -284,17 +337,14 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.AddAuthorization() |> ignore
 
     services.AddDbContext<ApplicationDbContext>(fun options ->
-        let connectionString =
-            match context.Configuration.GetConnectionString("postgres") with
-            | null -> context.Configuration.GetConnectionString("Default")
-            | value -> value
+        let connectionString = context.Configuration.GetConnectionString("postgres")
         options.UseNpgsql(connectionString) |> ignore
         options.UseOpenIddict<Guid>() |> ignore
     ) |> ignore
 
     services.AddAuthentication()
         .AddGoogle(fun options ->
-            let googleSection = context.Configuration.GetSection("Authentication:Google")
+            let googleSection = context.Configuration.GetSection("Google:Authentication")
             options.ClientId <- googleSection.["ClientId"]
             options.ClientSecret <- googleSection.["ClientSecret"]
             options.CallbackPath <- PathString "/connect/google/callback"
@@ -353,6 +403,8 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
             options.UseLocalServer() |> ignore
             options.UseAspNetCore() |> ignore)
     |> ignore
+
+    services.AddHttpClient() |> ignore
 
     services.AddHostedService<Worker>() |> ignore
 

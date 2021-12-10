@@ -30,7 +30,6 @@ class AuthService {
 
         this._manager.events.addUserUnloaded(() => {
             Log.info('user unloaded')
-            // this._state = undefined
             this.emitAuthenticated()
         })
 
@@ -73,7 +72,7 @@ class AuthService {
 
     private async initAuthentication() {
         try {
-            const user = await this.renewToken()
+            const user = await this._manager.getUser() ?? await this.renewToken()
             if (user === null) {
                 this.emitAuthenticated()
             } else {
