@@ -11,7 +11,7 @@ import Username exposing (Username)
 
 
 type User
-  = User Avatar Cred
+    = User Avatar Cred
 
 
 -- INFO
@@ -24,7 +24,7 @@ username (User _ val) =
 
 avatar : User -> Avatar
 avatar (User val _) =
-  val
+    val
 
 
 -- SERIALIZATION
@@ -32,5 +32,5 @@ avatar (User val _) =
 
 decoder : Decoder (Cred -> User)
 decoder =
-  Decode.succeed User
-    |> custom (Decode.at [ "profile", "picture" ] Avatar.decoder)
+    Decode.succeed User
+        |> custom (Decode.at [ "profile", "picture" ] Avatar.decoder)

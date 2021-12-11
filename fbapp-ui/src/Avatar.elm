@@ -10,7 +10,7 @@ import Html.Attributes
 
 
 type Avatar
-  = Avatar (Maybe String)
+    = Avatar (Maybe String)
 
 
 -- CREATE
@@ -18,7 +18,7 @@ type Avatar
 
 decoder : Decoder Avatar
 decoder =
-  Decode.map Avatar (Decode.nullable Decode.string)
+    Decode.map Avatar (Decode.nullable Decode.string)
 
 
 -- TRANSFORM

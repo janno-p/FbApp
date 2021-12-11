@@ -7,6 +7,7 @@ import Html
 import Json.Decode exposing (Value)
 import Page
 import Page.Blank as Blank
+import Page.Changelog as Changelog
 import Page.Home as Home
 import Page.LoggingOut as LoggingOut
 import Page.NotFound as NotFound
@@ -20,16 +21,17 @@ import Url exposing (Url)
 
 
 type Model
-  = Redirect Session
-  | NotFound Session
-  | Home Home.Model
-  | LoggingOut Session
+    = Redirect Session
+    | NotFound Session
+    | Home Home.Model
+    | LoggingOut Session
+    | Changelog Session
 
 
 init : Maybe User -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init maybeUser url navKey =
-  changeRouteTo (Route.fromUrl url)
-    (Redirect (Session.fromUser navKey maybeUser))
+    changeRouteTo (Route.fromUrl url)
+        (Redirect (Session.fromUser navKey maybeUser))
 
 
 -- VIEW
@@ -37,116 +39,125 @@ init maybeUser url navKey =
 
 view : Model -> Document Msg
 view model =
-  let
-    user =
-      Session.user (toSession model)
+    let
+        user =
+            Session.user (toSession model)
 
-    viewPage page toMsg config =
-      let
-        { title, body } =
-          Page.view user page config
-      in
-      { title = title
-      , body = List.map (Html.map toMsg) body
-      }
-  in
-  case model of
-    Redirect _ ->
-      Page.view user Page.Other Blank.view
+        viewPage page toMsg config =
+            let
+                { title, body } =
+                    Page.view user page config
+            in
+            { title = title
+            , body = List.map (Html.map toMsg) body
+            }
+    in
+    case model of
+        Redirect _ ->
+            Page.view user Page.Other Blank.view
 
-    NotFound _ ->
-      Page.view user Page.Other NotFound.view
+        NotFound _ ->
+            Page.view user Page.Other NotFound.view
 
-    Home home ->
-      viewPage Page.Home GotHomeMsg (Home.view home)
+        Home home ->
+            viewPage Page.Home GotHomeMsg (Home.view home)
 
-    LoggingOut _ ->
-      Page.view user Page.Other LoggingOut.view
+        LoggingOut _ ->
+            Page.view user Page.Other LoggingOut.view
+
+        Changelog _ ->
+            Page.view user Page.Other Changelog.view
 
 
 -- UPDATE
 
 
 type Msg
-  = ChangedUrl Url
-  | ClickedLink Browser.UrlRequest
-  | GotHomeMsg Home.Msg
-  | GotSession Session
+    = ChangedUrl Url
+    | ClickedLink Browser.UrlRequest
+    | GotHomeMsg Home.Msg
+    | GotSession Session
 
 
 toSession : Model -> Session
 toSession page =
-  case page of
-    Redirect session ->
-      session
+    case page of
+        Redirect session ->
+            session
 
-    NotFound session ->
-      session
+        NotFound session ->
+            session
 
-    Home home ->
-      Home.toSession home
+        Home home ->
+            Home.toSession home
 
-    LoggingOut session ->
-      session
+        LoggingOut session ->
+            session
+
+        Changelog session ->
+            session
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
-  let
-    session =
-      toSession model
-  in
-  case maybeRoute of
-    Nothing ->
-      ( NotFound session, Cmd.none )
+    let
+        session =
+            toSession model
+    in
+    case maybeRoute of
+        Nothing ->
+            ( NotFound session, Cmd.none )
 
-    Just Route.Home ->
-      Home.init session
-        |> updateWith Home GotHomeMsg model
+        Just Route.Home ->
+            Home.init session
+                |> updateWith Home GotHomeMsg model
 
-    Just Route.Login ->
-      ( model, Nav.load "/connect/google" )
+        Just Route.Login ->
+            ( model, Nav.load "/connect/google" )
 
-    Just Route.Logout ->
-      ( LoggingOut session, Api.logout )
+        Just Route.Logout ->
+            ( LoggingOut session, Api.logout )
+
+        Just Route.Changelog ->
+            ( Changelog session, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case ( msg, model ) of
-    ( ClickedLink urlRequest, _ ) ->
-      case urlRequest of
-        Browser.Internal url ->
-          ( model
-          , Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url)
-          )
+    case ( msg, model ) of
+        ( ClickedLink urlRequest, _ ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model
+                    , Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url)
+                    )
 
-        Browser.External href ->
-          ( model
-          , Nav.load href
-          )
+                Browser.External href ->
+                    ( model
+                    , Nav.load href
+                    )
 
-    ( ChangedUrl url, _ ) ->
-      changeRouteTo (Route.fromUrl url) model
+        ( ChangedUrl url, _ ) ->
+            changeRouteTo (Route.fromUrl url) model
 
-    ( GotHomeMsg subMsg, Home home ) ->
-      Home.update subMsg home
-        |> updateWith Home GotHomeMsg model
+        ( GotHomeMsg subMsg, Home home ) ->
+            Home.update subMsg home
+                |> updateWith Home GotHomeMsg model
 
-    ( GotSession session, Redirect _ ) ->
-      ( Redirect session
-      , Route.replaceUrl (Session.navKey session) Route.Home
-      )
+        ( GotSession session, Redirect _ ) ->
+            ( Redirect session
+            , Route.replaceUrl (Session.navKey session) Route.Home
+            )
 
-    ( _, _ ) ->
-      ( model, Cmd.none )
+        ( _, _ ) ->
+            ( model, Cmd.none )
 
 
 updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
 updateWith toModel toMsg _ ( subModel, subCmd ) =
-  ( toModel subModel
-  , Cmd.map toMsg subCmd
-  )
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
 
 
 -- SUBSCRIPTIONS
@@ -154,18 +165,21 @@ updateWith toModel toMsg _ ( subModel, subCmd ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  case model of
-    NotFound _ ->
-      Sub.none
+    case model of
+        NotFound _ ->
+            Sub.none
 
-    Redirect _ ->
-      Session.changes GotSession (Session.navKey (toSession model))
+        Redirect _ ->
+            Session.changes GotSession (Session.navKey (toSession model))
 
-    Home home ->
-      Sub.map GotHomeMsg (Home.subscriptions home)
+        Home home ->
+            Sub.map GotHomeMsg (Home.subscriptions home)
 
-    LoggingOut _ ->
-      Sub.none
+        LoggingOut _ ->
+            Sub.none
+
+        Changelog _ ->
+            Sub.none
 
 
 -- MAIN
@@ -173,11 +187,11 @@ subscriptions model =
 
 main : Program Value Model Msg
 main =
-  Api.application User.decoder
-    { init = init
-    , onUrlChange = ChangedUrl
-    , onUrlRequest = ClickedLink
-    , subscriptions = subscriptions
-    , update = update
-    , view = view
-    }
+    Api.application User.decoder
+        { init = init
+        , onUrlChange = ChangedUrl
+        , onUrlRequest = ClickedLink
+        , subscriptions = subscriptions
+        , update = update
+        , view = view
+        }

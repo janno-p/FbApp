@@ -8,7 +8,7 @@ import Json.Decode as Decode exposing (Decoder)
 
 
 type Username
-  = Username String
+    = Username String
 
 
 -- CREATE
@@ -16,7 +16,7 @@ type Username
 
 decoder : Decoder Username
 decoder =
-  Decode.map Username Decode.string
+    Decode.map Username Decode.string
 
 
 -- TRANSFORM

@@ -3,6 +3,7 @@ import { Elm } from '../src/Main.elm'
 import 'virtual:windi.css'
 import 'virtual:windi-devtools'
 
+import '@mdi/font/css/materialdesignicons.min.css'
 import '../styles/main.css'
 
 import { authService } from './auth'

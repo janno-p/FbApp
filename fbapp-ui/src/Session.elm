@@ -9,8 +9,8 @@ import User exposing (User)
 
 
 type Session
-  = Authenticated Nav.Key User
-  | Guest Nav.Key
+    = Authenticated Nav.Key User
+    | Guest Nav.Key
 
 
 -- INFO
@@ -18,22 +18,22 @@ type Session
 
 user : Session -> Maybe User
 user session =
-  case session of
-    Authenticated _ val ->
-      Just val
+    case session of
+        Authenticated _ val ->
+            Just val
 
-    Guest _ ->
-      Nothing
+        Guest _ ->
+            Nothing
 
 
 navKey : Session -> Nav.Key
 navKey session =
-  case session of
-    Authenticated key _ ->
-      key
+    case session of
+        Authenticated key _ ->
+            key
 
-    Guest key ->
-      key
+        Guest key ->
+            key
 
 
 -- CHANGES
@@ -41,14 +41,14 @@ navKey session =
 
 changes : (Session -> msg) -> Nav.Key -> Sub msg
 changes toMsg key =
-  Api.userChanges (\maybeUser -> toMsg (fromUser key maybeUser)) User.decoder
+    Api.userChanges (\maybeUser -> toMsg (fromUser key maybeUser)) User.decoder
 
 
 fromUser : Nav.Key -> Maybe User -> Session
 fromUser key maybeUser =
-  case maybeUser of
-    Just userVal ->
-      Authenticated key userVal
+    case maybeUser of
+        Just userVal ->
+            Authenticated key userVal
 
-    Nothing ->
-      Guest key
+        Nothing ->
+            Guest key

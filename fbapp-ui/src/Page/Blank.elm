@@ -5,6 +5,6 @@ import Html exposing (Html)
 
 view : { title : String, content : Html msg }
 view =
-  { title = ""
-  , content = Html.text ""
-  }
+    { title = ""
+    , content = Html.text ""
+    }

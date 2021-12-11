@@ -8,7 +8,7 @@ import Html.Attributes as Attr
 
 
 type Image
-  = Image String
+    = Image String
 
 
 -- IMAGES
@@ -16,12 +16,12 @@ type Image
 
 defaultAvatar : Image
 defaultAvatar =
-  image "smiley-cyrus.jpg"
+    image "smiley-cyrus.jpg"
 
 
 image : String -> Image
 image filename =
-  Image ("/assets/images/" ++ filename)
+    Image ("/assets/images/" ++ filename)
 
 
 -- USING IMAGES
@@ -29,4 +29,4 @@ image filename =
 
 src : Image -> Attribute msg
 src (Image url) =
-  Attr.src url
+    Attr.src url
