@@ -1,6 +1,8 @@
 #r "paket:
 nuget Fake.Core.Target //"
 
+#load "./.fake/build.fsx/intellisense.fsx"
+
 open Fake.Core
 open Fake.IO.FileSystemOperators
 

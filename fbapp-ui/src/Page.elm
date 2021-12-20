@@ -2,7 +2,7 @@ module Page exposing (Page(..), view)
 
 import Avatar
 import Browser exposing (Document)
-import Html exposing (Html, a, div, footer, h5, header, img, nav, span, text)
+import Html exposing (Html, a, div, footer, h5, img, nav, span, text)
 import Html.Attributes exposing (alt, class)
 import User exposing (User)
 import Username
