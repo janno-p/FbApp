@@ -1,7 +1,10 @@
-﻿name: fbapp
+name: fbapp
 
 extensions:
   - name: dapr
+    services:
+      fbapp-ui:
+        enabled: false
 
 ingress:
   - name: ingress

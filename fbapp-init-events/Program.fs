@@ -1,7 +1,6 @@
 module FbApp.Init.Events.Program
 
 
-open FSharp.Control.Tasks
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open System
@@ -84,7 +83,7 @@ let main _ =
 
     let eventsSettings = serviceProvider.GetRequiredService<IOptions<EventsSettings>>().Value
 
-    let task = unitTask {
+    let task = task {
         try
             logger.LogInformation($"Trying to create '%s{eventsSettings.ProjectionName}' projection (if not exists)")
             do! projectionManagementClient.CreateContinuousAsync(eventsSettings.ProjectionName, getQuery eventsSettings)
@@ -99,7 +98,7 @@ let main _ =
             PersistentSubscriptionSettings(
                 resolveLinkTos = true,
                 startFrom = StreamPosition.Start,
-                minCheckPointCount = 1
+                checkPointLowerBound = 1
             )
 
         try

@@ -4,7 +4,6 @@ namespace FbApp.LiveUpdate
 open Dapr.Client
 open Flurl.Http
 open Flurl.Http.Configuration
-open FSharp.Control.Tasks
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
@@ -173,7 +172,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
             return Error(e)
     }
 
-    let updateFixtures cancellationToken = unitTask {
+    let updateFixtures cancellationToken = task {
         match! getCompetitionMatches cancellationToken with
         | Ok matches ->
             logger.LogInformation("Loaded data of {count} fixtures.", matches.Count)
@@ -256,7 +255,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
             logger.LogCritical(e, "Error returned from API request")
     }
 
-    override _.ExecuteAsync(cancellationToken) = unitTask {
+    override _.ExecuteAsync(cancellationToken) = task {
         while not cancellationToken.IsCancellationRequested do
             logger.LogInformation("Fixture updating worker running at: {time}", DateTimeOffset.Now)
 

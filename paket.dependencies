@@ -12,7 +12,6 @@ group api
     nuget Grpc.Net.Client
     nuget MongoDB.Driver
     nuget Newtonsoft.Json
-    nuget Ply
     nuget protobuf-net ~> 2
     nuget Saturn
     nuget XploRe.Util.Uuid prerelease
@@ -61,7 +60,6 @@ group init-events
     nuget Microsoft.Extensions.Configuration.Json
     nuget Microsoft.Extensions.DependencyInjection
     nuget Microsoft.Extensions.Logging.Console
-    nuget Ply
     nuget protobuf-net ~> 2
 
 group live-update
@@ -74,7 +72,6 @@ group live-update
     nuget Flurl.Http
     nuget FSharp.Core
     nuget Microsoft.Extensions.Hosting
-    nuget Ply
 
 group proxy
 

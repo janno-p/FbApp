@@ -1,7 +1,6 @@
-﻿module FbApp.Competitions.Api
+module FbApp.Competitions.Api
 
 
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Configuration

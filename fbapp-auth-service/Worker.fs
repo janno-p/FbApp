@@ -1,7 +1,6 @@
 namespace FbApp.Auth
 
 
-open FSharp.Control.Tasks
 open Microsoft.AspNetCore.Identity
 open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.DependencyInjection
@@ -34,7 +33,7 @@ type ApplicationDbContext(options: DbContextOptions<ApplicationDbContext>) =
 
 type Worker(serviceProvider: IServiceProvider) =
     interface IHostedService with
-        member _.StartAsync _ = unitTask {
+        member _.StartAsync _ = task {
             use scope = serviceProvider.CreateScope()
 
             let context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()

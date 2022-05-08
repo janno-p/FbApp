@@ -7,11 +7,9 @@ open FbApp.Api.Domain
 open FbApp.Api.EventStore
 open FbApp.Api.Repositories
 open FbApp.Api.Serialization
-open FSharp.Control.Tasks
 open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open System
-open System.Collections.Generic
 
 
 module Result =
@@ -24,7 +22,7 @@ let (|Nullable|_|) (x: Nullable<_>) =
     if x.HasValue then Some(x.Value) else None
 
 
-let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEvent) (model: Competitions.Created) = unitTask {
+let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEvent) (model: Competitions.Created) = task {
     try
         let competitionModel: ReadModels.Competition =
             {
@@ -33,7 +31,7 @@ let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEve
                 ExternalId = model.ExternalId
                 Teams = [||]
                 Fixtures = [||]
-                Groups = Dictionary<_,_>()
+                Groups = dict []
                 Version = metadata.AggregateSequenceNumber
                 Date = model.Date.ToOffset(TimeSpan.Zero)
             }
@@ -145,7 +143,7 @@ let private mapFixtureResult db competitionId (x: Predictions.FixtureResultRegis
 }
 
 
-let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegistration) = unitTask {
+let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegistration) = task {
     let fixtureTasks =
         model.Fixtures
         |> Seq.map (mapFixtureResult db model.CompetitionId)
@@ -374,7 +372,7 @@ let processLeagues (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
 }
 
 
-let eventAppeared (logger: ILogger, db, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) = unitTask {
+let eventAppeared (logger: ILogger, db, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) = task {
     try
         logger.LogInformation($"Event %A{e.Event.EventId} of type %s{e.Event.EventType} appeared in stream %s{e.Event.EventStreamId}")
         match getMetadata e with
@@ -398,15 +396,14 @@ let eventAppeared (logger: ILogger, db, authOptions: AuthOptions) (subscription:
 type private Marker = class end
 
 
-let connectSubscription (client: EventStorePersistentSubscriptionsClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) (subscriptionsSettings: SubscriptionsSettings) = unitTask {
+let connectSubscription (client: EventStorePersistentSubscriptionsClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) (subscriptionsSettings: SubscriptionsSettings) = task {
     let logger = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
     logger.LogInformation("Initializing process manager")
     let! _ =
-        client.SubscribeAsync(
+        client.SubscribeToStreamAsync(
             subscriptionsSettings.StreamName,
             subscriptionsSettings.GroupName,
-            (fun sub e _ _ -> eventAppeared (logger, db, authOptions) sub e),
-            autoAck = false
+            (fun sub e _ _ -> eventAppeared (logger, db, authOptions) sub e)
         )
     logger.LogInformation("Process manager initialized")
 }

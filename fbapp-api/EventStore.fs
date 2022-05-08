@@ -2,7 +2,6 @@ module FbApp.Api.EventStore
 
 open EventStore.Client
 open FbApp.Api.Aggregate
-open FSharp.Control.Tasks
 open System
 open System.Collections.Generic
 
@@ -82,9 +81,9 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
             task {
                 let streamId = aggregateStreamId aggregateName id
                 let pages = ResizeArray<ResolvedEvent>()
-                let rec readNextPage startFrom = unitTask {
-                    let slice = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-                    let! events = readSlice slice
+                let rec readNextPage startFrom = task {
+                    let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
+                    let! events = readSlice (result.GetAsyncEnumerator())
                     pages.AddRange(events)
                     if events.Count = 4096 then
                         do! readNextPage events.[4095].OriginalEventNumber

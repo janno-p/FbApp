@@ -1,9 +1,8 @@
-﻿module FbApp.Web.Auth
+module FbApp.Web.Auth
 
 open System.Net.Http
 open System.Security.Claims
 open FbApp.Web.Configuration
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Antiforgery
 open Microsoft.AspNetCore.Authentication

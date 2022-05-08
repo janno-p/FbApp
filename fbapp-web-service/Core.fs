@@ -1,10 +1,9 @@
-﻿namespace FbApp.Core
+namespace FbApp.Core
 
 open XploRe.Util
 open System
 
 module Aggregate =
-    open FSharp.Control.Tasks
     open System.Threading.Tasks
 
     type Aggregate<'State, 'Command, 'Event, 'Error> =
@@ -237,7 +236,6 @@ module Serialization =
 
 module EventStore =
     open Aggregate
-    open FSharp.Control.Tasks
 
     let [<Literal>] ApplicationName = "FbApp"
 
@@ -312,9 +310,9 @@ module EventStore =
                 task {
                     let streamId = aggregateStreamId aggregateName id
                     let pages = ResizeArray<EventStore.Client.ResolvedEvent>()
-                    let rec readNextPage startFrom = unitTask {
-                        let slice = client.ReadStreamAsync(EventStore.Client.Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-                        let! events = readSlice slice
+                    let rec readNextPage startFrom = task {
+                        let result = client.ReadStreamAsync(EventStore.Client.Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
+                        let! events = readSlice (result.GetAsyncEnumerator())
                         pages.AddRange(events)
                         if events.Count = 4096 then
                             do! readNextPage events.[4095].OriginalEventNumber
@@ -374,7 +372,6 @@ module EventStore =
 [<RequireQualifiedAccess>]
 module FootballData =
     open Serialization.Converters
-    open FSharp.Control.Tasks
     open Newtonsoft.Json
     open Newtonsoft.Json.Serialization
     open System.Collections.Generic

@@ -1,7 +1,6 @@
-﻿module FbApp.Api.Fixtures
+module FbApp.Api.Fixtures
 
 open FbApp.Api.Repositories
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver

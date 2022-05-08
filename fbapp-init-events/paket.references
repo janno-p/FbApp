@@ -9,4 +9,3 @@ Microsoft.Extensions.Configuration.EnvironmentVariables
 Microsoft.Extensions.Configuration.Json
 Microsoft.Extensions.DependencyInjection
 Microsoft.Extensions.Logging.Console
-Ply

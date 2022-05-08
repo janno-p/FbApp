@@ -2,7 +2,6 @@
 module FbApp.Api.FootballData
 
 open FbApp.Api.Serialization.Converters
-open FSharp.Control.Tasks
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 open System

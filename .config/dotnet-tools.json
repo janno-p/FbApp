@@ -2,22 +2,22 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "microsoft.tye": {
-      "version": "0.10.0-alpha.21420.1",
-      "commands": [
-        "tye"
-      ]
-    },
     "paket": {
-      "version": "6.2.1",
+      "version": "7.1.5",
       "commands": [
         "paket"
       ]
     },
     "fake-cli": {
-      "version": "5.20.4",
+      "version": "5.22.0",
       "commands": [
         "fake"
+      ]
+    },
+    "microsoft.tye": {
+      "version": "0.11.0-alpha.22111.1",
+      "commands": [
+        "tye"
       ]
     }
   }

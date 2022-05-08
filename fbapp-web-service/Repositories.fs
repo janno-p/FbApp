@@ -1,6 +1,5 @@
-﻿module FbApp.Web.Repositories
+module FbApp.Web.Repositories
 
-open FSharp.Control.Tasks
 open MongoDB.Bson
 open MongoDB.Bson.Serialization
 open MongoDB.Bson.Serialization.Serializers

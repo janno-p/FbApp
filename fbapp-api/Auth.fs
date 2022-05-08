@@ -1,7 +1,6 @@
 module FbApp.Api.Auth
 
 open FbApp.Api.Configuration
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Antiforgery
 open Microsoft.AspNetCore.Authentication

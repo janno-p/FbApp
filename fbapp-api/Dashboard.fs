@@ -3,7 +3,6 @@ module FbApp.Api.Dashboard
 open FbApp.Api
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options

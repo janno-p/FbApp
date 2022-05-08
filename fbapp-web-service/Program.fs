@@ -5,7 +5,6 @@ open FbApp.Core.EventStore
 open FbApp.Domain
 open FbApp.Web
 open FbApp.Web.Configuration
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http

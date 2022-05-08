@@ -1,11 +1,10 @@
-﻿module FbApp.Web.ProcessManager
+module FbApp.Web.ProcessManager
 
 open FbApp.Core
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
 open FbApp.Domain
 open FbApp.Web.Repositories
-open FSharp.Control.Tasks
 open Microsoft.Extensions.Logging
 open FbApp.Web
 open FbApp.Web.Configuration
@@ -70,7 +69,7 @@ let processPredictions db (md: Metadata) (e: EventStore.Client.ResolvedEvent) = 
     | _ -> ()
 }
 
-let eventAppeared (log: ILogger, db, authOptions: AuthOptions) (e: EventStore.Client.ResolvedEvent) = unitTask {
+let eventAppeared (log: ILogger, db, authOptions: AuthOptions) (e: EventStore.Client.ResolvedEvent) = task {
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
@@ -85,8 +84,8 @@ let eventAppeared (log: ILogger, db, authOptions: AuthOptions) (e: EventStore.Cl
 
 type private X = class end
 
-let connectSubscription (client: EventStore.Client.EventStoreClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) = unitTask {
+let connectSubscription (client: EventStore.Client.EventStoreClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) = task {
     let log = loggerFactory.CreateLogger(typeof<X>.DeclaringType)
-    let! _ = client.SubscribeToStreamAsync("domain-events", (fun _ e _ -> eventAppeared (log, db, authOptions) e))
+    let! _ = client.SubscribeToStreamAsync("domain-events", EventStore.Client.FromStream.Start, (fun _ e _ -> eventAppeared (log, db, authOptions) e))
     ()
 }

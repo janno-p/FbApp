@@ -1,6 +1,5 @@
-﻿module FbApp.Api.Aggregate
+module FbApp.Api.Aggregate
 
-open FSharp.Control.Tasks
 open System
 open System.Threading.Tasks
 

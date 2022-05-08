@@ -1,8 +1,7 @@
-﻿module FbApp.Api.Leagues
+module FbApp.Api.Leagues
 
 open FbApp.Api
 open FbApp.Api.Domain
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver

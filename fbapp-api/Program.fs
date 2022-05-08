@@ -8,7 +8,6 @@ open FbApp.Api.Aggregate
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
 open FbApp.Api.EventStore
-open FSharp.Control.Tasks
 open Giraffe
 open Giraffe.EndpointRouting
 open Microsoft.AspNetCore.Builder

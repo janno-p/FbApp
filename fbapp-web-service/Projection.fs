@@ -1,10 +1,9 @@
-﻿module FbApp.Web.Projection
+module FbApp.Web.Projection
 
 open FbApp.Core.EventStore
 open FbApp.Core.Serialization
 open FbApp.Domain
 open FbApp.Web.Repositories
-open FSharp.Control.Tasks
 open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open System
@@ -305,7 +304,7 @@ let projectLeagues (log: ILogger, db) (md: Metadata) (e: EventStore.Client.Resol
         do! Predictions.addToLeague db (predictionId, md.AggregateId)
 }
 
-let eventAppeared (log: ILogger, db) (e: EventStore.Client.ResolvedEvent) = unitTask {
+let eventAppeared (log: ILogger, db) (e: EventStore.Client.ResolvedEvent) = task {
     try
         match getMetadata e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
@@ -324,8 +323,8 @@ let eventAppeared (log: ILogger, db) (e: EventStore.Client.ResolvedEvent) = unit
 
 type private Marker = class end
 
-let connectSubscription (client: EventStore.Client.EventStoreClient) db (loggerFactory: ILoggerFactory) = unitTask {
+let connectSubscription (client: EventStore.Client.EventStoreClient) db (loggerFactory: ILoggerFactory) = task {
     let log = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
-    let! _ = client.SubscribeToStreamAsync("domain-events", fun _ e _ -> eventAppeared (log, db) e)
+    let! _ = client.SubscribeToStreamAsync("domain-events", EventStore.Client.FromStream.Start, fun _ e _ -> eventAppeared (log, db) e)
     ()
 }

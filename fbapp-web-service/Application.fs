@@ -1,7 +1,6 @@
-﻿namespace FbApp.Web
+namespace FbApp.Web
 
 open FbApp.Web.Repositories
-open FSharp.Control.Tasks
 open Giraffe
 open MongoDB.Driver
 open Saturn

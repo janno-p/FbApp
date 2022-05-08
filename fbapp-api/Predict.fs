@@ -3,7 +3,6 @@ module FbApp.Api.Predict
 open FbApp.Api
 open FbApp.Api.Domain
 open FbApp.Api.Repositories
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver

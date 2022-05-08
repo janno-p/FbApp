@@ -1,7 +1,6 @@
 module FbApp.Auth.Program
 
 
-open FSharp.Control.Tasks
 open Giraffe
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication
@@ -40,7 +39,7 @@ module Ioc =
 let toListAsync (source: IAsyncEnumerable<_>) = task {
     let list = ResizeArray<_>()
     let e = source.GetAsyncEnumerator()
-    let rec iter () = unitTask {
+    let rec iter () = task {
         match! e.MoveNextAsync() with
         | true ->
             list.Add(e.Current)
