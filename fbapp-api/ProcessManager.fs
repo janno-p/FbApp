@@ -113,8 +113,8 @@ let private mapActualResult (status, fullTime, extraTime: int array, penalties: 
     | "FINISHED", [| homeGoals; awayGoals |] ->
         let et = if extraTime |> isNull then [| 0; 0 |] else extraTime
         let ps = if penalties |> isNull then [| 0; 0 |] else penalties
-        let homeGoals = homeGoals + et.[0] + ps.[0]
-        let awayGoals = awayGoals + et.[1] + ps.[1]
+        let homeGoals = homeGoals + et[0] + ps[0]
+        let awayGoals = awayGoals + et[1] + ps[1]
         if homeGoals > awayGoals then "HomeWin"
         elif homeGoals < awayGoals then "AwayWin"
         else "Tie"
@@ -237,7 +237,7 @@ let getResultPredictions db (input: Fixtures.AddFixtureInput) = task {
                 {
                     PredictionId = x.Id
                     Name = x.Name
-                    Result = x.Fixtures.[0].PredictedResult
+                    Result = x.Fixtures[0].PredictedResult
                 } : ReadModels.FixtureResultPrediction)
         |> Seq.toArray
     return predictions

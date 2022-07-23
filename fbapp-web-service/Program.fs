@@ -76,7 +76,7 @@ let initializeEventStore (sp: IServiceProvider) =
     let connectionString =
         configuration.GetConnectionString("eventstore")
         |> Option.ofObj
-        |> Option.defaultValue configuration.["EventStore:Uri"]
+        |> Option.defaultValue configuration["EventStore:Uri"]
         |> EventStoreConnectionString
     createEventStoreClient connectionString
 

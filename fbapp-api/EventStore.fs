@@ -1,9 +1,9 @@
 module FbApp.Api.EventStore
 
 open EventStore.Client
+open FSharp.Control
 open FbApp.Api.Aggregate
 open System
-open System.Collections.Generic
 
 let [<Literal>] ApplicationName = "FbApp"
 
@@ -57,6 +57,14 @@ let getMetadata (e: ResolvedEvent) : Metadata option =
         | arr -> Some(Serialization.deserializeType arr)
     )
 
+let rec readNextPage streamId startFrom (pages: ResizeArray<ResolvedEvent>) (client: EventStoreClient) = task {
+    let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
+    let! events = result |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toArrayAsync
+    pages.AddRange(events)
+    if events.Length = 4096 then
+        do! client |> readNextPage streamId events[4095].OriginalEventNumber pages
+}
+
 let makeRepository<'Event, 'Error> (client: EventStoreClient)
                                    (aggregateName: string)
                                    (serialize: obj -> string * ReadOnlyMemory<byte>)
@@ -64,35 +72,16 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
     let aggregateStreamId aggregateName (id: Guid) =
         sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
-    let readSlice (v: IAsyncEnumerator<ResolvedEvent>) = task {
-        let events = ResizeArray<ResolvedEvent>()
-        let rec readNext () = task {
-            let! hasNext = v.MoveNextAsync()
-            if hasNext then
-                events.Add(v.Current)
-                do! readNext()
-        }
-        do! readNext()
-        return events
-    }
-
     let load: LoadAggregateEvents<'Event> =
         (fun (eventType, id) ->
             task {
                 let streamId = aggregateStreamId aggregateName id
                 let pages = ResizeArray<ResolvedEvent>()
-                let rec readNextPage startFrom = task {
-                    let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-                    let! events = readSlice (result.GetAsyncEnumerator())
-                    pages.AddRange(events)
-                    if events.Count = 4096 then
-                        do! readNextPage events.[4095].OriginalEventNumber
-                }
-                do! readNextPage StreamPosition.Start
+                do! client |> readNextPage streamId StreamPosition.Start pages
                 let domainEvents = pages |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
                 let eventNumber =
                     if pages.Count > 0 then
-                        pages.[pages.Count - 1].OriginalEventNumber.ToInt64()
+                        pages[pages.Count - 1].OriginalEventNumber.ToInt64()
                     else
                         StreamPosition.Start.ToInt64()
                 return (eventNumber, domainEvents)

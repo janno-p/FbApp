@@ -37,7 +37,7 @@ type OptionConverter () =
             let valueWrapperType = typedefof<Value<_>>.MakeGenericType([|innerType|])
             let valueWrapper: IValue = Activator.CreateInstance(valueWrapperType) |> unbox
             let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
-            valueWrapper.SetValue(fields.[0])
+            valueWrapper.SetValue(fields[0])
             valueWrapper
         serializer.Serialize(writer, value)
 
@@ -48,11 +48,11 @@ type OptionConverter () =
             else innerType
         let cases = FSharpType.GetUnionCases(typ)
         if reader.TokenType = JsonToken.Null then
-            FSharpValue.MakeUnion(cases.[0], [||])
+            FSharpValue.MakeUnion(cases[0], [||])
         else
             let valueType = typedefof<Value<_>>.MakeGenericType([|innerType|])
             let value: IValue = serializer.Deserialize(reader, valueType) |> unbox
-            FSharpValue.MakeUnion(cases.[1], [|value.GetValue()|])
+            FSharpValue.MakeUnion(cases[1], [|value.GetValue()|])
 
 
 type FixtureDto = {

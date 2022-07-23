@@ -1,5 +1,6 @@
 group web
 EventStore.Client.Grpc.Streams
+FSharp.Control.AsyncSeq
 FSharp.Core
 Giraffe
 Grpc.Net.Client

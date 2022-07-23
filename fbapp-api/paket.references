@@ -1,5 +1,6 @@
 group api
 
+FSharp.Control.AsyncSeq
 Dapr.AspNetCore
 EventStore.Client.Grpc.PersistentSubscriptions
 EventStore.Client.Grpc.Streams

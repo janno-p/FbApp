@@ -1,3 +1,5 @@
+source https://www.nuget.org/api/v2
+
 group api
 
     source https://api.nuget.org/v3/index.json
@@ -7,6 +9,7 @@ group api
     nuget Dapr.AspNetCore
     nuget EventStore.Client.Grpc.PersistentSubscriptions
     nuget EventStore.Client.Grpc.Streams
+    nuget FSharp.Control.AsyncSeq
     nuget FSharp.Core
     nuget Giraffe
     nuget Grpc.Net.Client
@@ -22,6 +25,7 @@ group auth
     storage: none
     framework: net60
 
+    nuget FSharp.Control.AsyncSeq
     nuget FSharp.Core
     nuget Giraffe
     nuget Microsoft.AspNetCore.Authentication.Google
@@ -92,6 +96,7 @@ group web
     framework: net60
 
     nuget EventStore.Client.Grpc.Streams
+    nuget FSharp.Control.AsyncSeq
     nuget FSharp.Core
     nuget Giraffe
     nuget Grpc.Net.Client

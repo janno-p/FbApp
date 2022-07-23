@@ -1,6 +1,7 @@
 module FbApp.Auth.Program
 
 
+open FSharp.Control
 open Giraffe
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication
@@ -34,21 +35,6 @@ module Ioc =
     let httpClientFactory: H<System.Net.Http.IHttpClientFactory> = get
     let httpClient: H<System.Net.Http.HttpClient> = (fun ctx -> (ctx |> httpClientFactory).CreateClient(""))
     let configuration: H<IConfiguration> = get
-
-
-let toListAsync (source: IAsyncEnumerable<_>) = task {
-    let list = ResizeArray<_>()
-    let e = source.GetAsyncEnumerator()
-    let rec iter () = task {
-        match! e.MoveNextAsync() with
-        | true ->
-            list.Add(e.Current)
-            do! iter()
-        | false -> ()
-    }
-    do! iter()
-    return list
-}
 
 
 let getDestinations (principal: ClaimsPrincipal) (claim: Claim) = seq {
@@ -120,7 +106,7 @@ let authorize: HttpHandler =
                         OpenIddictConstants.Statuses.Valid,
                         OpenIddictConstants.AuthorizationTypes.Permanent,
                         request.GetScopes()
-                    ) |> toListAsync
+                    ) |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toListAsync
 
                 let signInManager = ctx |> Ioc.signInManager
                 let! principal = signInManager.CreateUserPrincipalAsync(user)
@@ -128,7 +114,7 @@ let authorize: HttpHandler =
                 principal.SetScopes(request.GetScopes()) |> ignore
 
                 let scopeManager = ctx |> Ioc.openIddictScopeManager
-                let! resources = scopeManager.ListResourcesAsync(principal.GetScopes()) |> toListAsync
+                let! resources = scopeManager.ListResourcesAsync(principal.GetScopes()) |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toListAsync
                 principal.SetResources(resources) |> ignore
 
                 let! authorization =
@@ -269,9 +255,9 @@ let googleResponse: HttpHandler =
                     let! identityResult = userManager.AddLoginAsync(user, info)
                     if identityResult.Succeeded then
                         let! _ = signInManager.SignInAsync(user, false)
-                        () 
+                        ()
 
-            return! redirectTo false "/" next ctx 
+            return! redirectTo false "/" next ctx
     }
 
 
@@ -286,26 +272,26 @@ let userinfo: HttpHandler =
             let claims = Dictionary<string, obj>(StringComparer.Ordinal)
 
             let! subject = userManager.GetUserIdAsync(user)
-            claims.[OpenIddictConstants.Claims.Subject] <- box subject
-            claims.[OpenIddictConstants.Claims.Picture] <- box user.PictureUrl
+            claims[OpenIddictConstants.Claims.Subject] <- box subject
+            claims[OpenIddictConstants.Claims.Picture] <- box user.PictureUrl
 
             if ctx.User.HasScope(OpenIddictConstants.Scopes.Email) then
                 let! email = userManager.GetEmailAsync(user)
-                claims.[OpenIddictConstants.Claims.Email] <- box email
+                claims[OpenIddictConstants.Claims.Email] <- box email
 
                 let! emailVerified = userManager.IsEmailConfirmedAsync(user)
-                claims.[OpenIddictConstants.Claims.EmailVerified] <- box emailVerified
+                claims[OpenIddictConstants.Claims.EmailVerified] <- box emailVerified
 
             if ctx.User.HasScope(OpenIddictConstants.Scopes.Phone) then
                 let! phoneNumber = userManager.GetPhoneNumberAsync(user)
-                claims.[OpenIddictConstants.Claims.PhoneNumber] <- box phoneNumber
+                claims[OpenIddictConstants.Claims.PhoneNumber] <- box phoneNumber
 
                 let! phoneNumberVerified = userManager.IsPhoneNumberConfirmedAsync(user)
-                claims.[OpenIddictConstants.Claims.PhoneNumberVerified] <- box phoneNumberVerified
+                claims[OpenIddictConstants.Claims.PhoneNumberVerified] <- box phoneNumberVerified
 
             if ctx.User.HasScope(OpenIddictConstants.Scopes.Roles) then
                 let! roles = userManager.GetRolesAsync(user)
-                claims.[OpenIddictConstants.Claims.Role] <- box roles
+                claims[OpenIddictConstants.Claims.Role] <- box roles
 
             return! Successful.OK claims next ctx
     }
@@ -344,8 +330,8 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.AddAuthentication()
         .AddGoogle(fun options ->
             let googleSection = context.Configuration.GetSection("Google:Authentication")
-            options.ClientId <- googleSection.["ClientId"]
-            options.ClientSecret <- googleSection.["ClientSecret"]
+            options.ClientId <- googleSection["ClientId"]
+            options.ClientSecret <- googleSection["ClientSecret"]
             options.CallbackPath <- PathString "/connect/google/callback"
             options.SignInScheme <- IdentityConstants.ExternalScheme)
     |> ignore

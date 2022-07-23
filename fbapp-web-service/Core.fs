@@ -1,5 +1,7 @@
 namespace FbApp.Core
 
+open EventStore.Client
+open FSharp.Control
 open XploRe.Util
 open System
 
@@ -73,8 +75,8 @@ module Serialization =
                 let listType = typedefof<list<_>>.MakeGenericType(itemType)
                 let cases = FSharpType.GetUnionCases(listType)
                 let rec make = function
-                    | [] -> FSharpValue.MakeUnion(cases.[0], [||])
-                    | head::tail -> FSharpValue.MakeUnion(cases.[1], [| head; make tail |])
+                    | [] -> FSharpValue.MakeUnion(cases[0], [||])
+                    | head::tail -> FSharpValue.MakeUnion(cases[1], [| head; make tail |])
                 collection |> Seq.toList |> make
 
         type OptionConverter () =
@@ -85,7 +87,7 @@ module Serialization =
                 let value =
                     if value |> isNull then null else
                     let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
-                    fields.[0]
+                    fields[0]
                 serializer.Serialize(writer, value)
             override _.ReadJson(reader, typ, _, serializer) =
                 let innerType = typ.GetGenericArguments().[0]
@@ -94,8 +96,8 @@ module Serialization =
                     else innerType
                 let value = serializer.Deserialize(reader, innerType)
                 let cases = FSharpType.GetUnionCases(typ)
-                if value |> isNull then FSharpValue.MakeUnion(cases.[0], [||])
-                else FSharpValue.MakeUnion(cases.[1], [|value|])
+                if value |> isNull then FSharpValue.MakeUnion(cases[0], [||])
+                else FSharpValue.MakeUnion(cases[1], [|value|])
 
         type TupleArrayConverter () =
             inherit JsonConverter()
@@ -114,7 +116,7 @@ module Serialization =
                         match reader.TokenType with
                         | JsonToken.EndArray -> acc
                         | _ ->
-                            let value = deserialize itemTypes.[index]
+                            let value = deserialize itemTypes[index]
                             advance()
                             read (index + 1) (acc @ [value])
                     advance()
@@ -142,7 +144,7 @@ module Serialization =
                 let value =
                     match fieldValues.Length with
                     | 0 -> null
-                    | 1 -> fieldValues.[0]
+                    | 1 -> fieldValues[0]
                     | _ -> fieldValues :> obj
                 serializer.Serialize(writer, value)
                 writer.WriteEndObject()
@@ -182,7 +184,7 @@ module Serialization =
                         read JsonToken.Null |> require |> ignore
                         [||]
                     | 1 ->
-                        [|serializer.Deserialize(reader, fields.[0].PropertyType)|]
+                        [|serializer.Deserialize(reader, fields[0].PropertyType)|]
                     | _ ->
                         let tupleType = FSharpType.MakeTupleType(fields |> Seq.map (fun f -> f.PropertyType) |> Seq.toArray)
                         let tuple = serializer.Deserialize(reader, tupleType)
@@ -243,8 +245,16 @@ module EventStore =
         EventStoreConnectionString of string
 
     let createEventStoreClient (EventStoreConnectionString uri) =
-        let settings = EventStore.Client.EventStoreClientSettings.Create(uri)
-        new EventStore.Client.EventStoreClient(settings)
+        let settings = EventStoreClientSettings.Create(uri)
+        new EventStoreClient(settings)
+
+    let rec readNextPage streamId startFrom (pages: ResizeArray<_>) (client: EventStoreClient) = task {
+        let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
+        let! events = result |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toArrayAsync
+        pages.AddRange(events)
+        if events.Length = 4096 then
+            do! client |> readNextPage streamId events[4095].OriginalEventNumber pages
+    }
 
     [<CLIMutable>]
     type Metadata =
@@ -277,7 +287,7 @@ module EventStore =
                 BatchId = Uuid.NewRandom()
             }
 
-    let getMetadata (e: EventStore.Client.ResolvedEvent) : Metadata option =
+    let getMetadata (e: ResolvedEvent) : Metadata option =
         e.Event
         |> Option.ofObj
         |> Option.bind (fun x ->
@@ -286,40 +296,21 @@ module EventStore =
             | arr -> Some(Serialization.deserializeType arr)
         )
 
-    let makeRepository<'Event, 'Error> (client: EventStore.Client.EventStoreClient)
+    let makeRepository<'Event, 'Error> (client: EventStoreClient)
                                        (aggregateName: string)
                                        (serialize: obj -> string * ReadOnlyMemory<byte>)
                                        (deserialize: Type * string * ReadOnlyMemory<byte> -> obj) =
         let aggregateStreamId aggregateName (id: Uuid) =
             sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
-        let readSlice (v: System.Collections.Generic.IAsyncEnumerator<EventStore.Client.ResolvedEvent>) = task {
-            let events = ResizeArray<EventStore.Client.ResolvedEvent>()
-            let rec readNext () = task {
-                let! hasNext = v.MoveNextAsync()
-                if hasNext then
-                    events.Add(v.Current)
-                    do! readNext ()
-            }
-            do! readNext ()
-            return events
-        }
-
         let load: LoadAggregateEvents<'Event> =
             (fun (eventType, id) ->
                 task {
                     let streamId = aggregateStreamId aggregateName id
-                    let pages = ResizeArray<EventStore.Client.ResolvedEvent>()
-                    let rec readNextPage startFrom = task {
-                        let result = client.ReadStreamAsync(EventStore.Client.Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-                        let! events = readSlice (result.GetAsyncEnumerator())
-                        pages.AddRange(events)
-                        if events.Count = 4096 then
-                            do! readNextPage events.[4095].OriginalEventNumber
-                    }
-                    do! readNextPage EventStore.Client.StreamPosition.Start
+                    let pages = ResizeArray<ResolvedEvent>()
+                    do! client |> readNextPage streamId StreamPosition.Start pages
                     let domainEvents = pages |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
-                    return (pages.[pages.Count - 1].OriginalEventNumber.ToInt64(), domainEvents)
+                    return (pages[pages.Count - 1].OriginalEventNumber.ToInt64(), domainEvents)
                 }
             )
 
@@ -345,19 +336,19 @@ module EventStore =
                                     AggregateSequenceNumber = aggregateSequenceNumber + 1L + (int64 i)
                                 }
                             let _, metadata = serialize metadata
-                            EventStore.Client.EventData(EventStore.Client.Uuid.FromGuid(uuid.ToGuid()), eventType, data, metadata)
+                            EventData(EventStore.Client.Uuid.FromGuid(uuid.ToGuid()), eventType, data, metadata)
                         )
 
                     let expectedVersion =
                         match expectedVersion with
-                        | NewStream -> EventStore.Client.StreamRevision.None.ToInt64()
+                        | NewStream -> StreamRevision.None.ToInt64()
                         | Value v -> v
 
                     try
-                        let! writeResult = client.AppendToStreamAsync(streamId, EventStore.Client.StreamRevision.FromInt64 expectedVersion, eventDatas)
+                        let! writeResult = client.AppendToStreamAsync(streamId, StreamRevision.FromInt64 expectedVersion, eventDatas)
                         return Ok(writeResult.NextExpectedStreamRevision.ToInt64())
                     with
-                    | :? EventStore.Client.WrongExpectedVersionException ->
+                    | :? WrongExpectedVersionException ->
                         return Error(WrongExpectedVersion)
                     | ex ->
                         return Error(Other ex)

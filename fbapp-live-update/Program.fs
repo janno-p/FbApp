@@ -26,7 +26,7 @@ type OptionConverter () =
         let value =
             if value |> isNull then null else
             let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
-            fields.[0]
+            fields[0]
         serializer.Serialize(writer, value)
 
     override _.ReadJson(reader, typ, _, serializer) =
@@ -36,8 +36,8 @@ type OptionConverter () =
             else innerType
         let value = serializer.Deserialize(reader, innerType)
         let cases = FSharpType.GetUnionCases(typ)
-        if value |> isNull then FSharpValue.MakeUnion(cases.[0], [||])
-        else FSharpValue.MakeUnion(cases.[1], [|value|])
+        if value |> isNull then FSharpValue.MakeUnion(cases[0], [||])
+        else FSharpValue.MakeUnion(cases[1], [|value|])
 
 
 [<CLIMutable>]
@@ -228,7 +228,7 @@ type Worker(logger: ILogger<Worker>, apiSettings: IOptions<ApiSettings>, dapr: D
                 if newFixture <> previousFixture then
                     fixtureUpdates.Add((newFixture, tag))
 
-                fixtureUpdatesLookup.[fixture.Id] <- fixture.LastUpdated
+                fixtureUpdatesLookup[fixture.Id] <- fixture.LastUpdated
 
             if fixtureUpdates.Count > 0 then
                 do! dapr.PublishEventAsync<FixturesUpdatedIntegrationEvent>(

@@ -24,8 +24,8 @@ module Converters =
             let listType = typedefof<list<_>>.MakeGenericType(itemType)
             let cases = FSharpType.GetUnionCases(listType)
             let rec make = function
-                | [] -> FSharpValue.MakeUnion(cases.[0], [||])
-                | head::tail -> FSharpValue.MakeUnion(cases.[1], [| head; make tail |])
+                | [] -> FSharpValue.MakeUnion(cases[0], [||])
+                | head::tail -> FSharpValue.MakeUnion(cases[1], [| head; make tail |])
             collection |> Seq.toList |> make
 
     type OptionConverter () =
@@ -36,7 +36,7 @@ module Converters =
             let value =
                 if value |> isNull then null else
                 let _, fields = FSharpValue.GetUnionFields(value, value.GetType())
-                fields.[0]
+                fields[0]
             serializer.Serialize(writer, value)
         override _.ReadJson(reader, typ, _, serializer) =
             let innerType = typ.GetGenericArguments().[0]
@@ -45,8 +45,8 @@ module Converters =
                 else innerType
             let value = serializer.Deserialize(reader, innerType)
             let cases = FSharpType.GetUnionCases(typ)
-            if value |> isNull then FSharpValue.MakeUnion(cases.[0], [||])
-            else FSharpValue.MakeUnion(cases.[1], [|value|])
+            if value |> isNull then FSharpValue.MakeUnion(cases[0], [||])
+            else FSharpValue.MakeUnion(cases[1], [|value|])
 
     type TupleArrayConverter () =
         inherit JsonConverter()
@@ -65,7 +65,7 @@ module Converters =
                     match reader.TokenType with
                     | JsonToken.EndArray -> acc
                     | _ ->
-                        let value = deserialize itemTypes.[index]
+                        let value = deserialize itemTypes[index]
                         advance()
                         read (index + 1) (acc @ [value])
                 advance()
@@ -93,7 +93,7 @@ module Converters =
             let value =
                 match fieldValues.Length with
                 | 0 -> null
-                | 1 -> fieldValues.[0]
+                | 1 -> fieldValues[0]
                 | _ -> fieldValues :> obj
             serializer.Serialize(writer, value)
             writer.WriteEndObject()
@@ -133,7 +133,7 @@ module Converters =
                     read JsonToken.Null |> require |> ignore
                     [||]
                 | 1 ->
-                    [|serializer.Deserialize(reader, fields.[0].PropertyType)|]
+                    [|serializer.Deserialize(reader, fields[0].PropertyType)|]
                 | _ ->
                     let tupleType = FSharpType.MakeTupleType(fields |> Seq.map (fun f -> f.PropertyType) |> Seq.toArray)
                     let tuple = serializer.Deserialize(reader, tupleType)
@@ -184,4 +184,3 @@ let deserializeOf<'T> (eventType, data) =
 let deserializeType (data: ReadOnlyMemory<byte>) =
     let json = Encoding.UTF8.GetString(data.ToArray())
     JsonConvert.DeserializeObject<'T>(json)
-    
