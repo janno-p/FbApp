@@ -20,7 +20,8 @@ export default defineConfig({
 
     server: {
         hmr: {
-            protocol: 'ws'
+            clientPort: 8090,
+            protocol: 'wss'
         },
         strictPort: true
     }
