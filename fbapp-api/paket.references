@@ -1,5 +1,4 @@
-group api
-
+Be.Vlaanderen.Basisregisters.Generators.Guid.Deterministic
 FSharp.Control.AsyncSeq
 Dapr.AspNetCore
 EventStore.Client.Grpc.PersistentSubscriptions
@@ -10,4 +9,3 @@ Grpc.Net.Client
 MongoDB.Driver
 Newtonsoft.Json
 Saturn
-XploRe.Util.Uuid

@@ -47,7 +47,7 @@ viewSiteToolbar _ maybeUser =
                     [ -- icon(left, name=mdi-soccer, size=lg)
                       span [ class "mdi mdi-soccer" ] []
                     , div [ class "text-left" ]
-                        [ h5 [ class "py-0 my-0" ] [ text "Ennustusmäng" ]
+                        [ h5 [ class "py-0 my-0" ] [ text "Ennustusmäng 2" ]
                         , -- div(class=text-caption)
                           div [] [ text "competitionName" ]
                         ]

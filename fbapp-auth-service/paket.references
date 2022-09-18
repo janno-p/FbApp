@@ -1,4 +1,3 @@
-group auth
 FSharp.Control.AsyncSeq
 FSharp.Core
 Giraffe

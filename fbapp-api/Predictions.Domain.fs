@@ -2,7 +2,7 @@
 module FbApp.Api.Domain.Predictions
 
 open System
-open XploRe.Util
+open Be.Vlaanderen.Basisregisters.Generators.Guid
 
 let [<Literal>] AggregateName = "Prediction"
 
@@ -123,8 +123,7 @@ let evolve: State option -> Event -> State =
         | Declined -> { state.Value with IsAccepted = false }
     )
 
-let predictionsGuid = Guid.Parse("2945d861-0b2f-4783-914b-97988b98c76b")
+let predictionsGuid = Guid "2945d861-0b2f-4783-914b-97988b98c76b"
 
 let createId (competitionId: Guid, Email email) =
-    let id = sprintf "%s-%s" (competitionId.ToString("N")) email
-    Uuid.NewNameBasedV5(predictionsGuid.ToUuid(), id).ToGuid()
+    Deterministic.Create(predictionsGuid, (sprintf "%s-%s" (competitionId.ToString("N")) email), 5)

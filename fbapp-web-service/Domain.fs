@@ -1,15 +1,7 @@
 ﻿namespace FbApp.Domain
 
+open Be.Vlaanderen.Basisregisters.Generators.Guid
 open System
-open System.Text
-open XploRe.Util
-
-[<RequireQualifiedAccess>]
-module Uuid =
-    let createDeterministicUuid (namespaceId: Uuid) (name: string) =
-        if name |> isNull then failwith "Argument null exception 'name'"
-        let nameBytes = Encoding.UTF8.GetBytes(name)
-        Uuid.NewNameBasedV5(namespaceId, nameBytes)
 
 [<RequireQualifiedAccess>]
 module Competitions =
@@ -76,10 +68,10 @@ module Competitions =
         )
 
     let competitionsNamespace =
-        Uuid "1dc53967-8c3b-49a9-9496-27a2267bbef7"
+        Guid "1dc53967-8c3b-49a9-9496-27a2267bbef7"
 
     let createId (externalId: int64) =
-        Uuid.createDeterministicUuid competitionsNamespace (externalId.ToString())
+        Deterministic.Create(competitionsNamespace, externalId.ToString(), 5)
 
 [<RequireQualifiedAccess>]
 module Fixtures =
@@ -134,7 +126,7 @@ module Fixtures =
 
     type AddFixtureInput =
         {
-            CompetitionId: Uuid
+            CompetitionId: Guid
             ExternalId: int64
             HomeTeamId: int64
             AwayTeamId: int64
@@ -153,7 +145,7 @@ module Fixtures =
 
     type UpdateQualifiersInput =
         {
-            CompetitionId: Uuid
+            CompetitionId: Guid
             ExternalId: int64
             HomeTeamId: int64
             AwayTeamId: int64
@@ -240,10 +232,10 @@ module Fixtures =
         )
 
     let fixturesNamespace =
-        Uuid "2130666a-7b4b-44c7-9d0a-da020138ffc0"
+        Guid "2130666a-7b4b-44c7-9d0a-da020138ffc0"
 
-    let createId (competitionId: Uuid, externalId: int64) =
-        Uuid.createDeterministicUuid fixturesNamespace (sprintf "%s-%s" (competitionId.ToString("N")) (externalId.ToString()))
+    let createId (competitionId: Guid, externalId: int64) =
+        Deterministic.Create(fixturesNamespace, (sprintf "%s-%s" (competitionId.ToString("N")) (externalId.ToString())), 5)
 
 [<RequireQualifiedAccess>]
 module Leagues =
@@ -253,18 +245,18 @@ module Leagues =
 
     type CreateLeagueInput =
         {
-            CompetitionId: Uuid
+            CompetitionId: Guid
             Code: string
             Name: string
         }
 
     type Command =
         | Create of CreateLeagueInput
-        | AddPrediction of Uuid
+        | AddPrediction of Guid
 
     type Event =
         | Created of CreateLeagueInput
-        | PredictionAdded of Uuid
+        | PredictionAdded of Guid
 
     let decide : State option -> Command -> Result<Event list, unit> =
         (fun _ -> function
@@ -281,10 +273,10 @@ module Leagues =
         )
 
     let leaguesNamespace =
-        Uuid "866b5bbe-3053-4717-ad46-30966dc9fe32"
+        Guid "866b5bbe-3053-4717-ad46-30966dc9fe32"
 
-    let createId (competitionId: Uuid, leagueCode: string) =
-        Uuid.createDeterministicUuid leaguesNamespace (sprintf "%s-%s" (competitionId.ToString("N")) leagueCode)
+    let createId (competitionId: Guid, leagueCode: string) =
+        Deterministic.Create(leaguesNamespace, (sprintf "%s-%s" (competitionId.ToString("N")) leagueCode), 5)
 
 [<RequireQualifiedAccess>]
 module Predictions =
@@ -316,7 +308,7 @@ module Predictions =
     [<CLIMutable>]
     type PredictionRegistrationInput =
         {
-            CompetitionId: Uuid
+            CompetitionId: Guid
             Fixtures: FixtureResultRegistrationInput[]
             Qualifiers: QualifiersRegistrationInput
             Winner: int64
@@ -345,7 +337,7 @@ module Predictions =
         {
             Name: string
             Email: string
-            CompetitionId: Uuid
+            CompetitionId: Guid
             Fixtures: FixtureResultRegistration list
             Qualifiers: QualifiersRegistration
             Winner: int64
@@ -408,7 +400,7 @@ module Predictions =
         )
 
     let predictionsNamespace =
-        Uuid "2945d861-0b2f-4783-914b-97988b98c76b"
+        Guid "2945d861-0b2f-4783-914b-97988b98c76b"
 
-    let createId (competitionId: Uuid, Email email) =
-        Uuid.createDeterministicUuid predictionsNamespace (sprintf "%s-%s" (competitionId.ToString("N")) email)
+    let createId (competitionId: Guid, Email email) =
+        Deterministic.Create(predictionsNamespace, (sprintf "%s-%s" (competitionId.ToString("N")) email), 5)

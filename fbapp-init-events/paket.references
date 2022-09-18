@@ -1,5 +1,3 @@
-group init-events
-
 EventStore.Client.Grpc.PersistentSubscriptions
 EventStore.Client.Grpc.ProjectionManagement
 FSharp.Core

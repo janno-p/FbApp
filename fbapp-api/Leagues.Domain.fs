@@ -1,7 +1,7 @@
 ﻿module FbApp.Api.Domain.Leagues
 
 open System
-open XploRe.Util
+open Be.Vlaanderen.Basisregisters.Generators.Guid
 
 let [<Literal>] AggregateName = "League"
 
@@ -36,8 +36,7 @@ let evolve : State option -> Event -> State =
         | PredictionAdded _ -> ()
     )
 
-let leaguesGuid = Guid.Parse("866b5bbe-3053-4717-ad46-30966dc9fe32")
+let leaguesGuid = Guid "866b5bbe-3053-4717-ad46-30966dc9fe32"
 
 let createId (competitionId: Guid, leagueCode: string) =
-    let id = sprintf "%s-%s" (competitionId.ToString("N")) leagueCode
-    Uuid.NewNameBasedV5(leaguesGuid.ToUuid(), id).ToGuid()
+    Deterministic.Create(leaguesGuid, (sprintf "%s-%s" (competitionId.ToString("N")) leagueCode), 5)

@@ -4,7 +4,7 @@ open FbApp.Web.Repositories
 open Giraffe
 open MongoDB.Driver
 open Saturn
-open XploRe.Util
+open System
 
 [<AutoOpen>]
 module Extensions =
@@ -72,8 +72,6 @@ module Dashboard =
 
 [<RequireQualifiedAccess>]
 module Fixtures =
-    open System
-
     [<CLIMutable>]
     type TeamDto =
         {
@@ -111,10 +109,10 @@ module Fixtures =
     [<CLIMutable>]
     type FixtureDto =
         {
-            Id: Uuid
+            Id: Guid
             Date: DateTimeOffset
-            PreviousFixtureId: Nullable<Uuid>
-            NextFixtureId: Nullable<Uuid>
+            PreviousFixtureId: Nullable<Guid>
+            NextFixtureId: Nullable<Guid>
             HomeTeam: TeamDto
             AwayTeam: TeamDto
             Status: string
@@ -143,14 +141,14 @@ module Fixtures =
                 QualifierPredictions = fixture.QualificationPredictions |> Array.map QualifierPredictionDto.FromProjection |> Array.sortBy (fun u -> u.Name.ToLowerInvariant())
             }
 
-    let getFixture (id: Uuid) : HttpHandler =
+    let getFixture (id: Guid) : HttpHandler =
         (fun next ctx -> task {
             let! fixture = Fixtures.get ctx.MongoDb id
             let dto = FixtureDto.FromProjection(fixture)
             return! Successful.OK dto next ctx
         })
 
-    let getFixtureStatus (id: Uuid) : HttpHandler =
+    let getFixtureStatus (id: Guid) : HttpHandler =
         (fun next ctx -> task {
             let! dto = Fixtures.getFixtureStatus ctx.MongoDb id
             return! Successful.OK dto next ctx
@@ -197,8 +195,8 @@ module Leagues =
 
     let private addPrediction (leagueId: string, predictionId: string) : HttpHandler =
         (fun next ctx -> task {
-            let leagueId = Uuid leagueId
-            let predictionId = Uuid predictionId
+            let leagueId = Guid leagueId
+            let predictionId = Guid predictionId
             let! result = CommandHandlers.leaguesHandler (leagueId, Aggregate.Any) (Leagues.AddPrediction predictionId)
             match result with
             | Ok _ -> return! Successful.ACCEPTED predictionId next ctx
@@ -231,7 +229,6 @@ module Leagues =
 module Predict =
     open FbApp.Core
     open FbApp.Domain
-    open System
     open System.Collections.Generic
 
     [<CLIMutable>]
@@ -252,7 +249,7 @@ module Predict =
     [<CLIMutable>]
     type FixturesDto =
         {
-            CompetitionId: Uuid
+            CompetitionId: Guid
             Teams: IDictionary<int64, TeamDto>
             Fixtures: FixtureDto[]
             Groups: IDictionary<string, int64[]>
@@ -270,7 +267,7 @@ module Predict =
     [<CLIMutable>]
     type PredictionDto =
         {
-            CompetitionId: Uuid
+            CompetitionId: Guid
             Teams: IDictionary<int64, TeamDto>
             Fixtures: PredictionFixtureDto[]
             RoundOf16: int64[]

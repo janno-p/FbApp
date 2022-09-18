@@ -1,4 +1,3 @@
-group proxy
 FSharp.Core
 Giraffe
 Microsoft.Tye.Extensions.Configuration

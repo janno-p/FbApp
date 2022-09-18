@@ -2,7 +2,6 @@ namespace FbApp.Core
 
 open EventStore.Client
 open FSharp.Control
-open XploRe.Util
 open System
 
 module Aggregate =
@@ -30,9 +29,9 @@ module Aggregate =
 
     type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 
-    type CommandHandler<'Command, 'Error> = Uuid * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
-    type LoadAggregateEvents<'Event> = Type * Uuid -> Task<int64 * 'Event seq>
-    type CommitAggregateEvents<'Event, 'Error> = Uuid * ExpectedCommitVersion -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
+    type CommandHandler<'Command, 'Error> = Guid * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
+    type LoadAggregateEvents<'Event> = Type * Guid -> Task<int64 * 'Event seq>
+    type CommitAggregateEvents<'Event, 'Error> = Guid * ExpectedCommitVersion -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
 
     let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
                     (load: LoadAggregateEvents<'Event>, commit: CommitAggregateEvents<'Event, 'Error>) : CommandHandler<'Command, 'Error> =
@@ -260,31 +259,31 @@ module EventStore =
     type Metadata =
         {
             ApplicationName: string
-            Uuid: Uuid
+            Uuid: Guid
             //SourceId: SourceId
             EventType: string
             //EventVersion: int
             Timestamp: DateTimeOffset
             TimestampEpoch: int64
             AggregateSequenceNumber: int64
-            AggregateId: Uuid
+            AggregateId: Guid
             //EventId: EventId
             AggregateName: string
-            BatchId: Uuid
+            BatchId: Guid
         }
     with
         static member Create (aggregateName, aggregateId) =
             let now = DateTimeOffset.Now
             {
                 ApplicationName = ApplicationName
-                Uuid = Uuid.Empty
+                Uuid = Guid.Empty
                 EventType = ""
                 Timestamp = now
                 TimestampEpoch = now.ToUnixTimeSeconds()
                 AggregateSequenceNumber = 0L
                 AggregateId = aggregateId
                 AggregateName = aggregateName
-                BatchId = Uuid.NewRandom()
+                BatchId = Guid.NewGuid()
             }
 
     let getMetadata (e: ResolvedEvent) : Metadata option =
@@ -300,7 +299,7 @@ module EventStore =
                                        (aggregateName: string)
                                        (serialize: obj -> string * ReadOnlyMemory<byte>)
                                        (deserialize: Type * string * ReadOnlyMemory<byte> -> obj) =
-        let aggregateStreamId aggregateName (id: Uuid) =
+        let aggregateStreamId aggregateName (id: Guid) =
             sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
         let load: LoadAggregateEvents<'Event> =
@@ -327,7 +326,7 @@ module EventStore =
 
                     let eventDatas =
                         events |> List.mapi (fun i e ->
-                            let uuid = Uuid.NewRandom()
+                            let uuid = Guid.NewGuid()
                             let eventType, data = serialize e
                             let metadata =
                                 { batchMetadata with
@@ -336,7 +335,7 @@ module EventStore =
                                     AggregateSequenceNumber = aggregateSequenceNumber + 1L + (int64 i)
                                 }
                             let _, metadata = serialize metadata
-                            EventData(EventStore.Client.Uuid.FromGuid(uuid.ToGuid()), eventType, data, metadata)
+                            EventData(Uuid.FromGuid(uuid), eventType, data, metadata)
                         )
 
                     let expectedVersion =

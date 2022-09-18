@@ -1,8 +1,8 @@
 ﻿[<RequireQualifiedAccess>]
 module FbApp.Api.Domain.Fixtures
 
+open Be.Vlaanderen.Basisregisters.Generators.Guid
 open System
-open XploRe.Util
 
 let [<Literal>] AggregateName = "Fixture"
 
@@ -161,7 +161,7 @@ let evolve : State option -> Event -> State =
     )
 
 let fixturesNamespace =
-    Guid.Parse("2130666a-7b4b-44c7-9d0a-da020138ffc0")
+    Guid "2130666a-7b4b-44c7-9d0a-da020138ffc0"
 
 let createId (competitionId: Guid, externalId: int64) =
-    Uuid.NewNameBasedV5(fixturesNamespace.ToUuid(), sprintf "%s-%s" (competitionId.ToString("N")) (externalId.ToString())).ToGuid()
+    Deterministic.Create(fixturesNamespace, sprintf "%s-%s" (competitionId.ToString("N")) (externalId.ToString()), 5)

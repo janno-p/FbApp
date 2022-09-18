@@ -2,7 +2,7 @@
 module FbApp.Api.Domain.Competitions
 
 open System
-open XploRe.Util
+open Be.Vlaanderen.Basisregisters.Generators.Guid
 
 let [<Literal>] AggregateName = "Competition"
 
@@ -67,7 +67,7 @@ let evolve: State option -> Event -> State =
     )
 
 let competitionsNamespace =
-    Guid.Parse("1dc53967-8c3b-49a9-9496-27a2267bbef7")
+    Guid "1dc53967-8c3b-49a9-9496-27a2267bbef7"
 
 let createId (externalId: int64) =
-    Uuid.NewNameBasedV5(competitionsNamespace.ToUuid(), externalId.ToString()).ToGuid()
+    Deterministic.Create(competitionsNamespace, externalId.ToString(), 5)

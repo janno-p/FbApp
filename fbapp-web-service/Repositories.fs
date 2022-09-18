@@ -7,7 +7,6 @@ open MongoDB.Driver
 open System
 open System.Collections.Generic
 open System.Linq
-open XploRe.Util
 
 do BsonSerializer.RegisterSerializer(GuidSerializer(GuidRepresentation.Standard))
 
@@ -36,7 +35,7 @@ module ReadModels =
 
     type Competition =
         {
-            Id: Uuid
+            Id: Guid
             Description: string
             ExternalId: int64
             Teams: Team array
@@ -48,14 +47,14 @@ module ReadModels =
 
     type FixtureResultPrediction =
         {
-            PredictionId: Uuid
+            PredictionId: Guid
             Name: string
             Result: string
         }
 
     type QualificationPrediction =
         {
-            PredictionId: Uuid
+            PredictionId: Guid
             Name: string
             HomeQualifies: bool
             AwayQualifies: bool
@@ -63,11 +62,11 @@ module ReadModels =
 
     type Fixture =
         {
-            Id: Uuid
-            CompetitionId: Uuid
+            Id: Guid
+            CompetitionId: Guid
             Date: DateTimeOffset
-            PreviousId: Nullable<Uuid>
-            NextId: Nullable<Uuid>
+            PreviousId: Nullable<Guid>
+            NextId: Nullable<Guid>
             HomeTeam: Team
             AwayTeam: Team
             Status: string
@@ -90,7 +89,7 @@ module ReadModels =
 
     type PredictionFixture =
         {
-            Id: Uuid
+            Id: Guid
             Name: string
             Fixtures: PredictionFixtureResult array
         }
@@ -103,31 +102,31 @@ module ReadModels =
 
     type PredictionQualifier =
         {
-            Id: Uuid
+            Id: Guid
             Name: string
             Qualifiers: QualifiersResult array
         }
 
     type Prediction =
         {
-            Id: Uuid
+            Id: Guid
             Name: string
             Email: string
-            CompetitionId: Uuid
+            CompetitionId: Guid
             Fixtures: PredictionFixtureResult array
             QualifiersRoundOf16: QualifiersResult array
             QualifiersRoundOf8: QualifiersResult array
             QualifiersRoundOf4: QualifiersResult array
             QualifiersRoundOf2: QualifiersResult array
             Winner: QualifiersResult
-            Leagues: Uuid array
+            Leagues: Guid array
             Version: int64
         }
 
     type League =
         {
-            Id: Uuid
-            CompetitionId: Uuid
+            Id: Guid
+            CompetitionId: Guid
             Name: string
             Code: string
         }
@@ -142,14 +141,14 @@ module ReadModels =
 
     type FixtureOrder =
         {
-            Id: Uuid
-            PreviousId: Nullable<Uuid>
-            NextId: Nullable<Uuid>
+            Id: Guid
+            PreviousId: Nullable<Guid>
+            NextId: Nullable<Guid>
         }
 
     type PredictionItem =
         {
-            Id: Uuid
+            Id: Guid
             Name: string
         }
 
@@ -157,7 +156,7 @@ module ReadModels =
 
     type PredictionScore =
         {
-            Id: Uuid
+            Id: Guid
             Name: string
             Points: double array
             Total: double
@@ -179,7 +178,7 @@ module Competitions =
         return! (getCollection db).Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
-    let get db (competitionId: Uuid) = task {
+    let get db (competitionId: Guid) = task {
         let f = Builders.Filter.Eq((fun x -> x.Id), competitionId)
         return! (getCollection db).Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
@@ -315,11 +314,11 @@ module Fixtures =
         ()
     }
 
-    let getFixtureCount db (competitionId: Uuid, stage: string) = task {
+    let getFixtureCount db (competitionId: Guid, stage: string) = task {
         return! (getCollection db).CountDocumentsAsync(FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), Stage: {{ $eq: "%s{stage}" }} }}""")
     }
 
-    let getQualifiedTeams db (competitionId: Uuid) = task {
+    let getQualifiedTeams db (competitionId: Guid) = task {
         let! teams =
             (getCollection db).Aggregate(
                 PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
@@ -339,7 +338,7 @@ module Predictions =
     let private getCollection (db: IMongoDatabase) =
         db.GetCollection<ReadModels.Prediction>("predictions")
 
-    let ofFixture db (competitionId: Uuid) (externalFixtureId: int64) = task {
+    let ofFixture db (competitionId: Guid) (externalFixtureId: int64) = task {
         let pipelines =
             PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionFixture>.Create(
                 $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }}, "Fixtures.FixtureId": {{ $eq: %d{externalFixtureId} }} }} }}""",
@@ -348,7 +347,7 @@ module Predictions =
         return! (getCollection db).Aggregate(pipelines).ToListAsync()
     }
 
-    let ofStage db (competitionId: Uuid, stage: string) =
+    let ofStage db (competitionId: Guid, stage: string) =
         match stage with
         | "ROUND_OF_16"
         | "QUARTER_FINALS"
@@ -397,7 +396,7 @@ module Predictions =
         return! (getCollection db).Find(idFilter).SingleAsync()
     }
 
-    let find db (competitionId: Uuid) (term: string) = task {
+    let find db (competitionId: Guid) (term: string) = task {
         let filter =
             Builders.Filter.And(
                 Builders.Filter.Eq((fun x -> x.CompetitionId), competitionId),
@@ -416,7 +415,7 @@ module Predictions =
     }
 
     let updateResult db (competitionId, fixtureId: int64, actualResult) = task {
-        let! _ = 
+        let! _ =
             (getCollection db).UpdateManyAsync(
                 (fun x -> x.CompetitionId = competitionId && x.Fixtures.Any(fun y -> y.FixtureId = fixtureId)),
                 Builders.Update.Set((fun x -> x.Fixtures.ElementAt(-1).ActualResult), actualResult)
@@ -432,7 +431,7 @@ module Predictions =
         | "FINAL" -> "Winner"
         | x -> failwith $"Unexpected value: `%s{x}`"
 
-    let updateQualifiers db (competitionId: Uuid, stage: string, teamId: int64, hasQualified: bool) = task {
+    let updateQualifiers db (competitionId: Guid, stage: string, teamId: int64, hasQualified: bool) = task {
         let colName = getColName stage
         let! _ =
             (getCollection db).UpdateManyAsync(
@@ -442,7 +441,7 @@ module Predictions =
         ()
     }
 
-    let setUnqualifiedTeams db (competitionId: Uuid, teams: int64 array) = task {
+    let setUnqualifiedTeams db (competitionId: Guid, teams: int64 array) = task {
         let teamList = String.Join(",", teams)
 
         let updateQualifiers name = task {
@@ -472,7 +471,7 @@ module Predictions =
         ()
     }
 
-    let getScoreTable db (competitionId: Uuid) = task {
+    let getScoreTable db (competitionId: Guid) = task {
         return! (getCollection db).Aggregate(
             PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionScore>.Create(
                 $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",

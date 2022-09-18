@@ -8,7 +8,6 @@ open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open System
 open System.Collections.Generic
-open XploRe.Util
 
 let projectCompetitions (log: ILogger, db) (md: Metadata) (e: EventStore.Client.ResolvedEvent) = task {
     match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
@@ -203,7 +202,7 @@ let updateQualifiedTeams db (competition: ReadModels.Competition) = task {
     do! Predictions.setUnqualifiedTeams db (competition.Id, unqualifiedTeams)
 }
 
-let updateScore db (fixtureId: Uuid, expectedVersion: int64, fullTime, extraTime, penalties) = task {
+let updateScore db (fixtureId: Guid, expectedVersion: int64, fullTime, extraTime, penalties) = task {
     let! fixture = Fixtures.get db fixtureId
     do! Fixtures.updateScore db (fixtureId, expectedVersion) (fullTime, extraTime, penalties)
     let ps = match penalties with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
