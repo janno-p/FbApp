@@ -50,16 +50,8 @@ let deployDockerImage (name: string) =
     if result.ExitCode <> 0 then
         failwith "Failed result from Docker"
 
-Target.create "fbapp-api" (fun _ ->
-    deployDockerImage "fbapp-api"
-)
-
-Target.create "fbapp-init-events" (fun _ ->
-    deployDockerImage "fbapp-init-events"
-)
-
-Target.create "fbapp-live-update" (fun _ ->
-    deployDockerImage "fbapp-live-update"
+Target.create "fbapp" (fun _ ->
+    deployDockerImage "fbapp"
 )
 
 Target.create "fbapp-ui" (fun _ ->

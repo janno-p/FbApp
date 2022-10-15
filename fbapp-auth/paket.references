@@ -1,9 +1,6 @@
 FSharp.Control.AsyncSeq
-FSharp.Core
-Giraffe
 Microsoft.AspNetCore.Authentication.Google
 Microsoft.AspNetCore.Identity.EntityFrameworkCore
-Microsoft.EntityFrameworkCore
 Microsoft.Tye.Extensions.Configuration
 Npgsql.EntityFrameworkCore.PostgreSQL
 OpenIddict.AspNetCore

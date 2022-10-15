@@ -12,7 +12,7 @@ spec:
       paths:
       - backend:
           service:
-            name: fbapp-api
+            name: fbapp
             port:
               number: 80
         path: /api/

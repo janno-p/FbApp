@@ -25,6 +25,18 @@ ingress:
         service: fbapp-ui
 
 services:
+  - name: fbapp
+    project: fbapp/FbApp.fsproj
+
+  - name: fbapp-proxy
+    project: fbapp-proxy/FbApp.Proxy.fsproj
+
+  - name: fbapp-auth
+    project: fbapp-auth/FbApp.Auth.fsproj
+    bindings:
+      - connectionString: ${protocol}://${host}:${port}
+        protocol: http
+
   - name: fbapp-ui
     executable: node
     workingDirectory: fbapp-ui
@@ -32,21 +44,6 @@ services:
     bindings:
       - port: 5173
         protocol: http
-
-  - name: fbapp-proxy
-    project: fbapp-proxy/FbApp.Proxy.fsproj
-
-  - name: fbapp-auth
-    project: fbapp-auth-service/FbApp.Auth.fsproj
-    bindings:
-      - connectionString: ${protocol}://${host}:${port}
-        protocol: http
-
-  - name: fbapp-competitions
-    project: fbapp-competitions-service/FbApp.Competitions.fsproj
-
-  - name: fbapp-web-service
-    project: fbapp-web-service/FbApp.Web.fsproj
 
   - name: eventstore
     image: eventstore/eventstore

@@ -3,7 +3,6 @@
   <PropertyGroup>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
-    <RootNamespace>FbApp.Api</RootNamespace>
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 

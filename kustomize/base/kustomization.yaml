@@ -5,6 +5,5 @@ resources:
 - eventstore
 - mongo
 - redis
-- fbapp-api
-- fbapp-live-update
+- fbapp
 - fbapp-ui

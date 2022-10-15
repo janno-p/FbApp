@@ -46,7 +46,7 @@ Use Google Developer Console to register new application for Google authenticati
 * Authorized JavaScript Origins: `https://localhost:8090`
 * Authorized redirect URIs: `https://localhost:8090/connect/google/callback`
 
-Add `fbapp-auth-service/appsettings.user.json` configuration file with credentials provided
+Add `fbapp-auth/appsettings.user.json` configuration file with credentials provided
 by Google client application registration.
 
 ```json

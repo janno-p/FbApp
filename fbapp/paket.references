@@ -3,9 +3,5 @@ FSharp.Control.AsyncSeq
 Dapr.AspNetCore
 EventStore.Client.Grpc.PersistentSubscriptions
 EventStore.Client.Grpc.Streams
-FSharp.Core
-Giraffe
-Grpc.Net.Client
 MongoDB.Driver
-Newtonsoft.Json
 Saturn
