@@ -1,0 +1,9 @@
+coverlet.collector
+FSharp.Core
+FsUnit
+Microsoft.AspNetCore.Mvc.Testing
+Microsoft.NET.Test.Sdk
+NUnit
+NUnit3TestAdapter
+NUnit.Analyzers
+Testcontainers
