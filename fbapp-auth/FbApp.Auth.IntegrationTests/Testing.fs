@@ -4,12 +4,13 @@ open System.Collections.Generic
 open DotNet.Testcontainers.Builders
 open DotNet.Testcontainers.Configurations
 open DotNet.Testcontainers.Containers
+open FbApp.Auth
 open Microsoft.AspNetCore.Mvc.Testing
 open Microsoft.Extensions.Configuration
 open NUnit.Framework
 
 type AuthApiFactory (configuration: IDictionary<_,_>) =
-    inherit WebApplicationFactory<FbApp.Auth.Program.Metadata>()
+    inherit WebApplicationFactory<Program.Metadata>()
 
     override _.ConfigureWebHost(builder) =
         base.ConfigureWebHost(builder)
@@ -37,7 +38,12 @@ module Testing =
     [<OneTimeSetUp>]
     let ``run before any tests`` () = task {
         do! dbContainer.StartAsync()
-        factory <- new AuthApiFactory(dict [("ConnectionStrings:postgres", dbContainer.ConnectionString)])
+        let configuration = dict [
+            "ConnectionStrings:postgres", dbContainer.ConnectionString
+            "Google:Authentication:ClientId", "**id**"
+            "Google:Authentication:ClientSecret", "**secret**"
+        ]
+        factory <- new AuthApiFactory(configuration)
     }
 
     [<OneTimeTearDown>]
