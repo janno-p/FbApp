@@ -227,6 +227,19 @@ let getPictureUrl (googleAccountId: string) (ctx: HttpContext) = task {
 }
 
 
+let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: HttpContext) = task {
+    let configuration = ctx |> Ioc.configuration
+    let userManager = ctx |> Ioc.userManager
+    let userEmail = principal.FindFirstValue(ClaimTypes.Email)
+    let isDefaultAdmin = userEmail.Equals(configuration["Authorization:DefaultAdmin"])
+    if isDefaultAdmin then
+        let! hasAdminRole = userManager.IsInRoleAsync(user, "admin")
+        if not hasAdminRole then
+            let! _ = userManager.AddToRoleAsync(user, "admin")
+            ()
+}
+
+
 let googleResponse: HttpHandler =
     fun next ctx -> task {
         let signInManager = ctx |> Ioc.signInManager
@@ -241,6 +254,7 @@ let googleResponse: HttpHandler =
             if result.Succeeded then
                 let! user = userManager.FindByNameAsync(info.Principal.FindFirstValue(ClaimTypes.Email))
                 user.PictureUrl <- pictureUrl
+                do! ctx |> updateAdminRole user info.Principal
                 let! _ = userManager.UpdateAsync(user)
                 ()
             else
@@ -252,6 +266,7 @@ let googleResponse: HttpHandler =
                 let! identityResult = userManager.CreateAsync(user)
                 if identityResult.Succeeded then
                     let! _ = userManager.UpdateAsync(user)
+                    do! ctx |> updateAdminRole user info.Principal
                     let! identityResult = userManager.AddLoginAsync(user, info)
                     if identityResult.Succeeded then
                         let! _ = signInManager.SignInAsync(user, false)
@@ -261,7 +276,6 @@ let googleResponse: HttpHandler =
     }
 
 
-// [Authorize(AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)]
 let userinfo: HttpHandler =
     fun next ctx -> task {
         let userManager = Ioc.userManager ctx
@@ -374,10 +388,10 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
             |> ignore
             options.UseQuartz() |> ignore)
         .AddServer(fun options ->
-            options.SetAuthorizationEndpointUris("/connect/authorize")
-                .SetTokenEndpointUris("/connect/token")
-                .SetUserinfoEndpointUris("/connect/userinfo")
-                .SetLogoutEndpointUris("/connect/logout")
+            options.SetAuthorizationEndpointUris(Routes.Authorize)
+                .SetTokenEndpointUris(Routes.Token)
+                .SetUserinfoEndpointUris(Routes.Userinfo)
+                .SetLogoutEndpointUris(Routes.Logout)
             |> ignore
 
             options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.Roles) |> ignore

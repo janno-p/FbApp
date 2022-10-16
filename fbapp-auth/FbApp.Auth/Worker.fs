@@ -70,6 +70,13 @@ type Worker(serviceProvider: IServiceProvider) =
                 let! _ = manager.CreateAsync(descriptor)
                 ()
             | _ -> ()
+
+            let roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>()
+            let! adminRoleExists = roleManager.RoleExistsAsync("admin")
+            if not adminRoleExists then
+                let adminRole = ApplicationRole(Name = "admin")
+                let! _ = roleManager.CreateAsync(adminRole)
+                ()
         }
 
         member _.StopAsync _ =

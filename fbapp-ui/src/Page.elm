@@ -4,9 +4,10 @@ import Avatar
 import Browser exposing (Document)
 import Html exposing (Html, a, div, footer, h5, img, nav, span, text)
 import Html.Attributes exposing (alt, class)
+import Route
 import User exposing (User)
 import Username
-import Route
+
 
 
 -- MODEL
@@ -15,6 +16,7 @@ import Route
 type Page
     = Other
     | Home
+
 
 
 -- VIEW
@@ -64,7 +66,7 @@ viewSiteToolbar _ maybeUser =
     -- elevated
     nav []
         [ -- toolbar(class=glossy, color=primary, inverted=false)
-          div [ class "glossy bg-primary flex flex-row flex-nowrap" ] ( toolbarButtons ++ (viewUser maybeUser) )
+          div [ class "glossy bg-primary flex flex-row flex-nowrap" ] (toolbarButtons ++ viewUser maybeUser)
         ]
 
 
@@ -72,24 +74,38 @@ viewUser : Maybe User -> List (Html msg)
 viewUser maybeUser =
     case maybeUser of
         Just user ->
-            [ -- div(class=q-px-md row items-center no-wrap)
-              div [ class "px-2 flex flex-row flex-nowrap items-center" ]
-                [ -- icon(name=mdi-account-tie, size=1.715rem)
-                  img [ alt "Avatar", Avatar.src (User.avatar user) ] []
-                , -- div(class="q-pl-sm text-weight-medium")
-                  div [ class "pl-1 font-medium" ] [ (User.username user |> Username.toHtml) ]
-                ]
-            , -- btn(icon=mdi-cog-outline, flat, stretch, title=Ava kontrollpaneel, to=dashboard)
-              a [ Route.href Route.Changelog ]
-                [ span [ class "mdi mdi-cog-outline" ] []
-                , span [] [ text "Ava kontrollpaneel" ]
-                ]
-            , -- btn(icon=mdi-logout, flat, stretch, title=Logi välja, click=logout)
-              a [ Route.href Route.Logout ]
-                [ span [ class "mdi mdi-logout" ] []
-                , span [] [ text "Logi välja" ]
-                ]
-            ]
+            let
+                userInfo =
+                    [ -- div(class=q-px-md row items-center no-wrap)
+                      div [ class "px-2 flex flex-row flex-nowrap items-center" ]
+                        [ -- icon(name=mdi-account-tie, size=1.715rem)
+                          img [ alt "Avatar", class "w-10 h-10 rounded-full", Avatar.src (User.avatar user) ] []
+                        , -- div(class="q-pl-sm text-weight-medium")
+                          div [ class "pl-1 font-medium" ] [ User.username user |> Username.toHtml ]
+                        ]
+                    ]
+
+                controlPanel =
+                    if User.isAdmin user then
+                        [ -- btn(icon=mdi-cog-outline, flat, stretch, title=Ava kontrollpaneel, to=dashboard)
+                          a [ Route.href Route.Changelog ]
+                            [ span [ class "mdi mdi-cog-outline" ] []
+                            , span [] [ text "Ava kontrollpaneel" ]
+                            ]
+                        ]
+
+                    else
+                        []
+
+                logout =
+                    [ -- btn(icon=mdi-logout, flat, stretch, title=Logi välja, click=logout)
+                      a [ Route.href Route.Logout ]
+                        [ span [ class "mdi mdi-logout" ] []
+                        , span [] [ text "Logi välja" ]
+                        ]
+                    ]
+            in
+            userInfo ++ controlPanel ++ logout
 
         Nothing ->
             -- a(icon=google, flat, stretch, title=Logi sisse Google kontoga, href=/connect/google)

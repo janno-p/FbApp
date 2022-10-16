@@ -32,7 +32,7 @@ services:
     project: fbapp-proxy/FbApp.Proxy.fsproj
 
   - name: fbapp-auth
-    project: fbapp-auth/FbApp.Auth.fsproj
+    project: fbapp-auth/FbApp.Auth/FbApp.Auth.fsproj
     bindings:
       - connectionString: ${protocol}://${host}:${port}
         protocol: http
