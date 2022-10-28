@@ -39,7 +39,7 @@ services:
 
   - name: fbapp-ui
     executable: node
-    workingDirectory: fbapp-ui
+    workingDirectory: src/FbApp.Web
     args: ./node_modules/vite/bin/vite.js
     bindings:
       - port: 5173

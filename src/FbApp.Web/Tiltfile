@@ -1,0 +1,10 @@
+k8s_yaml('kubernetes.yaml')
+
+docker_build('fbapp-web-image', '.',
+    live_update=[
+        fall_back_on(['package.json', 'yarn.lock']),
+        sync('.', '/app')
+    ]
+)
+
+k8s_resource('fbapp-web', port_forwards='5173:5173', labels=['frontend'])
