@@ -3,10 +3,13 @@
     "files.encoding": "utf8"
   },
   "files.exclude": {
+    ".fake": true,
     ".idea": true,
-    ".ionide": true,
-    "fbapp-ui/elm-stuff": true,
-    "fbapp-ui/node_modules": true
+    ".paket": true,
+    ".vs": true,
+    "paket-files": true,
+    "src/FbApp.Web/elm-stuff": true,
+    "src/FbApp.Web/node_modules": true
   },
   "windicss.includeLanguages": {
     "elm": {

@@ -1,0 +1,22 @@
+load('ext://restart_process', 'docker_build_with_restart')
+
+local_resource(
+    'fbapp-auth-build',
+    'dotnet publish -c Release -o out',
+    deps=['fbapp-auth'],
+    ignore=['obj'],
+    labels=['fbapp-auth']
+)
+
+docker_build_with_restart(
+    'fbapp-auth-image',
+    'out',
+    entrypoint=['dotnet', 'FbApp.Auth.dll'],
+    dockerfile='Dockerfile.Development',
+    live_update=[
+        sync('out', '/app/out')
+    ]
+)
+
+k8s_yaml('kubernetes.yaml')
+k8s_resource('fbapp-auth', port_forwards='8091:80', resource_deps=['fbapp-auth-build'], labels=['fbapp-auth'])

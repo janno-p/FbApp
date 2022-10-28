@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fbapp-proxy
+spec:
+  selector:
+    matchLabels:
+      app: fbapp-proxy
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: fbapp-proxy
+    spec:
+      containers:
+      - name: fbapp-proxy
+        image: fbapp-proxy-image
+        ports:
+        - containerPort: 80
