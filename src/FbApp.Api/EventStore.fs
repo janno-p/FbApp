@@ -13,11 +13,6 @@ let toUnixTime (dateTimeOffset: DateTimeOffset) =
     Convert.ToInt64((dateTimeOffset.UtcDateTime - epoch).TotalSeconds);
 
 [<CLIMutable>]
-type EventStoreOptions = {
-    Uri: string
-    }
-
-[<CLIMutable>]
 type Metadata =
     {
         ApplicationName: string

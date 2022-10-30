@@ -2,6 +2,8 @@ load('ext://helm_remote', 'helm_remote')
 
 secret_settings(disable_scrub=True)
 
+include('./src/FbApp.Api/Tiltfile')
+include('./src/FbApp.Api.EventStore/Tiltfile')
 include('./src/FbApp.Auth/Tiltfile')
 include('./src/FbApp.Auth.Database/Tiltfile')
 include('./src/FbApp.Proxy/Tiltfile')

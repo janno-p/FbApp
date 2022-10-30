@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fbapp-api
+spec:
+  selector:
+    matchLabels:
+      app: fbapp-api
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: fbapp-api
+    spec:
+      containers:
+      - name: fbapp-api
+        image: fbapp-api-image
+        ports:
+        - containerPort: 80
+        env:
+        - name: EVENTSTORE__URI
+          value: esdb://fbapp-eventstore:2113?tls=false

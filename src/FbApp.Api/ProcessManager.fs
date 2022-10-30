@@ -7,7 +7,9 @@ open FbApp.Api.Domain
 open FbApp.Api.EventStore
 open FbApp.Api.Repositories
 open FbApp.Api.Serialization
+open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Options
 open MongoDB.Driver
 open System
 
@@ -396,14 +398,81 @@ let eventAppeared (logger: ILogger, db, authOptions: AuthOptions) (subscription:
 type private Marker = class end
 
 
-let connectSubscription (client: EventStorePersistentSubscriptionsClient) db (loggerFactory: ILoggerFactory) (authOptions: AuthOptions) (subscriptionsSettings: SubscriptionsSettings) = task {
-    let logger = loggerFactory.CreateLogger(typeof<Marker>.DeclaringType)
+let (|Conflict|_|) (ex: exn) =
+    match ex with
+    | :? Grpc.Core.RpcException as e when e.StatusCode = Grpc.Core.StatusCode.Unknown && e.Status.Detail = "Envelope callback expected Updated, received Conflict instead" ->
+        Some()
+    | _ ->
+        None
+
+
+let (|AlreadyExists|_|) (ex: exn) =
+    match ex with
+    | :? Grpc.Core.RpcException as e when e.StatusCode = Grpc.Core.StatusCode.AlreadyExists ->
+        Some()
+    | _ ->
+        None
+
+
+let initProjections (services: IServiceProvider) = task {
+    let logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof<Marker>.DeclaringType)
+    let projectionManagementClient = services.GetRequiredService<EventStoreProjectionManagementClient>()
+    let subscriptionsClient = services.GetRequiredService<EventStorePersistentSubscriptionsClient>()
+    let subscriptionsSettings = services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
+
+    let query = $"""fromAll()
+.when({{
+    $any: function (state, ev) {{
+        if (ev.metadata !== null && ev.metadata.applicationName === "%s{ApplicationName}") {{
+            linkTo("%s{subscriptionsSettings.StreamName}", ev)
+        }}
+    }}
+}})"""
+
+    try
+        logger.LogInformation($"Trying to create '%s{subscriptionsSettings.StreamName}' projection (if not exists)")
+        do! projectionManagementClient.CreateContinuousAsync(subscriptionsSettings.StreamName, query)
+    with
+    | Conflict ->
+        ()
+    | e ->
+        logger.LogCritical(e, $"Error occurred while initializing '%s{subscriptionsSettings.StreamName}' projection")
+        raise e
+
+    let settings =
+        PersistentSubscriptionSettings(
+            resolveLinkTos = true,
+            startFrom = StreamPosition.Start,
+            checkPointLowerBound = 1
+        )
+
+    try
+        logger.LogInformation($"Trying to create '%s{subscriptionsSettings.GroupName}' subscription group ...")
+        do! subscriptionsClient.CreateAsync(subscriptionsSettings.StreamName, subscriptionsSettings.GroupName, settings)
+    with
+    | AlreadyExists ->
+        logger.LogInformation($"Subscription group '%s{subscriptionsSettings.GroupName}' already exists")
+    | e ->
+        logger.LogCritical(e, $"Error occurred while initializing '%s{subscriptionsSettings.GroupName}' subscription group")
+        raise e
+}
+
+
+let connectSubscription (services: IServiceProvider) = task {
+    do! initProjections services
+
+    let logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof<Marker>.DeclaringType)
+    let client = services.GetRequiredService<EventStorePersistentSubscriptionsClient>()
+    let subscriptionsSettings = services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
+    let mongoDb = services.GetRequiredService<IMongoDatabase>()
+    let authOptions = services.GetService<IOptions<AuthOptions>>().Value
+
     logger.LogInformation("Initializing process manager")
     let! _ =
         client.SubscribeToStreamAsync(
             subscriptionsSettings.StreamName,
             subscriptionsSettings.GroupName,
-            (fun sub e _ _ -> eventAppeared (logger, db, authOptions) sub e)
+            (fun sub e _ _ -> eventAppeared (logger, mongoDb, authOptions) sub e)
         )
     logger.LogInformation("Process manager initialized")
 }

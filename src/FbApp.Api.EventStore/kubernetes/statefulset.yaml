@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fbapp-eventstore
+  labels:
+    app: fbapp-eventstore
+spec:
+  selector:
+    matchLabels:
+      app: fbapp-eventstore
+  replicas: 1
+  serviceName: fbapp-eventstore
+  template:
+    metadata:
+      labels:
+        app: fbapp-eventstore
+    spec:
+      containers:
+      - name: fbapp-eventstore
+        image: eventstore/eventstore:22.6.0-bionic
+        args:
+        - --insecure
+        - --run-projections=All
+        - --enable-atom-pub-over-http
+        ports:
+        - containerPort: 2113
+        volumeMounts:
+        - mountPath: /var/lib/eventstore
+          name: fbapp-eventstore-volume-data
+        - mountPath: /var/log/eventstore
+          name: fbapp-eventstore-volume-logs
+      volumes:
+      - name: fbapp-eventstore-volume-data
+        emptyDir: {}
+      - name: fbapp-eventstore-volume-logs
+        emptyDir: {}

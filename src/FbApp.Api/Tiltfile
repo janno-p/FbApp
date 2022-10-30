@@ -1,0 +1,22 @@
+load('ext://restart_process', 'docker_build_with_restart')
+
+local_resource(
+    'fbapp-api-build',
+    'dotnet publish -c Release -o out',
+    deps=['fbapp-api'],
+    ignore=['obj'],
+    labels=['fbapp-api']
+)
+
+docker_build_with_restart(
+    'fbapp-api-image',
+    'out',
+    entrypoint=['dotnet', 'FbApp.Api.dll'],
+    dockerfile='Dockerfile.Development',
+    live_update=[
+        sync('out', '/app/out')
+    ]
+)
+
+k8s_yaml('kubernetes.yaml')
+k8s_resource('fbapp-api', port_forwards='3001:80', resource_deps=['fbapp-api-build', 'fbapp-eventstore'], labels=['fbapp-api'])

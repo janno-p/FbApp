@@ -16,7 +16,6 @@ open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
-open Microsoft.Extensions.Options
 open MongoDB.Driver
 open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
@@ -137,18 +136,6 @@ let initializeMongoDb (sp: IServiceProvider) =
     client.GetDatabase("fbapp")
 
 
-let initializeEventStore (sp: IServiceProvider) =
-    let options = sp.GetService<IOptions<EventStoreOptions>>().Value
-    let settings = EventStoreClientSettings.Create(options.Uri)
-    new EventStoreClient(settings)
-
-
-let initEventStoreSubscriptionsClient (sp: IServiceProvider) =
-    let options = sp.GetService<IOptions<EventStoreOptions>>().Value
-    let settings = EventStoreClientSettings.Create(options.Uri)
-    new EventStorePersistentSubscriptionsClient(settings)
-
-
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     services.AddRouting() |> ignore
 
@@ -156,12 +143,17 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
 
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
-    services.Configure<EventStoreOptions>(context.Configuration.GetSection("EventStore")) |> ignore
     services.Configure<SubscriptionsSettings>(context.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
 
-    services.AddSingleton<EventStoreClient>(initializeEventStore) |> ignore
-    services.AddSingleton<EventStorePersistentSubscriptionsClient>(initEventStoreSubscriptionsClient) |> ignore
-    
+    let eventStoreConnection = context.Configuration.GetValue("EventStore:Uri")
+
+    let setConnectionName (settings: EventStoreClientSettings) =
+        settings.ConnectionName <- "fbapp"
+
+    services.AddEventStoreClient(eventStoreConnection, setConnectionName) |> ignore
+    services.AddEventStoreProjectionManagementClient(eventStoreConnection, setConnectionName) |> ignore
+    services.AddEventStorePersistentSubscriptionsClient(eventStoreConnection, setConnectionName) |> ignore
+
     services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
 
 
@@ -184,9 +176,6 @@ let configureApp (app: IApplicationBuilder) =
         endpoints.MapGiraffeEndpoints(mainRouter)
     ) |> ignore
 
-    let authOptions = app.ApplicationServices.GetService<IOptions<AuthOptions>>().Value
-    let subscriptionsSettings = app.ApplicationServices.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
-
     let client = app.ApplicationServices.GetService<EventStoreClient>()
 
     CommandHandlers.competitionsHandler <-
@@ -201,17 +190,8 @@ let configureApp (app: IApplicationBuilder) =
     CommandHandlers.leaguesHandler <-
         makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository client Leagues.AggregateName)
 
-    let loggerFactory = app.ApplicationServices.GetService<ILoggerFactory>()
-    let subscriptionsClient = app.ApplicationServices.GetService<EventStorePersistentSubscriptionsClient>()
-    let mongoDb = app.ApplicationServices.GetRequiredService<IMongoDatabase>()
-
     let processManagerInitTask =
-        ProcessManager.connectSubscription
-            subscriptionsClient
-            mongoDb
-            loggerFactory
-            authOptions
-            subscriptionsSettings
+        ProcessManager.connectSubscription app.ApplicationServices
 
     processManagerInitTask.Wait()
 

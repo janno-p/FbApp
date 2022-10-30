@@ -1,0 +1,4 @@
+k8s_yaml('./kubernetes/statefulset.yaml')
+k8s_yaml('./kubernetes/service.yaml')
+
+k8s_resource('fbapp-eventstore', port_forwards='2113:2113', labels=['fbapp-api'])

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <TargetFramework>net6.0</TargetFramework>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Competitions.Domain.fs" />
+    <Compile Include="Fixtures.Domain.fs" />
+    <Compile Include="Predictions.Domain.fs" />
+    <Compile Include="Leagues.Domain.fs" />
+    <Compile Include="Aggregate.fs" />
+    <Compile Include="Serialization.fs" />
+    <Compile Include="EventStore.fs" />
+    <Compile Include="FootballData.fs" />
+    <Compile Include="Configuration.fs" />
+    <Compile Include="CommandHandlers.fs" />
+    <Compile Include="Repositories.fs" />
+    <Compile Include="ProcessManager.fs" />
+    <Compile Include="HttpExtensions.fs" />
+    <Compile Include="Auth.fs" />
+    <Compile Include="Dashboard.fs" />
+    <Compile Include="Predict.fs" />
+    <Compile Include="Fixtures.fs" />
+    <Compile Include="Leagues.fs" />
+    <Compile Include="Predictions.fs" />
+    <Compile Include="IntegrationEvents.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="paket.references" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>
