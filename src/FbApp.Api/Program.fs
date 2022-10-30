@@ -145,7 +145,10 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
     services.Configure<SubscriptionsSettings>(context.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
 
-    let eventStoreConnection = context.Configuration.GetValue("EventStore:Uri")
+    let eventStoreConnection =
+        context.Configuration.GetConnectionString("eventstore")
+        |> Option.ofObj
+        |> Option.defaultValue (context.Configuration.GetValue("EventStore:Uri"))
 
     let setConnectionName (settings: EventStoreClientSettings) =
         settings.ConnectionName <- "fbapp"

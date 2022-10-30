@@ -11,7 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{
 		tye.yaml = tye.yaml
 		paket.dependencies = paket.dependencies
 		build.fsx = build.fsx
-		Tiltfile = Tiltfile
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{286082D2-3609-4138-8BFC-8F1AAFFD7E90}"

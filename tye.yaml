@@ -2,8 +2,9 @@ name: fbapp
 
 extensions:
   - name: dapr
+    components-path: components
     services:
-      fbapp-ui:
+      fbapp-web:
         enabled: false
 
 ingress:
@@ -22,22 +23,22 @@ ingress:
         preservePath: true
         service: fbapp-proxy
       - path: /
-        service: fbapp-ui
+        service: fbapp-web
 
 services:
-  - name: fbapp
-    project: fbapp/FbApp.fsproj
+  - name: fbapp-api
+    project: src/FbApp.Api/FbApp.Api.fsproj
 
   - name: fbapp-proxy
-    project: fbapp-proxy/FbApp.Proxy.fsproj
+    project: src/FbApp.Proxy/FbApp.Proxy.fsproj
 
   - name: fbapp-auth
-    project: fbapp-auth/FbApp.Auth/FbApp.Auth.fsproj
+    project: src/FbApp.Auth/FbApp.Auth.fsproj
     bindings:
       - connectionString: ${protocol}://${host}:${port}
         protocol: http
 
-  - name: fbapp-ui
+  - name: fbapp-web
     executable: node
     workingDirectory: src/FbApp.Web
     args: ./node_modules/vite/bin/vite.js
