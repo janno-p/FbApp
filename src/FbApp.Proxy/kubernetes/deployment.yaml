@@ -9,6 +9,10 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "fbapp-proxy"
+        dapr.io/log-level: "debug"
       labels:
         app: fbapp-proxy
     spec:
@@ -17,3 +21,6 @@ spec:
         image: fbapp-proxy-image
         ports:
         - containerPort: 80
+        env:
+        - name: ConnectionStrings__fbapp-auth
+          value: http://fbapp-auth

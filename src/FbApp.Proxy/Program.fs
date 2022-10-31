@@ -111,7 +111,7 @@ let routes = router {
 let configureApplication (app: IApplicationBuilder) =
     let env = Environment.getWebHostEnvironment app
 
-    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = ForwardedHeaders.All)) |> ignore
+    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
 
     if env.IsDevelopment() then
         app.UseDeveloperExceptionPage() |> ignore

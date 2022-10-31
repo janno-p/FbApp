@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: fbapp-web
+  labels:
+    app: fbapp-web
+spec:
+  ports:
+  - port: 5173
+    targetPort: 5173
+  selector:
+    app: fbapp-web
+  type: ClusterIP

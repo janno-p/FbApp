@@ -418,7 +418,7 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
 
 
 let configureApplication (app: IApplicationBuilder) =
-    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = ForwardedHeaders.All)) |> ignore
+    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
     app
