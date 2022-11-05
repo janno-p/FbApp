@@ -24,7 +24,6 @@
     <Compile Include="CommandHandlers.fs" />
     <Compile Include="Repositories.fs" />
     <Compile Include="ProcessManager.fs" />
-    <Compile Include="HttpExtensions.fs" />
     <Compile Include="Auth.fs" />
     <Compile Include="Dashboard.fs" />
     <Compile Include="Predict.fs" />

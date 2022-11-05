@@ -10,6 +10,7 @@ nuget EventStore.Client.Grpc.ProjectionManagement
 nuget EventStore.Client.Grpc.Streams
 nuget Flurl.Http
 nuget FSharp.Control.AsyncSeq
+nuget FSharp.SystemTextJson
 nuget FsUnit
 nuget Microsoft.AspNetCore.Authentication.Google
 nuget Microsoft.AspNetCore.Identity.EntityFrameworkCore

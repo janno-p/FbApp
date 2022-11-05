@@ -1,6 +1,7 @@
 module FbApp.Api.Program
 
 
+open System.Text.Json.Serialization
 open Dapr
 open EventStore.Client
 open FbApp.Api
@@ -17,8 +18,6 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open MongoDB.Driver
-open Newtonsoft.Json
-open Newtonsoft.Json.Serialization
 open Saturn
 open Saturn.Endpoint
 open System
@@ -114,7 +113,6 @@ let mainRouter = router {
 
     forward "/api" (router {
         pipe_through Auth.authPipe
-        pipe_through Auth.validateXsrfToken
         pipe_through Auth.adminPipe
 
         forward "/dashboard" Dashboard.dashboardScope
@@ -138,8 +136,6 @@ let initializeMongoDb (sp: IServiceProvider) =
 
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     services.AddRouting() |> ignore
-
-    services.AddAntiforgery (fun opt -> opt.HeaderName <- "X-XSRF-TOKEN") |> ignore
 
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
     services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
@@ -168,16 +164,16 @@ let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurat
 
 
 let configureApp (app: IApplicationBuilder) =
-    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto)))
+    let forwardedHeaders = ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto
+
+    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = forwardedHeaders))
+        .UseRouting()
+        .UseCloudEvents()
+        .UseEndpoints(fun endpoints ->
+            endpoints.MapSubscribeHandler() |> ignore
+            endpoints.MapGiraffeEndpoints(mainRouter)
+        )
     |> ignore
-
-    app.UseRouting() |> ignore
-    app.UseCloudEvents() |> ignore
-
-    app.UseEndpoints(fun endpoints ->
-        endpoints.MapSubscribeHandler() |> ignore
-        endpoints.MapGiraffeEndpoints(mainRouter)
-    ) |> ignore
 
     let client = app.ApplicationServices.GetService<EventStoreClient>()
 
@@ -206,9 +202,10 @@ let configureHost (host: IHostBuilder) =
         .ConfigureServices(configureServices)
 
 
-let jsonSettings = JsonSerializerSettings()
-jsonSettings.Converters.Add(OptionConverter())
-jsonSettings.ContractResolver <- CamelCasePropertyNamesContractResolver()
+let configureJsonSerializer () =
+    let options = System.Text.Json.JsonSerializerOptions()
+    options.Converters.Add(JsonFSharpConverter())
+    SystemTextJson.Serializer options
 
 
 let app = application {
@@ -216,9 +213,8 @@ let app = application {
     memory_cache
     use_gzip
     app_config configureApp
-    use_cookies_authentication "jnx.era.ee"
     host_config configureHost
-    use_json_settings jsonSettings
+    use_json_serializer (configureJsonSerializer())
 }
 
 

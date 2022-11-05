@@ -93,7 +93,7 @@ let private getFixtures: HttpHandler =
 let private savePredictions: HttpHandler =
     (fun next context -> task {
         let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
-        let user = Auth.createUser context.User context
+        let user = Auth.createUser context.User
         let! competition = Competitions.get (context.RequestServices.GetRequiredService<IMongoDatabase>()) dto.CompetitionId
         match competition with
         | Some(competition) when competition.Date > DateTimeOffset.Now ->
@@ -115,7 +115,7 @@ let private getCurrentPrediction: HttpHandler =
         let db = context.RequestServices.GetRequiredService<IMongoDatabase>()
         match! Competitions.tryGetActive db with
         | Some activeCompetition ->
-            let user = Auth.createUser context.User context
+            let user = Auth.createUser context.User
             let! prediction = Predictions.get db (activeCompetition.Id, user.Email)
             match prediction with
             | Some(prediction) ->
@@ -153,7 +153,7 @@ let getCompetitionStatus db = task {
 }
 
 let predictScope = router {
-    post "/" (Auth.authPipe >=> Auth.validateXsrfToken >=> savePredictions)
+    post "/" (Auth.authPipe >=> savePredictions)
     get "/fixtures" getFixtures
-    get "/current" (Auth.authPipe >=> Auth.validateXsrfToken >=> getCurrentPrediction)
+    get "/current" (Auth.authPipe >=> getCurrentPrediction)
 }

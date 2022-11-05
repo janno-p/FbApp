@@ -4,5 +4,6 @@ Dapr.AspNetCore
 EventStore.Client.Grpc.PersistentSubscriptions
 EventStore.Client.Grpc.ProjectionManagement
 EventStore.Client.Grpc.Streams
+FSharp.SystemTextJson
 MongoDB.Driver
 Saturn

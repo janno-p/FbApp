@@ -2,7 +2,6 @@ module FbApp.Api.Auth
 
 open FbApp.Api.Configuration
 open Giraffe
-open Microsoft.AspNetCore.Antiforgery
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Http
@@ -16,12 +15,11 @@ open System.Security.Claims
 let [<Literal>] AdministratorRole = "Administrator"
 
 [<AllowNullLiteral>]
-type User (email: string, name: string, picture: string, roles: string array, xsrfToken: string) =
+type User (email: string, name: string, picture: string, roles: string array) =
     member val Email = email with get
     member val Name = name with get
     member val Picture = picture with get
     member val Roles = roles with get
-    member val XsrfToken = xsrfToken with get
 
 [<CLIMutable>]
 type Message =
@@ -47,34 +45,15 @@ type TokenInfo =
         Locale: string
     }
 
-let createUser (claimsPrincipal: ClaimsPrincipal) (context: HttpContext) =
+let createUser (claimsPrincipal: ClaimsPrincipal) =
     let email = claimsPrincipal.FindFirst(ClaimTypes.Email).Value
     let name = claimsPrincipal.FindFirst(ClaimTypes.Name).Value
     let picture = claimsPrincipal.FindFirst("Picture").Value
     let roles = claimsPrincipal.FindAll(ClaimTypes.Role) |> Seq.map (fun x -> x.Value) |> Seq.toArray
-    let xsrfToken = XsrfToken.create context
-    User(email, name, picture, roles, xsrfToken)
+    User(email, name, picture, roles)
 
 let notLoggedIn =
     RequestErrors.FORBIDDEN "You must be logged in"
-
-let resetXsrfToken: HttpHandler =
-    (fun next context ->
-        task {
-            XsrfToken.refresh context
-            return! next context
-        })
-
-let validateXsrfToken: HttpHandler =
-    (fun next context ->
-        task {
-            let antiforgery = context.GetService<IAntiforgery>()
-            try
-                do! antiforgery.ValidateRequestAsync(context)
-                return! next context
-            with e ->
-                return! RequestErrors.FORBIDDEN e.Message next context
-        })
 
 let tokenSignIn: HttpHandler =
     (fun (next: HttpFunc) (context: HttpContext) ->
@@ -97,21 +76,21 @@ let tokenSignIn: HttpHandler =
                 let claimsPrincipal = ClaimsPrincipal(claimsIdentity)
                 do! context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal)
                 context.User <- claimsPrincipal
-                let user = createUser claimsPrincipal context
+                let user = createUser claimsPrincipal
                 return! Successful.OK user next context
             else
                 return! RequestErrors.BAD_REQUEST "Token validation failed!" next context
         })
 
 let getUser (ctx: HttpContext) =
-    if ctx.User.Identity.IsAuthenticated then createUser ctx.User ctx else null
+    if ctx.User.Identity.IsAuthenticated then createUser ctx.User else null
 
 let tokenSignOut: HttpHandler =
     signOut CookieAuthenticationDefaults.AuthenticationScheme >=> Successful.OK ()
 
 let authScope = router {
     post "/signin" tokenSignIn
-    post "/signout" (resetXsrfToken >=> tokenSignOut)
+    post "/signout" tokenSignOut
 }
 
 let authPipe = pipeline {
@@ -121,7 +100,7 @@ let authPipe = pipeline {
 let adminPipe: HttpHandler =
     (fun next ctx ->
         task {
-            let user = createUser ctx.User ctx
+            let user = createUser ctx.User
             if user.Roles |> Array.exists ((=) AdministratorRole) then return! next ctx else
             return! RequestErrors.FORBIDDEN $"This action requires '%s{AdministratorRole}' role." next ctx
         })

@@ -38,7 +38,6 @@ let scope = router {
 
     forward "/admin" (router {
         pipe_through Auth.authPipe
-        pipe_through Auth.validateXsrfToken
         pipe_through Auth.adminPipe
 
         getf "/search/%s" findPredictions
