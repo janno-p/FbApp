@@ -19,20 +19,15 @@ open Microsoft.AspNetCore.HttpOverrides
 type DaprConfigFilter(configuration: IConfiguration) =
     let [<Literal>] DaprPrefix = "dapr:"
 
-    let getConnectionStringName = function
-        | "auth-cluster" -> Some("fbapp-auth")
-        | _ -> None
-
-    let getTyeAddress (clusterId: string) =
-        getConnectionStringName clusterId
-        |> Option.map configuration.GetConnectionString
-        |> Option.bind Option.ofObj
+    let getClusterAddress (clusterId: string) =
+        configuration.GetConnectionString(clusterId)
+        |> Option.ofObj
 
     interface IProxyConfigFilter with
         member _.ConfigureClusterAsync(originalCluster, _) =
             let newDestinations = Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
 
-            match getTyeAddress originalCluster.ClusterId with
+            match getClusterAddress originalCluster.ClusterId with
             | Some(connectionString) ->
                 originalCluster.Destinations
                 |> Seq.tryExactlyOne

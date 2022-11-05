@@ -275,8 +275,6 @@ NUGET
     Microsoft.TestPlatform.TestHost (17.3.2)
       Microsoft.TestPlatform.ObjectModel (>= 17.3.2)
       Newtonsoft.Json (>= 9.0.1)
-    Microsoft.Tye.Extensions.Configuration (0.10.0-alpha.21420.1)
-      Microsoft.Extensions.Configuration (>= 2.1.1)
     Microsoft.Win32.Registry (5.0)
       System.Security.AccessControl (>= 5.0)
       System.Security.Principal.Windows (>= 5.0)

@@ -5,48 +5,33 @@ Playground application for trying out new technologies, libraries, frameworks, p
 
 ## Primary Objectives ##
 
-* Authentication using [Google Sign-In JavaScript Client](https://developers.google.com/identity/sign-in/web/reference).
-* Client application using [Vue.js](https://vuejs.org/) and [Quasar Framework](http://quasar-framework.org).
+* Client application using [Elm](https://elm-lang.org/) and [Vite](https://vitejs.dev/).
 * Server API built with [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) and [F# Programming Language](https://fsharp.org).
-* Apply [CQRS](https://martinfowler.com/bliki/CQRS.html) and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) principles.
+* Apply [CQRS](https://martinfowler.com/bliki/CQRS.html) and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) principles to [Microservices](https://microservices.io/) architecture.
 
 
 ## Prerequisites ##
 
+### Run local application ###
+
+* [Docker Desktop with Kubernetes enabled](https://docs.docker.com/docker-for-windows/install/)
+* [Tilt](https://tilt.dev/)
+
+### Development environment ###
+
 * [.NET Core SDK](https://www.microsoft.com/net/download)
 * [Node.js](https://nodejs.org/en/)
 * [Yarn](https://yarnpkg.com/en/)
-* [Dapr](https://dapr.io)
-* [Docker Desktop](https://docs.docker.com/docker-for-windows/install/)
 
 
 ## Quick Start ##
-
-Install and initialize local dapr:
-
-* https://docs.dapr.io/getting-started/install-dapr-cli/
-* https://docs.dapr.io/getting-started/install-dapr-selfhost/
-
-Restore required tools
-
-```sh
-$ dotnet tool restore
-```
-
-Restore node dependencies
-
-```sh
-$ cd fbapp-ui
-$ yarn
-$ cd ..
-```
 
 Use Google Developer Console to register new application for Google authentication:
 
 * Authorized JavaScript Origins: `https://localhost:8090`
 * Authorized redirect URIs: `https://localhost:8090/connect/google/callback`
 
-Add `fbapp-auth/appsettings.user.json` configuration file with credentials provided
+Add `src/FbApp.Auth/appsettings.user.json` configuration file with credentials provided
 by Google client application registration.
 
 ```json
@@ -63,9 +48,9 @@ by Google client application registration.
 Run development environment
 
 ```sh
-$ dotnet tye run
+$ tilt up
 ```
 
-Open [Tye Dashboard](http://localhost:8000) to monitor running components.
+Open [Tilt Dashboard](http://localhost:10350/) to monitor running components.
 
 Open [Application](https://localhost:8090) for demo.

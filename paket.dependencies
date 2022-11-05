@@ -16,7 +16,6 @@ nuget Microsoft.AspNetCore.Identity.EntityFrameworkCore
 nuget Microsoft.AspNetCore.Mvc.Testing
 nuget Microsoft.Extensions.Hosting
 nuget Microsoft.NET.Test.Sdk
-nuget Microsoft.Tye.Extensions.Configuration
 nuget MongoDB.Driver
 nuget Npgsql.EntityFrameworkCore.PostgreSQL
 nuget NUnit

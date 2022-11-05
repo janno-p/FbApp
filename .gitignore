@@ -7,8 +7,6 @@
 /.paket/*
 !/.paket/Paket.Restore.targets
 
-/.postgres/
-/.tye/
 /.vs/
 
 bin/
