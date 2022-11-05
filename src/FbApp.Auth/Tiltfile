@@ -21,4 +21,11 @@ docker_build_with_restart(
 k8s_yaml('./kubernetes/deployment.yaml')
 k8s_yaml('./kubernetes/service.yaml')
 
-k8s_resource('fbapp-auth', resource_deps=['fbapp-auth-build'], labels=['fbapp-auth'])
+k8s_resource(
+    'fbapp-auth',
+    resource_deps=[
+        'fbapp-auth-build',
+        'fbapp-auth-database-postgresql'
+    ],
+    labels=['fbapp-auth']
+)

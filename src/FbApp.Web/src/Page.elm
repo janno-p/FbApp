@@ -42,32 +42,29 @@ viewSiteToolbar : Page -> Maybe User -> Html msg
 viewSiteToolbar _ maybeUser =
     let
         toolbarButtons =
-            [ -- btn(flat, stretch, aria-label=Menu, click.prevent=goHome)
-              a [ Route.href Route.Home ]
-                [ -- div(class=row/items-center/no-wrap)
-                  div [ class "flex flex-row flex-nowrap" ]
-                    [ -- icon(left, name=mdi-soccer, size=lg)
-                      span [ class "mdi mdi-soccer" ] []
+            [ a
+                [ Route.href Route.Home
+                , class "text-white"
+                ]
+                [ div [ class "flex flex-row flex-nowrap" ]
+                    [ span [ class "mdi mdi-soccer" ] []
                     , div [ class "text-left" ]
-                        [ h5 [ class "py-0 my-0" ] [ text "Ennustusmäng 2" ]
-                        , -- div(class=text-caption)
-                          div [] [ text "competitionName" ]
+                        [ h5 [ class "py-0 my-0" ] [ text "Ennustusmäng" ]
+                        , div [] [ text "competitionName" ]
                         ]
                     ]
                 ]
-            , -- space
-              -- btn(icon=playlist-check, flat, stretch, title=Muudatuste logi, to=changelog)
-              a [ Route.href Route.Changelog ]
+            , a
+                [ Route.href Route.Changelog
+                , class "text-white"
+                ]
                 [ span [ class "mdi mdi-playlist-check" ] []
                 , text "Muudatuste logi"
                 ]
             ]
     in
-    -- elevated
     nav []
-        [ -- toolbar(class=glossy, color=primary, inverted=false)
-          div [ class "glossy bg-primary flex flex-row flex-nowrap" ] (toolbarButtons ++ viewUser maybeUser)
-        ]
+        [ div [ class "glossy bg-primary flex flex-row flex-nowrap text-white" ] (toolbarButtons ++ viewUser maybeUser) ]
 
 
 viewUser : Maybe User -> List (Html msg)
@@ -76,19 +73,18 @@ viewUser maybeUser =
         Just user ->
             let
                 userInfo =
-                    [ -- div(class=q-px-md row items-center no-wrap)
-                      div [ class "px-2 flex flex-row flex-nowrap items-center" ]
-                        [ -- icon(name=mdi-account-tie, size=1.715rem)
-                          img [ alt "Avatar", class "w-10 h-10 rounded-full", Avatar.src (User.avatar user) ] []
-                        , -- div(class="q-pl-sm text-weight-medium")
-                          div [ class "pl-1 font-medium" ] [ User.username user |> Username.toHtml ]
+                    [ div [ class "px-2 flex flex-row flex-nowrap items-center" ]
+                        [ img [ alt "Avatar", class "w-10 h-10 rounded-full", Avatar.src (User.avatar user) ] []
+                        , div [ class "pl-1 font-medium" ] [ User.username user |> Username.toHtml ]
                         ]
                     ]
 
                 controlPanel =
                     if User.isAdmin user then
-                        [ -- btn(icon=mdi-cog-outline, flat, stretch, title=Ava kontrollpaneel, to=dashboard)
-                          a [ Route.href Route.Changelog ]
+                        [ a
+                            [ Route.href Route.Changelog
+                            , class "text-white"
+                            ]
                             [ span [ class "mdi mdi-cog-outline" ] []
                             , span [] [ text "Ava kontrollpaneel" ]
                             ]
@@ -98,8 +94,10 @@ viewUser maybeUser =
                         []
 
                 logout =
-                    [ -- btn(icon=mdi-logout, flat, stretch, title=Logi välja, click=logout)
-                      a [ Route.href Route.Logout ]
+                    [ a
+                        [ Route.href Route.Logout
+                        , class "text-white"
+                        ]
                         [ span [ class "mdi mdi-logout" ] []
                         , span [] [ text "Logi välja" ]
                         ]
@@ -108,8 +106,10 @@ viewUser maybeUser =
             userInfo ++ controlPanel ++ logout
 
         Nothing ->
-            -- a(icon=google, flat, stretch, title=Logi sisse Google kontoga, href=/connect/google)
-            [ a [ Route.href Route.Login ]
+            [ a
+                [ Route.href Route.Login
+                , class "text-white"
+                ]
                 [ span [ class "mdi mdi-google" ] []
                 , text "Logi sisse Google kontoga"
                 ]

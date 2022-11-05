@@ -19,4 +19,4 @@ docker_build_with_restart(
 )
 
 k8s_yaml('kubernetes.yaml')
-k8s_resource('fbapp-api', port_forwards='3001:80', resource_deps=['fbapp-api-build', 'fbapp-eventstore'], labels=['fbapp-api'])
+k8s_resource('fbapp-api', resource_deps=['fbapp-api-build', 'fbapp-eventstore'], labels=['fbapp-api'])
