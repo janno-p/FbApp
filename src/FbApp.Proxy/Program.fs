@@ -63,7 +63,7 @@ type DaprConfigFilter(configuration: IConfiguration) =
 
 let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBearerOptions) =
     // configuration.Bind("JwtBearer", options);
-    options.Authority <- configuration.GetConnectionString("fbapp-auth")
+    options.Authority <- configuration.GetConnectionString("authCluster")
     options.TokenValidationParameters.ValidateAudience <- false
     options.TokenValidationParameters.ValidIssuer <- "https://localhost:8090/"
     options.RequireHttpsMetadata <- false
