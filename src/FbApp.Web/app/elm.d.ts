@@ -1,20 +1,18 @@
 ﻿declare module '*.elm' {
-    import { User } from 'oidc-client'
-
     interface IElmMain {
         ports: {
-            onStoreChange: {
-                send(args: any): void
+            randomBytes: {
+                send(bytes: number[]): void
             },
-            signOut: {
-                subscribe(callback: (args: any) => Promise<void>): void
+            generateRandomBytes: {
+                subscribe(callback: (numberOfBytes: number) => void): void
             }
         }
     }
 
     export const Elm: {
         Main: {
-            init(args: { node: Element, flags: User }): IElmMain
+            init(args: { node: Element, flags: number[] | undefined }): IElmMain
         }
     }
 }

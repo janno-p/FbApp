@@ -53,7 +53,7 @@ type Worker(serviceProvider: IServiceProvider) =
                     )
 
                 descriptor.PostLogoutRedirectUris.Add(Uri("https://localhost:8090/")) |> ignore
-                descriptor.RedirectUris.Add(Uri("https://localhost:8090/oidc.html")) |> ignore
+                descriptor.RedirectUris.Add(Uri("https://localhost:8090/")) |> ignore
 
                 descriptor.Permissions.Add(Permissions.Endpoints.Authorization) |> ignore
                 descriptor.Permissions.Add(Permissions.Endpoints.Logout) |> ignore

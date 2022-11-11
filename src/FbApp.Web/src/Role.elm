@@ -14,26 +14,14 @@ type Role
 
 decoder : Decoder RoleList
 decoder =
-    Decode.oneOf
-        [ roleValueDecoder
-            |> Decode.andThen
-                (\role ->
-                    case role of
-                        Just value ->
-                            Decode.succeed [ value ]
-
-                        Nothing ->
-                            Decode.succeed []
-                )
-        , Decode.array roleValueDecoder
-            |> Decode.andThen
-                (\arr ->
-                    arr
-                        |> Array.toList
-                        |> List.filterMap identity
-                        |> Decode.succeed
-                )
-        ]
+    Decode.array roleValueDecoder
+        |> Decode.andThen
+            (\arr ->
+                arr
+                    |> Array.toList
+                    |> List.filterMap identity
+                    |> Decode.succeed
+            )
 
 
 roleValueDecoder : Decoder (Maybe Role)

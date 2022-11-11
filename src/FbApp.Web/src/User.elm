@@ -1,9 +1,8 @@
 module User exposing (User, avatar, decoder, isAdmin, username)
 
-import Api exposing (Cred)
 import Avatar exposing (Avatar)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (custom)
+import Json.Decode.Pipeline exposing (custom, required)
 import Role exposing (Role(..), RoleList)
 import Username exposing (Username)
 
@@ -13,7 +12,7 @@ import Username exposing (Username)
 
 
 type User
-    = User Avatar RoleList Cred
+    = User Avatar RoleList Username
 
 
 
@@ -22,7 +21,7 @@ type User
 
 username : User -> Username
 username (User _ _ val) =
-    Api.username val
+    val
 
 
 avatar : User -> Avatar
@@ -39,16 +38,17 @@ isAdmin (User _ roles _) =
 -- SERIALIZATION
 
 
-decoder : Decoder (Cred -> User)
+decoder : Decoder User
 decoder =
     Decode.succeed User
-        |> custom (Decode.at [ "profile", "picture" ] Avatar.decoder)
+        |> custom (Decode.field "picture" Avatar.decoder)
         |> custom roleDecoder
+        |> required "email" Username.decoder
 
 
 roleDecoder : Decoder RoleList
 roleDecoder =
-    Decode.maybe (Decode.at [ "profile", "role" ] Role.decoder)
+    Decode.maybe (Decode.field "role" Role.decoder)
         |> Decode.map
             (\maybeRoles ->
                 case maybeRoles of
