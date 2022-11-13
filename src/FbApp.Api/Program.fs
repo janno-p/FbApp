@@ -45,6 +45,9 @@ let appBootstrap : HttpHandler =
     })
 
 
+let competitionStatus = Successful.OK "accept-predictions"
+
+
 let mapGoals (value: (int * int) option) : Fixtures.FixtureGoals option =
     value |> Option.map (fun (home, away) -> { Home = home; Away = away })
 
@@ -104,6 +107,8 @@ let updateFixtures: HttpHandler =
 
 let mainRouter = router {
     get "/api/bootstrap" appBootstrap
+    get "/dapr/config" (obj() |> Successful.OK)
+    get "/api/competition/status" competitionStatus
 
     forward "/api/auth" Auth.authScope
     forward "/api/predict" Predict.predictScope

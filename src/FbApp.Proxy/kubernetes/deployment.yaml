@@ -12,6 +12,7 @@ spec:
       annotations:
         dapr.io/enabled: "true"
         dapr.io/app-id: "fbapp-proxy"
+        dapr.io/app-port: "80"
         dapr.io/log-level: "debug"
       labels:
         app: fbapp-proxy

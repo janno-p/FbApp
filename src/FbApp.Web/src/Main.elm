@@ -1,6 +1,7 @@
 port module Main exposing (generateRandomBytes, main, randomBytes)
 
 import Api exposing (AuthState)
+import Api.Endpoint as Endpoint
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html
@@ -42,8 +43,8 @@ type Error
     | ErrFailedToConvertBytes
     | ErrAuthorization OAuth.AuthorizationError
     | ErrAuthentication OAuth.AuthenticationError
-    | ErrHTTPGetAccessToken
-    | ErrHTTPGetUserInfo
+    | ErrHttpGetAccessToken
+    | ErrHttpGetUserInfo
 
 
 type Flow
@@ -87,7 +88,10 @@ init maybeAuthState url navKey =
             { url | query = Nothing, fragment = Nothing }
 
         clearUrl =
-            Nav.replaceUrl navKey (Url.toString redirectUri)
+            Cmd.batch
+                [ Nav.replaceUrl navKey (Url.toString redirectUri)
+                , getCompetitionStatus
+                ]
 
         session =
             Session.fromUser navKey Nothing
@@ -210,12 +214,12 @@ gotAccessToken ( model, session ) authenticationResponse redirectUri =
                     )
 
                 _ ->
-                    ( ( Authentication (Errored ErrHTTPGetAccessToken) redirectUri, session )
+                    ( ( Authentication (Errored ErrHttpGetAccessToken) redirectUri, session )
                     , Cmd.none
                     )
 
         Err _ ->
-            ( ( Authentication (Errored ErrHTTPGetAccessToken) redirectUri, session )
+            ( ( Authentication (Errored ErrHttpGetAccessToken) redirectUri, session )
             , Cmd.none
             )
 
@@ -305,6 +309,7 @@ type Msg
     | GotUserInfo OAuth.AuthenticationSuccess (Result Http.Error User)
     | GotRandomBytes (List Int)
     | AccessTokenExpired
+    | GotCompetitionStatus (Result Http.Error CompetitionStatus)
 
 
 changeRouteTo : Maybe Route -> ( Model, Session ) -> ( ( Model, Session ), Cmd Msg )
@@ -465,3 +470,31 @@ defaultHttpsUrl =
     , query = Nothing
     , fragment = Nothing
     }
+
+
+getCompetitionStatus : Cmd Msg
+getCompetitionStatus =
+    Endpoint.request Endpoint.competitionStatus (Http.expectJson GotCompetitionStatus competitionStatusDecoder) Endpoint.defaultEndpointConfig
+
+
+type CompetitionStatus
+    = AcceptPredictions
+    | InProgress
+    | NotActive
+
+
+competitionStatusDecoder : Json.Decoder CompetitionStatus
+competitionStatusDecoder =
+    Json.string
+        |> Json.map
+            (\val ->
+                case val of
+                    "accept-predictions" ->
+                        AcceptPredictions
+
+                    "competition-running" ->
+                        InProgress
+
+                    _ ->
+                        NotActive
+            )

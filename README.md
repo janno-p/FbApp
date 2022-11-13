@@ -26,6 +26,8 @@ Playground application for trying out new technologies, libraries, frameworks, p
 
 ## Quick Start ##
 
+### Configure Google OAuth authentication
+
 Use Google Developer Console to register new application for Google authentication:
 
 * Authorized JavaScript Origins: `https://localhost:8090`
@@ -45,7 +47,41 @@ by Google client application registration.
 }
 ```
 
-Run development environment
+### Configure kubernetes cluster
+
+Install dapr
+
+```
+helm repo add dapr https://dapr.github.io/helm-charts/
+
+helm repo update
+
+helm upgrade --install dapr dapr/dapr \
+--namespace dapr-system \
+--create-namespace \
+--wait
+
+kubectl port-forward service/dapr-dashboard 8080:8080 --namespace dapr-system
+```
+
+Install ingress controller
+
+```
+helm repo add dapr https://kubernetes.github.io/ingress-nginx
+
+helm repo update
+
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+--namespace ingress-nginx \
+--create-namespace \
+--set controller.config.use-forwarded-headers=true
+--wait
+
+kubectl port-forward service/ingress-nginx-controller 8090:443 --namespace ingress-nginx
+```
+
+
+### Run development environment
 
 ```sh
 $ tilt up
