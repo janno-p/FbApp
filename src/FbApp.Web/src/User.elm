@@ -43,7 +43,7 @@ decoder =
     Decode.succeed User
         |> custom (Decode.field "picture" Avatar.decoder)
         |> custom roleDecoder
-        |> required "email" Username.decoder
+        |> required "name" Username.decoder
 
 
 roleDecoder : Decoder RoleList

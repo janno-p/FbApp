@@ -14,13 +14,13 @@ open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
 open OpenIddict.Abstractions
 open OpenIddict.Server.AspNetCore
 open Quartz
 open Saturn
 open System
 open System.Collections.Generic
-open System.Net.Http.Json
 open System.Security.Claims
 
 
@@ -163,6 +163,10 @@ let exchangeToken: HttpHandler =
             | user ->
                 let! canSignIn = svc.SignInManager().CanSignInAsync(user)
                 if canSignIn then
+                    let arr = principal.Claims |> Seq.map (fun x -> $"%s{x.Type}=%s{x.Value}")
+                    ctx.GetLogger("YYY").LogInformation(": " + ctx.GetJsonSerializer().SerializeToString(arr))
+                    principal.SetClaim(OpenIddictConstants.Claims.Name, user.FullName) |> ignore
+                    principal.SetClaim(OpenIddictConstants.Claims.Email, user.Email) |> ignore
                     principal.Claims |> Seq.iter (fun claim -> claim.SetDestinations(getDestinations principal claim) |> ignore)
                     do! ctx.SignInAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal)
                     return Some ctx
@@ -212,27 +216,27 @@ type PeopleApiPhotos () =
     member val photos = ResizeArray<Photo>() with get, set
 
 
-let getPictureUrl (googleAccountId: string) (ctx: HttpContext) = task {
-    let svc = ctx |> Ioc.create
-    let httpClient = svc.HttpClientFactory().CreateClient("")
-    let googleApiKey = svc.Configuration()["Google:ApiKey"]
-    let! response = httpClient.GetFromJsonAsync<PeopleApiPhotos>($"https://people.googleapis.com/v1/people/%s{googleAccountId}?personFields=photos&key=%s{googleApiKey}")
-    return
-        match response with
-        | null -> null
-        | _ -> response.photos |> Seq.tryHead |> Option.map (fun p -> p.url) |> Option.toObj
-}
+let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
+    user.Email <- principal.FindFirstValue(ClaimTypes.Email)
+    user.EmailConfirmed <- true
+    user.FullName <- principal.FindFirstValue(ClaimTypes.Name)
+    user.GivenName <- principal.FindFirstValue(ClaimTypes.GivenName)
+    user.PictureUrl <- principal.FindFirstValue(OpenIddictConstants.Claims.Picture)
+    user.Provider <- "Google"
+    user.ProviderId <- principal.FindFirstValue(ClaimTypes.NameIdentifier)
+    user.Surname <- principal.FindFirstValue(ClaimTypes.Surname)
+    user.UserName <- principal.FindFirstValue(ClaimTypes.Email)
 
 
 let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: HttpContext) = task {
     let svc = ctx |> Ioc.create
     let userEmail = principal.FindFirstValue(ClaimTypes.Email)
     let isDefaultAdmin = userEmail.Equals(svc.Configuration()["Authorization:DefaultAdmin"])
-    if isDefaultAdmin then
-        let! hasAdminRole = svc.UserManager().IsInRoleAsync(user, "admin")
-        if not hasAdminRole then
-            let! _ = svc.UserManager().AddToRoleAsync(user, "admin")
-            ()
+    let! hasAdminRole = svc.UserManager().IsInRoleAsync(user, "admin")
+    if isDefaultAdmin <> hasAdminRole then
+        let action = if hasAdminRole then svc.UserManager().RemoveFromRoleAsync else svc.UserManager().AddToRoleAsync
+        let! _ = action(user, "admin")
+        ()
 }
 
 
@@ -245,18 +249,15 @@ let googleResponse: HttpHandler =
             return! googleLogin next ctx
         | info ->
             let! result = svc.SignInManager().ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false)
-            let! pictureUrl = ctx |> getPictureUrl (info.Principal.FindFirstValue(ClaimTypes.NameIdentifier))
             if result.Succeeded then
                 let! user = svc.UserManager().FindByNameAsync(info.Principal.FindFirstValue(ClaimTypes.Email))
-                user.PictureUrl <- pictureUrl
+                updateUser user info.Principal
                 do! ctx |> updateAdminRole user info.Principal
                 let! _ = svc.UserManager().UpdateAsync(user)
                 ()
             else
                 let user = ApplicationUser()
-                user.Email <- info.Principal.FindFirst(ClaimTypes.Email).Value
-                user.UserName <- info.Principal.FindFirst(ClaimTypes.Email).Value
-                user.PictureUrl <- pictureUrl
+                updateUser user info.Principal
 
                 let! identityResult = svc.UserManager().CreateAsync(user)
                 if identityResult.Succeeded then
@@ -286,6 +287,10 @@ let userinfo: HttpHandler =
 
             let! subject = svc.UserManager().GetUserIdAsync(user)
             claims[OpenIddictConstants.Claims.Subject] <- box subject
+
+            claims[OpenIddictConstants.Claims.Name] <- box user.FullName
+            claims[OpenIddictConstants.Claims.GivenName] <- box user.GivenName
+            claims[OpenIddictConstants.Claims.FamilyName] <- box user.Surname
             claims[OpenIddictConstants.Claims.Picture] <- box user.PictureUrl
 
             if principal.HasScope(OpenIddictConstants.Scopes.Email) then
@@ -353,7 +358,9 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
             options.ClientId <- googleSection["ClientId"]
             options.ClientSecret <- googleSection["ClientSecret"]
             options.CallbackPath <- PathString "/connect/google/callback"
-            options.SignInScheme <- IdentityConstants.ExternalScheme)
+            options.SignInScheme <- IdentityConstants.ExternalScheme
+            options.Scope.Add("profile")
+            options.ClaimActions.MapJsonKey(OpenIddictConstants.Claims.Picture, "picture"))
     |> ignore
 
     services.AddIdentity<ApplicationUser, ApplicationRole>()

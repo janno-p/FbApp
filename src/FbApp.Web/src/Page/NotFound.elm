@@ -5,6 +5,7 @@ import Html.Attributes exposing (class, style)
 import Route
 
 
+
 -- VIEW
 
 
@@ -17,9 +18,11 @@ view =
             [ div []
                 [ -- style="font-size: 30vh"
                   div [ style "font-size" "30vh" ] [ text "404" ]
-                  -- class="text-h2" style="opacity:.4"
+
+                -- class="text-h2" style="opacity:.4"
                 , div [ class "text-xl", style "opacity" ".4" ] [ text "Oops. Nothing here..." ]
-                  -- class="q-mt-xl" color="white" text-color="blue" unelevated to="/" label="Go Home" no-caps
+
+                -- class="q-mt-xl" color="white" text-color="blue" unelevated to="/" label="Go Home" no-caps
                 , a [ class "mt-8 bg-white text-blue-300", Route.href Route.Home ] [ text "Go Home" ]
                 ]
             ]

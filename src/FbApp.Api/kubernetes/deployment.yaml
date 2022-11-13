@@ -23,5 +23,7 @@ spec:
         ports:
         - containerPort: 80
         env:
+        - name: CONNECTIONSTRINGS__MONGODB
+          value: mongodb://user:password@fbapp-api-database-mongodb:27017/fbapp
         - name: EVENTSTORE__URI
           value: esdb://fbapp-eventstore:2113?tls=false

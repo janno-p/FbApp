@@ -278,7 +278,7 @@ view ( model, session ) =
     in
     case model of
         Authentication _ _ ->
-            Page.view Nothing Page.Other Blank.view
+            Page.viewAuth
 
         Redirect ->
             Page.view user Page.Other Blank.view

@@ -7,11 +7,6 @@ type AuthOptions = {
     }
 
 [<CLIMutable>]
-type GoogleOptions = {
-    ClientId: string
-    }
-
-[<CLIMutable>]
 type SubscriptionsSettings = {
     StreamName: string
     GroupName: string

@@ -5,6 +5,7 @@ open FbApp.Api.Domain
 open FbApp.Api.Repositories
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
@@ -90,10 +91,11 @@ let private getFixtures: HttpHandler =
             return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
-let private savePredictions: HttpHandler =
-    (fun next context -> task {
+
+
+let private savePredictions: Auth.AuthHttpHandler =
+    (fun user next context -> task {
         let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
-        let user = Auth.createUser context.User
         let! competition = Competitions.get (context.RequestServices.GetRequiredService<IMongoDatabase>()) dto.CompetitionId
         match competition with
         | Some(competition) when competition.Date > DateTimeOffset.Now ->
@@ -110,12 +112,11 @@ let private savePredictions: HttpHandler =
             return! RequestErrors.BAD_REQUEST "Invalid competition id" next context
     })
 
-let private getCurrentPrediction: HttpHandler =
-    (fun next context -> task {
+let private getCurrentPrediction: Auth.AuthHttpHandler =
+    (fun user next context -> task {
         let db = context.RequestServices.GetRequiredService<IMongoDatabase>()
         match! Competitions.tryGetActive db with
         | Some activeCompetition ->
-            let user = Auth.createUser context.User
             let! prediction = Predictions.get db (activeCompetition.Id, user.Email)
             match prediction with
             | Some(prediction) ->
@@ -153,7 +154,7 @@ let getCompetitionStatus db = task {
 }
 
 let predictScope = router {
-    post "/" (Auth.authPipe >=> savePredictions)
+    post "/" (Auth.authPipe >=> (Auth.withUser savePredictions))
     get "/fixtures" getFixtures
-    get "/current" (Auth.authPipe >=> getCurrentPrediction)
+    get "/current" (Auth.authPipe >=> (Auth.withUser getCurrentPrediction))
 }

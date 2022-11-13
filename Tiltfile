@@ -7,6 +7,7 @@ k8s_yaml('./kubernetes/ingress.yaml')
 k8s_resource(new_name='ingress', labels=['ingress'], objects=['fbapp-ingress'])
 
 include('./src/FbApp.Api/Tiltfile')
+include('./src/FbApp.Api.Database/Tiltfile')
 include('./src/FbApp.Api.EventStore/Tiltfile')
 include('./src/FbApp.Auth/Tiltfile')
 include('./src/FbApp.Auth.Database/Tiltfile')

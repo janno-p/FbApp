@@ -4,6 +4,7 @@ import Html exposing (Html, div)
 import Session exposing (Session)
 
 
+
 -- MODEL
 
 
@@ -17,6 +18,7 @@ init session =
     ( { session = session }, Cmd.none )
 
 
+
 -- VIEW
 
 
@@ -25,6 +27,7 @@ view _ =
     { title = "Home"
     , content = div [] []
     }
+
 
 
 -- UPDATE
@@ -43,12 +46,14 @@ update msg model =
             )
 
 
+
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Session.changes GotSession (Session.navKey model.session)
+
 
 
 -- EXPORT

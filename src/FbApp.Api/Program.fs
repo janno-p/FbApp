@@ -1,6 +1,7 @@
 module FbApp.Api.Program
 
 
+open System.IdentityModel.Tokens.Jwt
 open System.Text.Json.Serialization
 open Dapr
 open EventStore.Client
@@ -11,41 +12,27 @@ open FbApp.Api.Domain
 open FbApp.Api.EventStore
 open Giraffe
 open Giraffe.EndpointRouting
+open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Microsoft.IdentityModel.Tokens
 open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
 open System
 
 
-[<CLIMutable>]
-type AppBootstrapInfo = {
-    CompetitionStatus: string
-    User: Auth.User
-    }
-
-
-let appBootstrap : HttpHandler =
-    (fun next ctx -> task {
-        let user =
-            Auth.getUser ctx
+let competitionStatus : HttpHandler =
+    fun next ctx -> task {
         let! competitionStatus =
-            Predict.getCompetitionStatus (ctx.RequestServices.GetRequiredService<IMongoDatabase>())
-        let dto =
-            {
-                CompetitionStatus = competitionStatus
-                User = user
-            }
-        return! Successful.OK dto next ctx
-    })
-
-
-let competitionStatus = Successful.OK "accept-predictions"
+            ctx.RequestServices.GetRequiredService<IMongoDatabase>()
+            |> Predict.getCompetitionStatus
+        return! Successful.OK competitionStatus next ctx
+    }
 
 
 let mapGoals (value: (int * int) option) : Fixtures.FixtureGoals option =
@@ -106,11 +93,9 @@ let updateFixtures: HttpHandler =
 
 
 let mainRouter = router {
-    get "/api/bootstrap" appBootstrap
     get "/dapr/config" (obj() |> Successful.OK)
     get "/api/competition/status" competitionStatus
 
-    forward "/api/auth" Auth.authScope
     forward "/api/predict" Predict.predictScope
     forward "/api/fixtures" Fixtures.scope
     forward "/api/predictions" Predictions.scope
@@ -143,7 +128,6 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.AddRouting() |> ignore
 
     services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
-    services.Configure<GoogleOptions>(context.Configuration.GetSection("Authentication:Google")) |> ignore
     services.Configure<SubscriptionsSettings>(context.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
 
     let eventStoreConnection =
@@ -213,6 +197,16 @@ let configureJsonSerializer () =
     SystemTextJson.Serializer options
 
 
+let configureJwtAuthentication (options: JwtBearerOptions) =
+    options.MapInboundClaims <- false
+    options.TokenValidationParameters <- TokenValidationParameters(
+        SignatureValidator = (fun token _ -> JwtSecurityToken(token)),
+        ValidateAudience = false,
+        ValidateIssuer = false,
+        ValidateIssuerSigningKey = false
+    )
+
+
 let app = application {
     no_router
     memory_cache
@@ -220,6 +214,7 @@ let app = application {
     app_config configureApp
     host_config configureHost
     use_json_serializer (configureJsonSerializer())
+    use_jwt_authentication_with_config configureJwtAuthentication
 }
 
 

@@ -1,4 +1,4 @@
-module Page exposing (Page(..), view)
+module Page exposing (Page(..), view, viewAuth)
 
 import Avatar
 import Browser exposing (Document)
@@ -30,6 +30,14 @@ view maybeUser page { title, content } =
         , content
         , viewFooter
         ]
+    }
+
+
+viewAuth : Document msg
+viewAuth =
+    { title = "FbApp"
+    , body =
+        [ text "⏳⏳⏳ Loading application. Please wait ..." ]
     }
 
 
