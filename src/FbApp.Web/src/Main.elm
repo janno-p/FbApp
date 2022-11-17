@@ -70,17 +70,18 @@ type alias Model =
     { state : State
     , session : Session
     , competitionStatus : Maybe CompetitionStatus
+    , configuration : Configuration
     }
 
 
-configuration : Configuration
-configuration =
+initConfiguration : Url -> Configuration
+initConfiguration baseUrl =
     { authorizationEndpoint =
-        { defaultHttpsUrl | host = "localhost", port_ = Just 8090, path = "/connect/authorize" }
+        { baseUrl | path = "/connect/authorize" }
     , tokenEndpoint =
-        { defaultHttpsUrl | host = "localhost", port_ = Just 8090, path = "/connect/token" }
+        { baseUrl | path = "/connect/token" }
     , userInfoEndpoint =
-        { defaultHttpsUrl | host = "localhost", port_ = Just 8090, path = "/connect/userinfo" }
+        { baseUrl | path = "/connect/userinfo" }
     , userInfoDecoder =
         User.decoder
     , clientId =
@@ -103,6 +104,7 @@ init maybeAuthState url navKey =
             { session = Session.fromUser navKey Nothing
             , state = Authentication Idle redirectUri
             , competitionStatus = Nothing
+            , configuration = initConfiguration { url | query = Nothing, fragment = Nothing, path = "" }
             }
     in
     case OAuth.parseCode url of
@@ -127,7 +129,7 @@ init maybeAuthState url navKey =
                     else
                         ( { model | state = Authentication (Authorized code authState.codeVerifier) redirectUri }
                         , Cmd.batch
-                            [ getAccessToken configuration redirectUri code authState.codeVerifier
+                            [ getAccessToken model.configuration redirectUri code authState.codeVerifier
                             , clearUrl
                             ]
                         )
@@ -192,12 +194,12 @@ gotRandomBytes model bytes redirectUri =
         Just { state, codeVerifier } ->
             let
                 authorization =
-                    { clientId = configuration.clientId
+                    { clientId = model.configuration.clientId
                     , redirectUri = redirectUri
-                    , scope = configuration.scope
+                    , scope = model.configuration.scope
                     , state = Just state
                     , codeChallenge = OAuth.mkCodeChallenge codeVerifier
-                    , url = configuration.authorizationEndpoint
+                    , url = model.configuration.authorizationEndpoint
                     }
             in
             ( { model | state = Authentication Idle redirectUri }
@@ -230,12 +232,12 @@ gotAccessToken model authenticationResponse redirectUri =
 
         Ok auth ->
             ( { model | state = Authentication (Authenticated auth) redirectUri }
-            , updateSession auth
+            , updateSession model.configuration auth
             )
 
 
-updateSession : OAuth.AuthenticationSuccess -> Cmd Msg
-updateSession auth =
+updateSession : Configuration -> OAuth.AuthenticationSuccess -> Cmd Msg
+updateSession configuration auth =
     let
         refreshTokens =
             case auth.expiresIn of
@@ -406,7 +408,7 @@ update msg model =
             ( model
             , case auth of
                 Ok val ->
-                    updateSession val
+                    updateSession model.configuration val
 
                 Err _ ->
                     Cmd.none
@@ -432,7 +434,7 @@ update msg model =
         ( AccessTokenExpired, _ ) ->
             case Session.refreshToken model.session of
                 Just token ->
-                    ( model, refreshAccessToken configuration token )
+                    ( model, refreshAccessToken model.configuration token )
 
                 Nothing ->
                     ( model, Cmd.none )

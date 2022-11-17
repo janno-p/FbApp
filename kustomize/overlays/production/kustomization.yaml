@@ -3,10 +3,10 @@ kind: Kustomization
 bases:
 - ../../base
 namespace: fbapp
-patchesStrategicMerge:
-- eventstore-service.yaml
-- eventstore-statefulset.yaml
-- mongo-statefulset.yaml
-- redis-statefulset.yaml
+patchesStrategicMerge: []
+# - eventstore-service.yaml
+# - eventstore-statefulset.yaml
+# - mongo-statefulset.yaml
+# - redis-statefulset.yaml
 resources:
 - ingress.yaml

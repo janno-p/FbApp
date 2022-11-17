@@ -1,30 +1,23 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  annotations:
-    cert-manager.io/issuer: letsencrypt-prod
-    kubernetes.io/ingress.class: public
   name: fbapp-ingress
 spec:
+  ingressClassName: nginx
   rules:
-  - host: jnx.era.ee
-    http:
+  - http:
       paths:
+      # - backend:
+      #     service:
+      #       name: fbapp
+      #       port:
+      #         number: 80
+      #   path: /api/
+      #   pathType: Prefix
       - backend:
           service:
-            name: fbapp
-            port:
-              number: 80
-        path: /api/
-        pathType: Prefix
-      - backend:
-          service:
-            name: fbapp-ui
+            name: fbapp-web
             port:
               number: 80
         path: /
         pathType: Prefix
-  tls:
-  - hosts:
-    - jnx.era.ee
-    secretName: dashboard-ingress-cert
