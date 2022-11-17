@@ -2,6 +2,7 @@ module FbApp.Api.Program
 
 
 open System.IdentityModel.Tokens.Jwt
+open System.Text.Json
 open System.Text.Json.Serialization
 open Dapr
 open EventStore.Client
@@ -209,7 +210,7 @@ let configureHost (host: IHostBuilder) =
 
 
 let configureJsonSerializer () =
-    let options = System.Text.Json.JsonSerializerOptions()
+    let options = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
     options.Converters.Add(JsonFSharpConverter())
     SystemTextJson.Serializer options
 

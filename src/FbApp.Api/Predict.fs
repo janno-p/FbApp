@@ -9,11 +9,11 @@ open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
 open System
-open System.Collections.Generic
 
 [<CLIMutable>]
 type TeamDto =
     {
+        Id: int64
         Name: string
         FlagUrl: string
     }
@@ -27,12 +27,19 @@ type FixtureDto =
     }
 
 [<CLIMutable>]
+type GroupDto =
+    {
+        Name: string
+        TeamIds: int64[]
+    }
+
+[<CLIMutable>]
 type FixturesDto =
     {
         CompetitionId: Guid
-        Teams: IDictionary<int64, TeamDto>
+        Teams: TeamDto[]
         Fixtures: FixtureDto[]
-        Groups: IDictionary<string, int64[]>
+        Groups: GroupDto[]
     }
 
 [<CLIMutable>]
@@ -48,7 +55,7 @@ type PredictionFixtureDto =
 type PredictionDto =
     {
         CompetitionId: Guid
-        Teams: IDictionary<int64, TeamDto>
+        Teams: TeamDto[]
         Fixtures: PredictionFixtureDto[]
         RoundOf16: int64[]
         RoundOf8: int64[]
@@ -66,8 +73,7 @@ type FixturePredictionDto =
 
 let private mapTeams (competition: ReadModels.Competition) =
     competition.Teams
-    |> Array.map (fun x -> (x.ExternalId, { Name = x.Name; FlagUrl = x.FlagUrl }))
-    |> dict
+    |> Array.map (fun x -> { Id = x.ExternalId; Name = x.Name; FlagUrl = x.FlagUrl })
 
 let private getFixtures: HttpHandler =
     (fun next context -> task {
@@ -83,7 +89,7 @@ let private getFixtures: HttpHandler =
                         activeCompetition.Fixtures
                         |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
                     Groups =
-                        activeCompetition.Groups
+                        activeCompetition.Groups |> Seq.map (fun x -> { Name = x.Key; TeamIds = x.Value }) |> Seq.toArray
                 }
             return! Successful.OK fixtures next context
         | None ->

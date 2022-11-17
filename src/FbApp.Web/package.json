@@ -8,13 +8,15 @@
     "serve": "vite preview"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.13",
     "elm-tooling": "^1.10.0",
+    "postcss": "^8.4.19",
+    "tailwindcss": "^3.2.4",
     "vite": "^3.2.2",
     "vite-plugin-elm": "^2.7.0-beta.3"
   },
   "dependencies": {
     "@mdi/font": "^7.0.96",
-    "@types/node": "^18.11.9",
-    "vite-plugin-windicss": "^1.8.7"
+    "@types/node": "^18.11.9"
   }
 }

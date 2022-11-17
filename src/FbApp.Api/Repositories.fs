@@ -8,6 +8,8 @@ open System
 open System.Collections.Generic
 open System.Linq
 
+#nowarn "44"
+
 do
     BsonDefaults.GuidRepresentationMode <- GuidRepresentationMode.V3
     BsonSerializer.RegisterSerializer(GuidSerializer(GuidRepresentation.Standard))

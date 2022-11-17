@@ -445,6 +445,10 @@ update msg model =
         ( GotCompetitionStatus _, _ ) ->
             ( model, Route.replaceUrl (Session.navKey model.session) Route.Home )
 
+        ( GotPredictionMsg subMsg, Prediction prediction ) ->
+            Prediction.update subMsg prediction
+                |> updateWith Prediction GotPredictionMsg model
+
         ( GotPredictionMsg _, _ ) ->
             ( model, Cmd.none )
 

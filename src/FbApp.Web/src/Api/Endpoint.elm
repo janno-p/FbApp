@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, competitionStatus, defaultEndpointConfig, request)
+module Api.Endpoint exposing (Endpoint, competitionStatus, defaultEndpointConfig, fixturePredictions, predictions, request)
 
 import Http
 import Url.Builder exposing (QueryParameter)
@@ -61,3 +61,13 @@ url paths queryParams =
 competitionStatus : Endpoint
 competitionStatus =
     url [ "competition", "status" ] []
+
+
+fixturePredictions : Endpoint
+fixturePredictions =
+    url [ "predict", "fixtures" ] []
+
+
+predictions : Endpoint
+predictions =
+    url [ "predict", "current" ] []
