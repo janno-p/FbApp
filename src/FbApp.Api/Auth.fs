@@ -2,7 +2,6 @@ module FbApp.Api.Auth
 
 open Giraffe
 open Microsoft.AspNetCore.Authentication.JwtBearer
-open Saturn
 open System.Security.Claims
 
 let [<Literal>] AdminRole = "admin"
@@ -17,13 +16,11 @@ let notAdmin =
     RequestErrors.FORBIDDEN
         "Access denied: user has not sufficient permissions"
 
-let authPipe = pipeline {
-    requires_authentication notLoggedIn
-}
+let mustBeLoggedIn: HttpHandler =
+    requiresAuthentication notLoggedIn
 
-let adminPipe = pipeline {
-    requires_role AdminRole notAdmin
-}
+let mustBeAdmin: HttpHandler =
+    requiresRole AdminRole notAdmin
 
 type AuthUser = {
     Name: string

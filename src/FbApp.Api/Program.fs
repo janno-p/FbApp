@@ -102,8 +102,8 @@ let mainRouter = router {
     forward "/api/leagues" Leagues.scope
 
     forward "/api" (router {
-        pipe_through Auth.authPipe
-        pipe_through Auth.adminPipe
+        pipe_through Auth.mustBeLoggedIn
+        pipe_through Auth.mustBeAdmin
 
         forward "/dashboard" Dashboard.dashboardScope
     })
@@ -148,6 +148,7 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
     config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
           .AddJsonFile($"appsettings.%s{context.HostingEnvironment.EnvironmentName}.json", optional=true, reloadOnChange=true)
+          .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
           .AddEnvironmentVariables()
     |> ignore
 
@@ -182,6 +183,22 @@ let configureApp (app: IApplicationBuilder) =
         ProcessManager.connectSubscription app.ApplicationServices
 
     processManagerInitTask.Wait()
+
+    let createCompetition = task {
+        match! Predict.getCompetitionStatus (app.ApplicationServices.GetRequiredService<IMongoDatabase>()) with
+        | "no-active-competition" ->
+            let input: Competitions.CreateInput =
+                {
+                    Description = "2022. aasta jalgpalli maailmameistrivõistlused"
+                    ExternalId = 2000L
+                    Date = DateTimeOffset(2022, 11, 20, 16, 0, 0, TimeSpan.Zero)
+                }
+            let! _ = Dashboard.addCompetitionDom input
+            ()
+        | _ -> ()
+    }
+
+    createCompetition.Wait()
 
     app
 

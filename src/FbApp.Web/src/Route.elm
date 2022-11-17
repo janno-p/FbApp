@@ -7,14 +7,17 @@ import Url exposing (Url)
 import Url.Parser as Parser exposing (Parser, oneOf, s)
 
 
+
 -- TYPES
 
 
 type Route
-     = Home
+    = Home
     | Login
     | Logout
     | Changelog
+    | Prediction
+
 
 
 -- ROUTING
@@ -27,7 +30,9 @@ parser =
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
         , Parser.map Changelog (s "changelog")
+        , Parser.map Prediction (s "prediction")
         ]
+
 
 
 -- PUBLIC HELPERS
@@ -46,6 +51,7 @@ fromUrl url =
 replaceUrl : Nav.Key -> Route -> Cmd msg
 replaceUrl key route =
     Nav.replaceUrl key (routeToString route)
+
 
 
 -- INTERNAL
@@ -70,3 +76,6 @@ routeToPieces page =
 
         Changelog ->
             [ "changelog" ]
+
+        Prediction ->
+            [ "prediction" ]

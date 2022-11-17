@@ -37,8 +37,8 @@ let scope = router {
     get "/score" getScoreTable
 
     forward "/admin" (router {
-        pipe_through Auth.authPipe
-        pipe_through Auth.adminPipe
+        pipe_through Auth.mustBeLoggedIn
+        pipe_through Auth.mustBeAdmin
 
         getf "/search/%s" findPredictions
     })

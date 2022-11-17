@@ -16,6 +16,7 @@ import Username
 type Page
     = Other
     | Home
+    | Prediction
 
 
 

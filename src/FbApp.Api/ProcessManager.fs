@@ -49,15 +49,15 @@ let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Me
         try
             do! args |> upsertCompetition (logger, db) md e
             let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
-            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
+            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
             let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
-            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
+            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
             let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
-            let groups = groups |> Result.unwrap (fun (_,_,err) -> failwith $"%s{err.Error}")
+            let groups = groups |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
-                    (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.CrestUrl; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
-                        fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday < 4) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
+                    (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.Crest; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
+                        fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
                         groups.Standings |> Seq.filter (fun r -> r.Stage = "GROUP_STAGE") |> Seq.map (fun kvp -> kvp.Group, (kvp.Table |> Array.map (fun x -> x.Team.Id))) |> Seq.toList)
             let id = Competitions.createId args.ExternalId
             let! _ = CommandHandlers.competitionsHandler (id, Aggregate.Version md.AggregateSequenceNumber) command
@@ -432,6 +432,7 @@ let initProjections (services: IServiceProvider) = task {
     try
         logger.LogInformation($"Trying to create '%s{subscriptionsSettings.StreamName}' projection (if not exists)")
         do! projectionManagementClient.CreateContinuousAsync(subscriptionsSettings.StreamName, query)
+        do! projectionManagementClient.UpdateAsync(subscriptionsSettings.StreamName, query, emitEnabled = true)
     with
     | Conflict ->
         ()

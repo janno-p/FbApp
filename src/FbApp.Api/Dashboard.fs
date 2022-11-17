@@ -31,14 +31,17 @@ let getCompetitionSources year: HttpHandler =
                     return! RequestErrors.BAD_REQUEST err.Error next context
         })
 
+let addCompetitionDom input = task {
+    let command = Competitions.Create input
+    let id = Competitions.createId input.ExternalId
+    return! CommandHandlers.competitionsHandler (id, Aggregate.New) command
+}
+
 let addCompetition: HttpHandler =
     (fun next context ->
         task {
             let! input = context.BindJsonAsync<Competitions.CreateInput>()
-            let command = Competitions.Create input
-            let id = Competitions.createId input.ExternalId
-            let! result = CommandHandlers.competitionsHandler (id, Aggregate.New) command
-            match result with
+            match! addCompetitionDom input with
             | Ok _ -> return! Successful.ACCEPTED id next context
             | Error _ -> return! RequestErrors.CONFLICT "Competition already exists" next context
         })

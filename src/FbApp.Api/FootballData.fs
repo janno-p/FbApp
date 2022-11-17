@@ -31,7 +31,7 @@ let private parseIdSuffix (link: Link) =
 type GroupEntryTeam = {
     Id: int64
     Name: string
-    CrestUrl: string
+    Crest: string
     }
 
 [<CLIMutable>]
@@ -163,7 +163,7 @@ type CompetitionTeam =
         [<JsonProperty("tla")>] Code: string
         ShortName: string
         // SquadMarketValue: string
-        CrestUrl: string
+        Crest: string
     }
 
 [<CLIMutable>]
@@ -176,8 +176,6 @@ type CompetitionTeams =
 [<CLIMutable>]
 type CompetitionLeagueTable =
     {
-        LeagueCaption: string
-        Matchday: int
         Standings: CompetitionLeagueTableStandings array
     }
 
@@ -190,15 +188,15 @@ type FixtureResultGoals =
 
 [<CLIMutable>]
 type FixtureScore = {
-    HomeTeam: int option
-    AwayTeam: int option
+    Home: int option
+    Away: int option
     }
 
 [<CLIMutable>]
 type FixtureResult =
     {
         Winner: string option
-        Duration: string option
+        Duration: string
         FullTime: FixtureScore
         HalfTime: FixtureScore
         ExtraTime: FixtureScore
@@ -217,7 +215,7 @@ type CompetitionFixture =
         Id: int64
         [<JsonProperty("utcDate")>] Date: DateTimeOffset
         Status: string
-        Matchday: int
+        Matchday: int option
         HomeTeam: CompetitionFixtureTeam option
         AwayTeam: CompetitionFixtureTeam option
         [<JsonProperty("score")>] Result: FixtureResult option
@@ -225,9 +223,15 @@ type CompetitionFixture =
     }
 
 [<CLIMutable>]
-type CompetitionFixtures =
+type CompetitionFixturesResultSet =
     {
         Count: int
+    }
+
+[<CLIMutable>]
+type CompetitionFixtures =
+    {
+        ResultSet: CompetitionFixturesResultSet
         [<JsonProperty("matches")>] Fixtures: CompetitionFixture array
     }
 
@@ -379,25 +383,25 @@ let private apiCall<'T> authToken (uri: string) = task {
 
 /// List all available competitions.
 let getCompetitions authToken = task {
-    let uri = $"competitions/{2018L}"
+    let uri = $"competitions/{2000L}"
     let! comp = apiCall<Competition> authToken uri
     return comp |> Result.map (fun x -> [| x |])
 }
 
 /// List all teams for a certain competition.
 let getCompetitionTeams authToken (competitionId: Id) = task {
-    let uri = $"competitions/%d{competitionId}/teams"
+    let uri = $"/v4/competitions/%d{competitionId}/teams"
     return! apiCall<CompetitionTeams> authToken uri
 }
 
 /// List all fixtures for a certain competition.
 let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
-    let uri = $"competitions/%d{competitionId}/matches%s{filters |> toQuery}"
+    let uri = $"/v4/competitions/%d{competitionId}/matches%s{filters |> toQuery}"
     return! apiCall<CompetitionFixtures> authToken uri
 }
 
 /// Show league table / current standing.
 let getCompetitionLeagueTable authToken (competitionId: Id) = task {
-    let uri = $"competitions/%d{competitionId}/standings"
+    let uri = $"/v4/competitions/%d{competitionId}/standings"
     return! apiCall<CompetitionLeagueTable> authToken uri
 }

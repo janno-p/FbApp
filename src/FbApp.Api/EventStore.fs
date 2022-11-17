@@ -54,10 +54,13 @@ let getMetadata (e: ResolvedEvent) : Metadata option =
 
 let rec readNextPage streamId startFrom (pages: ResizeArray<ResolvedEvent>) (client: EventStoreClient) = task {
     let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
-    let! events = result |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toArrayAsync
-    pages.AddRange(events)
-    if events.Length = 4096 then
-        do! client |> readNextPage streamId events[4095].OriginalEventNumber pages
+    match! result.ReadState with
+    | ReadState.Ok ->
+        let! events = result |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toArrayAsync
+        pages.AddRange(events)
+        if events.Length = 4096 then
+            do! client |> readNextPage streamId events[4095].OriginalEventNumber pages
+    | ReadState.StreamNotFound | _ -> ()
 }
 
 let makeRepository<'Event, 'Error> (client: EventStoreClient)

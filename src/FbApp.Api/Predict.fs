@@ -5,7 +5,6 @@ open FbApp.Api.Domain
 open FbApp.Api.Repositories
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
@@ -154,7 +153,7 @@ let getCompetitionStatus db = task {
 }
 
 let predictScope = router {
-    post "/" (Auth.authPipe >=> (Auth.withUser savePredictions))
+    post "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
     get "/fixtures" getFixtures
-    get "/current" (Auth.authPipe >=> (Auth.withUser getCurrentPrediction))
+    get "/current" (Auth.mustBeLoggedIn >=> (Auth.withUser getCurrentPrediction))
 }

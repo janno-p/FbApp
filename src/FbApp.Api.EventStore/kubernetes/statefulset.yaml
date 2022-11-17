@@ -22,6 +22,7 @@ spec:
         - --insecure
         - --run-projections=All
         - --enable-atom-pub-over-http
+        - --mem-db=true
         ports:
         - containerPort: 2113
         volumeMounts:

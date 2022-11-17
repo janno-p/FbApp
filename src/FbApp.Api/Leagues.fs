@@ -51,8 +51,8 @@ let scope = router {
     getf "/league/%s" getLeague
 
     forward "/admin" (router {
-        pipe_through Auth.authPipe
-        pipe_through Auth.adminPipe
+        pipe_through Auth.mustBeLoggedIn
+        pipe_through Auth.mustBeAdmin
 
         get "/" getLeagues
 

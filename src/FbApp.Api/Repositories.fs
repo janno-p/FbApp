@@ -8,7 +8,9 @@ open System
 open System.Collections.Generic
 open System.Linq
 
-do BsonSerializer.RegisterSerializer(GuidSerializer(GuidRepresentation.Standard))
+do
+    BsonDefaults.GuidRepresentationMode <- GuidRepresentationMode.V3
+    BsonSerializer.RegisterSerializer(GuidSerializer(GuidRepresentation.Standard))
 
 module FindFluent =
     let trySingleAsync (x: IFindFluent<_,_>) = task {
@@ -174,7 +176,7 @@ module Competitions =
         Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
     let tryGetActive db = task {
-        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2018L)
+        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2000L)
         return! (getCollection db).Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 
@@ -417,7 +419,7 @@ module Predictions =
     }
 
     let updateResult db (competitionId, fixtureId: int64, actualResult) = task {
-        let! _ = 
+        let! _ =
             (getCollection db).UpdateManyAsync(
                 (fun x -> x.CompetitionId = competitionId && x.Fixtures.Any(fun y -> y.FixtureId = fixtureId)),
                 Builders.Update.Set((fun x -> x.Fixtures.ElementAt(-1).ActualResult), actualResult)
