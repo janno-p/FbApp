@@ -31,6 +31,14 @@ type FixtureAssignment =
         ExternalId: int64
     }
 
+type PlayerAssignment =
+    {
+        Name: string
+        Position: string
+        TeamExternalId: int64
+        ExternalId: int64
+    }
+
 type GroupAssignment = string * int64[]
 
 type CreateInput =
@@ -42,20 +50,21 @@ type CreateInput =
 
 type Command =
     | Create of CreateInput
-    | AssignTeamsAndFixtures of TeamAssignment list * FixtureAssignment list * GroupAssignment list
+    | AssignTeamsAndFixtures of TeamAssignment list * FixtureAssignment list * GroupAssignment list * PlayerAssignment list
 
 type Event =
     | Created of Created
     | TeamsAssigned of TeamAssignment list
     | FixturesAssigned of FixtureAssignment list
     | GroupsAssigned of GroupAssignment list
+    | PlayersAssigned of PlayerAssignment list
 
 let decide: State option -> Command -> Result<Event list,unit> =
     (fun _ -> function
         | Create { Description = description; ExternalId = externalId; Date = date } ->
             Ok([Created { Description = description; ExternalId = externalId; Date = date }])
-        | AssignTeamsAndFixtures (teams, fixtures, groups) ->
-            Ok([TeamsAssigned teams; FixturesAssigned fixtures; GroupsAssigned groups])
+        | AssignTeamsAndFixtures (teams, fixtures, groups, players) ->
+            Ok([TeamsAssigned teams; FixturesAssigned fixtures; GroupsAssigned groups; PlayersAssigned players])
     )
 
 let evolve: State option -> Event -> State =
@@ -64,6 +73,7 @@ let evolve: State option -> Event -> State =
         | TeamsAssigned _ -> ()
         | FixturesAssigned _ -> ()
         | GroupsAssigned _ -> ()
+        | PlayersAssigned _ -> ()
     )
 
 let competitionsNamespace =

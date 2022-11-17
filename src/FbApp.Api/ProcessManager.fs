@@ -34,6 +34,7 @@ let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEve
                 Teams = [||]
                 Fixtures = [||]
                 Groups = dict []
+                Players = [||]
                 Version = metadata.AggregateSequenceNumber
                 Date = model.Date.ToOffset(TimeSpan.Zero)
             }
@@ -56,14 +57,30 @@ let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Me
             let groups = groups |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
-                    (teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.Crest; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
+                    (
+                        teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.Crest; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
                         fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
-                        groups.Standings |> Seq.filter (fun r -> r.Stage = "GROUP_STAGE") |> Seq.map (fun kvp -> kvp.Group, (kvp.Table |> Array.map (fun x -> x.Team.Id))) |> Seq.toList)
+                        groups.Standings |> Seq.filter (fun r -> r.Stage = "GROUP_STAGE") |> Seq.map (fun kvp -> kvp.Group, (kvp.Table |> Array.map (fun x -> x.Team.Id))) |> Seq.toList,
+                        teams.Teams |> Seq.map (fun t -> t.Players |> Seq.map (fun x -> { Name = x.Name; Position = x.Position; TeamExternalId = t.Id; ExternalId = x.Id } : Competitions.PlayerAssignment)) |> Seq.concat |> Seq.toList
+                    )
             let id = Competitions.createId args.ExternalId
             let! _ = CommandHandlers.competitionsHandler (id, Aggregate.Version md.AggregateSequenceNumber) command
             ()
         with :? WrongExpectedVersionException as ex ->
             logger.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
+    | Competitions.PlayersAssigned players ->
+        let playerProjections =
+            players
+            |> List.map
+                (fun player ->
+                    {
+                        Name = player.Name
+                        Position = player.Position
+                        TeamExternalId = player.TeamExternalId
+                        ExternalId = player.ExternalId
+                    } : ReadModels.CompetitionPlayer)
+            |> List.toArray
+        do! Competitions.updatePlayers db (md.AggregateId, md.AggregateSequenceNumber) playerProjections
     | Competitions.TeamsAssigned teams ->
         let teamProjections =
             teams
@@ -180,6 +197,7 @@ let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegis
             QualifiersRoundOf8 = model.Qualifiers.RoundOf8 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
             QualifiersRoundOf4 = model.Qualifiers.RoundOf4 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
             QualifiersRoundOf2 = model.Qualifiers.RoundOf2 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
+            TopScorers = model.TopScorers |> List.map (fun x -> { Id = x; IsCorrect = true } : ReadModels.ScorerResult) |> List.toArray
             Winner = { Id = model.Winner; HasQualified = Nullable() }
             Leagues = [||]
             Version = metadata.AggregateSequenceNumber

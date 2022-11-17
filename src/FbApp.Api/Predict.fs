@@ -34,12 +34,22 @@ type GroupDto =
     }
 
 [<CLIMutable>]
+type PlayerDto =
+    {
+        Id: int64
+        Name: string
+        Position: string
+        TeamId: int64
+    }
+
+[<CLIMutable>]
 type FixturesDto =
     {
         CompetitionId: Guid
         Teams: TeamDto[]
         Fixtures: FixtureDto[]
         Groups: GroupDto[]
+        Players: PlayerDto[]
     }
 
 [<CLIMutable>]
@@ -90,6 +100,8 @@ let private getFixtures: HttpHandler =
                         |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
                     Groups =
                         activeCompetition.Groups |> Seq.map (fun x -> { Name = x.Key; TeamIds = x.Value }) |> Seq.toArray
+                    Players =
+                        activeCompetition.Players |> Seq.map (fun x -> { Id = x.ExternalId; Name = x.Name; Position = x.Position; TeamId = x.TeamExternalId }) |> Seq.toArray
                 }
             return! Successful.OK fixtures next context
         | None ->

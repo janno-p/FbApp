@@ -156,6 +156,14 @@ type Competition =
     }
 
 [<CLIMutable>]
+type CompetitionPlayer =
+    {
+        Id: int64
+        Name: string
+        Position: string
+    }
+
+[<CLIMutable>]
 type CompetitionTeam =
     {
         Id: int64
@@ -164,6 +172,7 @@ type CompetitionTeam =
         ShortName: string
         // SquadMarketValue: string
         Crest: string
+        [<JsonProperty("squad")>] Players: CompetitionPlayer array
     }
 
 [<CLIMutable>]

@@ -36,6 +36,7 @@ type PredictionRegistrationInput =
         Fixtures: FixtureResultRegistrationInput[]
         Qualifiers: QualifiersRegistrationInput
         Winner: int64
+        TopScorers: int64[]
     }
 
 type FixtureResult =
@@ -65,6 +66,7 @@ type PredictionRegistration =
         Fixtures: FixtureResultRegistration list
         Qualifiers: QualifiersRegistration
         Winner: int64
+        TopScorers: int64 list
     }
 
 type Command =
@@ -112,6 +114,7 @@ let decide: State option -> Command -> Result<Event list,unit> =
                                 |> List.ofArray
                         }
                     Winner = input.Winner
+                    TopScorers = input.TopScorers |> List.ofArray
                 }
             Ok([Registered registration])
         | Decline -> Ok([Declined])

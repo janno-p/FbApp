@@ -1,4 +1,4 @@
-module Session exposing (Session, changes, fromUser, navKey, refreshToken, user)
+module Session exposing (Session, accessToken, changes, fromUser, navKey, refreshToken, user)
 
 import Browser.Navigation as Nav
 import OAuth exposing (Token)
@@ -37,6 +37,16 @@ navKey session =
 
         Guest key ->
             key
+
+
+accessToken : Session -> Maybe Token
+accessToken session =
+    case session of
+        Authenticated _ _ auth ->
+            Just auth.token
+
+        Guest _ ->
+            Nothing
 
 
 refreshToken : Session -> Maybe Token

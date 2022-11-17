@@ -37,6 +37,14 @@ module ReadModels =
             ExternalId: int64
         }
 
+    type CompetitionPlayer =
+        {
+            Name: string
+            Position: string
+            TeamExternalId: int64
+            ExternalId: int64
+        }
+
     type Competition =
         {
             Id: Guid
@@ -45,6 +53,7 @@ module ReadModels =
             Teams: Team array
             Fixtures: CompetitionFixture array
             Groups: IDictionary<string, int64 array>
+            Players: CompetitionPlayer array
             Version: int64
             Date: DateTimeOffset
         }
@@ -104,6 +113,12 @@ module ReadModels =
             HasQualified: Nullable<bool>
         }
 
+    type ScorerResult =
+        {
+            Id: int64
+            IsCorrect: bool
+        }
+
     type PredictionQualifier =
         {
             Id: Guid
@@ -122,6 +137,7 @@ module ReadModels =
             QualifiersRoundOf8: QualifiersResult array
             QualifiersRoundOf4: QualifiersResult array
             QualifiersRoundOf2: QualifiersResult array
+            TopScorers: ScorerResult array
             Winner: QualifiersResult
             Leagues: Guid array
             Version: int64
@@ -189,6 +205,14 @@ module Competitions =
 
     let insert db competition = task {
         let! _ = (getCollection db).InsertOneAsync(competition)
+        ()
+    }
+
+    let updatePlayers db (id, version) (players: ReadModels.CompetitionPlayer []) = task {
+        let u = Builders.Update
+                    .Set((fun x -> x.Version), version)
+                    .Set((fun x -> x.Players), players)
+        let! _ = (getCollection db).UpdateOneAsync(filterByIdAndVersion (id, version), u)
         ()
     }
 

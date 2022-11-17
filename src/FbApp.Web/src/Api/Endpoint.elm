@@ -1,6 +1,8 @@
-module Api.Endpoint exposing (Endpoint, competitionStatus, defaultEndpointConfig, fixturePredictions, predictions, request)
+module Api.Endpoint exposing (Endpoint, competitionInfo, competitionStatus, defaultEndpointConfig, predictions, request, savePrediction, useToken)
 
 import Http
+import OAuth
+import Session exposing (Session)
 import Url.Builder exposing (QueryParameter)
 
 
@@ -63,11 +65,26 @@ competitionStatus =
     url [ "competition", "status" ] []
 
 
-fixturePredictions : Endpoint
-fixturePredictions =
+competitionInfo : Endpoint
+competitionInfo =
     url [ "predict", "fixtures" ] []
+
+
+savePrediction : Endpoint
+savePrediction =
+    url [ "predict" ] []
 
 
 predictions : Endpoint
 predictions =
     url [ "predict", "current" ] []
+
+
+useToken : Session -> List Http.Header
+useToken session =
+    case Session.accessToken session of
+        Just token ->
+            OAuth.useToken token []
+
+        Nothing ->
+            []
