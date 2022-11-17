@@ -10,3 +10,4 @@ patchesStrategicMerge: []
 # - redis-statefulset.yaml
 resources:
 - ingress.yaml
+- namespace.yaml
