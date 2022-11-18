@@ -7,13 +7,27 @@ spec:
   rules:
   - http:
       paths:
-      # - backend:
-      #     service:
-      #       name: fbapp
-      #       port:
-      #         number: 80
-      #   path: /api/
-      #   pathType: Prefix
+      - backend:
+          service:
+            name: fbapp-proxy
+            port:
+              number: 80
+        path: /api/
+        pathType: Prefix
+      - backend:
+          service:
+            name: fbapp-proxy
+            port:
+              number: 80
+        path: /connect/
+        pathType: Prefix
+      - backend:
+          service:
+            name: fbapp-proxy
+            port:
+              number: 80
+        path: /.well-known/
+        pathType: Prefix
       - backend:
           service:
             name: fbapp-web

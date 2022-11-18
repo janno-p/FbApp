@@ -6,4 +6,5 @@ resources:
 # - mongo
 # - redis
 # - fbapp
+- fbapp-proxy
 - fbapp-web
