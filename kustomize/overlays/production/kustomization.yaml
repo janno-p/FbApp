@@ -4,9 +4,9 @@ bases:
 - ../../base
 namespace: fbapp
 patchesStrategicMerge: []
-# - mongo-statefulset.yaml
 # - redis-statefulset.yaml
 resources:
+- fbapp-api-configmap.yaml
 - fbapp-auth-configmap.yaml
 - fbapp-proxy-configmap.yaml
 - ingress.yaml
