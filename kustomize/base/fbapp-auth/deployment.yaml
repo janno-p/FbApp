@@ -20,3 +20,18 @@ spec:
         env:
         - name: ConnectionStrings__postgres
           value: Host=fbapp-auth-database-postgresql;Port=5432;Database=fbapp_auth;Username=user;Password=password
+        - name: Authorization__DefaultAdmin
+          valueFrom:
+            configMapKeyRef:
+              name: fbapp-auth-config
+              key: DefaultAdmin
+        - name: Google__Authentication__ClientId
+          valueFrom:
+            configMapKeyRef:
+              name: fbapp-auth-config
+              key: GoogleClientId
+        - name: Google__Authentication__ClientSecret
+          valueFrom:
+            configMapKeyRef:
+              name: fbapp-auth-config
+              key: GoogleClientSecret
