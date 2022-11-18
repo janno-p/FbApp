@@ -10,5 +10,6 @@ patchesStrategicMerge: []
 # - redis-statefulset.yaml
 resources:
 - fbapp-auth-configmap.yaml
+- fbapp-proxy-configmap.yaml
 - ingress.yaml
 - namespace.yaml

@@ -24,3 +24,8 @@ spec:
         env:
         - name: CONNECTIONSTRINGS__AUTHCLUSTER
           value: http://fbapp-auth
+        - name: Authentication__ValidIssuer
+          valueFrom:
+            configMapKeyRef:
+              name: fbapp-proxy-config
+              key: ValidIssuer

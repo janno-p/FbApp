@@ -65,7 +65,7 @@ let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBear
     // configuration.Bind("JwtBearer", options);
     options.Authority <- configuration.GetConnectionString("authCluster")
     options.TokenValidationParameters.ValidateAudience <- false
-    options.TokenValidationParameters.ValidIssuer <- "https://localhost:8090/"
+    options.TokenValidationParameters.ValidIssuer <- configuration["Authentication:ValidIssuer"]
     options.RequireHttpsMetadata <- false
     options.SaveToken <- true
     options.Events <-
