@@ -1,14 +1,13 @@
 module Page.Prediction exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
 import Api.Endpoint as Endpoint exposing (competitionInfo, defaultEndpointConfig)
-import Html exposing (Html, button, div, h1, h2, img, input, label, p, span, table, tbody, td, text, th, thead, tr)
+import Html exposing (Html, button, div, h1, h2, img, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (checked, class, disabled, for, id, placeholder, scope, src, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Json
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
-import OAuth
 import Session exposing (Session)
 
 
@@ -45,6 +44,7 @@ type PredictionStage
     | FinalsStage
     | TopScorersStage
     | Done
+    | FailedToSave String
 
 
 type alias CompetitionInfo =
@@ -204,10 +204,22 @@ view model =
 
                 Done ->
                     viewDone
+
+                FailedToSave reason ->
+                    viewFailure reason
     in
     { title = "Ennustamine"
     , content = div [ class "p-8" ] content
     }
+
+
+viewFailure : String -> List (Html Msg)
+viewFailure reason =
+    [ div []
+        [ p [] [ text "Viga salvestamisel! Ennustuse edastamine ei õnnestunud." ]
+        , pre [] [ text reason ]
+        ]
+    ]
 
 
 viewDone : List (Html Msg)
@@ -565,7 +577,7 @@ type Msg
     | ToggleScorer PlayerPrediction
     | SetPlayerNameFilter String
     | SavePrediction
-    | PredictionSaved (Result Http.Error ())
+    | PredictionSaved (Result ErrorDetailed ( Http.Metadata, String ))
     | TogglePositionFilter String
     | ToggleCountryFilter Int
     | CheckedExisting (Result Http.Error ())
@@ -648,6 +660,12 @@ update msg model =
         SavePrediction ->
             ( model, savePrediction model )
 
+        PredictionSaved (Err (BadStatus _ body)) ->
+            ( { model | stage = FailedToSave body }, Cmd.none )
+
+        PredictionSaved (Err _) ->
+            ( { model | stage = FailedToSave "Viga salvestamisel" }, Cmd.none )
+
         PredictionSaved _ ->
             ( { model | stage = Done }, Cmd.none )
 
@@ -675,6 +693,32 @@ checkExisting session =
         { defaultEndpointConfig | headers = Endpoint.useToken session }
 
 
+type ErrorDetailed
+    = BadUrl String
+    | Timeout
+    | NetworkError
+    | BadStatus Http.Metadata String
+
+
+convertResponseString : Http.Response String -> Result ErrorDetailed ( Http.Metadata, String )
+convertResponseString httpResponse =
+    case httpResponse of
+        Http.BadUrl_ url ->
+            Err (BadUrl url)
+
+        Http.Timeout_ ->
+            Err Timeout
+
+        Http.NetworkError_ ->
+            Err NetworkError
+
+        Http.BadStatus_ metadata body ->
+            Err (BadStatus metadata body)
+
+        Http.GoodStatus_ metadata body ->
+            Ok ( metadata, body )
+
+
 savePrediction : Model -> Cmd Msg
 savePrediction model =
     let
@@ -683,7 +727,7 @@ savePrediction model =
     in
     Endpoint.request
         Endpoint.savePrediction
-        (Http.expectWhatever PredictionSaved)
+        (Http.expectStringResponse PredictionSaved convertResponseString)
         { config
             | body = Http.jsonBody (predictionEncoder model)
             , method = "POST"
