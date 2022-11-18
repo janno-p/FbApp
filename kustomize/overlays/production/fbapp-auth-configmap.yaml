@@ -6,3 +6,4 @@ data:
   DefaultAdmin: ''
   GoogleClientId: ''
   GoogleClientSecret: ''
+  RedirectUri: ''

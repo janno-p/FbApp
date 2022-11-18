@@ -3,6 +3,7 @@ namespace FbApp.Auth
 
 open Microsoft.AspNetCore.Identity
 open Microsoft.EntityFrameworkCore
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open OpenIddict.Abstractions
@@ -36,7 +37,7 @@ type ApplicationDbContext(options: DbContextOptions<ApplicationDbContext>) =
     inherit IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
 
 
-type Worker(serviceProvider: IServiceProvider) =
+type Worker(serviceProvider: IServiceProvider, configuration: IConfiguration) =
     interface IHostedService with
         member _.StartAsync _ = task {
             use scope = serviceProvider.CreateScope()
@@ -46,35 +47,42 @@ type Worker(serviceProvider: IServiceProvider) =
 
             let manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>()
 
-            let! client = manager.FindByClientIdAsync("fbapp-ui-client")
-            match client with
+            let redirectUris = ResizeArray<string>()
+            configuration.Bind("Authentication:RedirectUris", redirectUris)
+
+            let descriptor =
+                OpenIddictApplicationDescriptor(
+                    ClientId = "fbapp-ui-client",
+                    ConsentType = ConsentTypes.Implicit,
+                    DisplayName = "FbApp UI Application",
+                    Type = ClientTypes.Public
+                )
+
+            redirectUris
+            |> Seq.iter (fun redirectUri ->
+                descriptor.PostLogoutRedirectUris.Add(Uri(redirectUri)) |> ignore
+                descriptor.RedirectUris.Add(Uri(redirectUri)) |> ignore
+            )
+
+            descriptor.Permissions.Add(Permissions.Endpoints.Authorization) |> ignore
+            descriptor.Permissions.Add(Permissions.Endpoints.Logout) |> ignore
+            descriptor.Permissions.Add(Permissions.Endpoints.Token) |> ignore
+            descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode) |> ignore
+            descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken) |> ignore
+            descriptor.Permissions.Add(Permissions.ResponseTypes.Code) |> ignore
+            descriptor.Permissions.Add(Permissions.Scopes.Email) |> ignore
+            descriptor.Permissions.Add(Permissions.Scopes.Profile) |> ignore
+            descriptor.Permissions.Add(Permissions.Scopes.Roles) |> ignore
+
+            descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange) |> ignore
+
+            match! manager.FindByClientIdAsync("fbapp-ui-client") with
             | null ->
-                let descriptor =
-                    OpenIddictApplicationDescriptor(
-                        ClientId = "fbapp-ui-client",
-                        ConsentType = ConsentTypes.Implicit,
-                        DisplayName = "FbApp UI Application",
-                        Type = ClientTypes.Public
-                    )
-
-                descriptor.PostLogoutRedirectUris.Add(Uri("https://localhost:8090/")) |> ignore
-                descriptor.RedirectUris.Add(Uri("https://localhost:8090/")) |> ignore
-
-                descriptor.Permissions.Add(Permissions.Endpoints.Authorization) |> ignore
-                descriptor.Permissions.Add(Permissions.Endpoints.Logout) |> ignore
-                descriptor.Permissions.Add(Permissions.Endpoints.Token) |> ignore
-                descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode) |> ignore
-                descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken) |> ignore
-                descriptor.Permissions.Add(Permissions.ResponseTypes.Code) |> ignore
-                descriptor.Permissions.Add(Permissions.Scopes.Email) |> ignore
-                descriptor.Permissions.Add(Permissions.Scopes.Profile) |> ignore
-                descriptor.Permissions.Add(Permissions.Scopes.Roles) |> ignore
-
-                descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange) |> ignore
-
                 let! _ = manager.CreateAsync(descriptor)
                 ()
-            | _ -> ()
+            | app ->
+                let! _ = manager.UpdateAsync(app, descriptor)
+                ()
 
             let roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>()
             let! adminRoleExists = roleManager.RoleExistsAsync("admin")

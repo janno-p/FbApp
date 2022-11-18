@@ -35,3 +35,8 @@ spec:
             configMapKeyRef:
               name: fbapp-auth-config
               key: GoogleClientSecret
+        - name: Authentication__RedirectUris__0
+          valueFrom:
+            configMapKeyRef:
+              name: fbapp-auth-config
+              key: RedirectUri
