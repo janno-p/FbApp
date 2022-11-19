@@ -218,6 +218,8 @@ viewFailure reason =
     [ div []
         [ p [] [ text "Viga salvestamisel! Ennustuse edastamine ei õnnestunud." ]
         , pre [] [ text reason ]
+        , div [ class "flex flex-row-reverse" ]
+            [ viewButton SavePrediction "Proovi uuesti salvestada" "mdi-replay" False ]
         ]
     ]
 

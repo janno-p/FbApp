@@ -162,14 +162,6 @@ let private getCurrentPrediction: Auth.AuthHttpHandler =
             return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
-let getCompetitionStatus db = task {
-    match! Competitions.tryGetActive db with
-    | Some competition ->
-        return if competition.Date < DateTimeOffset.Now then "competition-running" else "accept-predictions"
-    | None ->
-        return "no-active-competition"
-}
-
 let predictScope = router {
     post "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
     get "/fixtures" getFixtures

@@ -1,13 +1,16 @@
 module FbApp.Proxy.Program
 
 
+open System.Net.Mime
 open Giraffe
 open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.Mvc
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
 open Saturn
 open System
 open System.Collections.Generic
@@ -61,22 +64,35 @@ type DaprConfigFilter(configuration: IConfiguration) =
             ValueTask<RouteConfig>(originalRoute)
 
 
+type ProxyJwtBearerEvents () =
+    inherit JwtBearerEvents()
+    override _.Challenge(context) = task {
+        context.HandleResponse()
+
+        if context.AuthenticateFailure = null then () else
+
+        let logger = context.HttpContext.GetService<ILogger<ProxyJwtBearerEvents>>()
+        logger.LogWarning("Authentication failed: {Failure}", context.AuthenticateFailure)
+
+        context.Response.StatusCode <- StatusCodes.Status401Unauthorized
+
+        let details = ProblemDetails(
+            Status = context.Response.StatusCode,
+            Title = "Unauthorized",
+            Type = "https://tools.ietf.org/html/rfc7235#section-3.1"
+        )
+
+        do! context.Response.WriteAsJsonAsync(details, null, contentType = MediaTypeNames.Application.Json)
+    }
+
+
 let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBearerOptions) =
-    // configuration.Bind("JwtBearer", options);
     options.Authority <- configuration.GetConnectionString("authCluster")
     options.TokenValidationParameters.ValidateAudience <- false
     options.TokenValidationParameters.ValidIssuer <- configuration["Authentication:ValidIssuer"]
     options.RequireHttpsMetadata <- false
     options.SaveToken <- true
-    options.Events <-
-        JwtBearerEvents(
-            OnAuthenticationFailed = (fun context ->
-                context.NoResult()
-                context.Response.StatusCode <- StatusCodes.Status500InternalServerError
-                context.Response.ContentType <- "text/plain"
-                context.Response.WriteAsync(context.Exception.ToString())
-            )
-        )
+    options.Events <- ProxyJwtBearerEvents()
     options.Validate()
 
 

@@ -1,15 +1,15 @@
 port module Main exposing (generateRandomBytes, main, randomBytes)
 
 import Api exposing (AuthState)
-import Api.Endpoint as Endpoint exposing (competitionStatus)
+import Api.Endpoint as Endpoint
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html
 import Http
 import Json.Decode as Json
+import Json.Decode.Pipeline exposing (required)
 import OAuth exposing (ErrorCode(..))
 import OAuth.AuthorizationCode.PKCE as OAuth
-import OAuth.Refresh
 import Page
 import Page.Blank as Blank
 import Page.Changelog as Changelog
@@ -17,12 +17,11 @@ import Page.Home as Home
 import Page.LoggingOut as LoggingOut
 import Page.NotFound as NotFound
 import Page.Prediction as Prediction
-import Process
 import Route exposing (Route)
 import Session exposing (Session, navKey)
-import Task
+import Task exposing (Task)
+import Time exposing (Posix)
 import Url exposing (Protocol(..), Url)
-import User exposing (User)
 
 
 
@@ -32,8 +31,6 @@ import User exposing (User)
 type alias Configuration =
     { authorizationEndpoint : Url
     , tokenEndpoint : Url
-    , userInfoEndpoint : Url
-    , userInfoDecoder : Json.Decoder User
     , clientId : String
     , scope : List String
     }
@@ -45,14 +42,12 @@ type Error
     | ErrAuthorization OAuth.AuthorizationError
     | ErrAuthentication OAuth.AuthenticationError
     | ErrHttpGetAccessToken
-    | ErrHttpGetUserInfo
 
 
 type Flow
     = Idle
     | Authorized OAuth.AuthorizationCode OAuth.CodeVerifier
     | Authenticated OAuth.AuthenticationSuccess
-    | Done User
     | Errored Error
 
 
@@ -69,7 +64,7 @@ type State
 type alias Model =
     { state : State
     , session : Session
-    , competitionStatus : Maybe CompetitionStatus
+    , competition : Maybe Competition
     , configuration : Configuration
     }
 
@@ -80,10 +75,6 @@ initConfiguration baseUrl =
         { baseUrl | path = "/connect/authorize" }
     , tokenEndpoint =
         { baseUrl | path = "/connect/token" }
-    , userInfoEndpoint =
-        { baseUrl | path = "/connect/userinfo" }
-    , userInfoDecoder =
-        User.decoder
     , clientId =
         "fbapp-ui-client"
     , scope =
@@ -101,9 +92,9 @@ init maybeAuthState url navKey =
             Nav.replaceUrl navKey (Url.toString redirectUri)
 
         model =
-            { session = Session.fromUser navKey Nothing
+            { session = Session.init navKey
             , state = Authentication Idle redirectUri
-            , competitionStatus = Nothing
+            , competition = Nothing
             , configuration = initConfiguration { url | query = Nothing, fragment = Nothing, path = "" }
             }
     in
@@ -155,34 +146,6 @@ getAccessToken { clientId, tokenEndpoint } redirectUri code codeVerifier =
             }
 
 
-refreshAccessToken : Configuration -> OAuth.Token -> Cmd Msg
-refreshAccessToken { clientId, tokenEndpoint } refreshToken =
-    Http.request <|
-        OAuth.Refresh.makeTokenRequest GotAccessToken
-            { credentials =
-                Just
-                    { clientId = clientId
-                    , secret = ""
-                    }
-            , scope = []
-            , token = refreshToken
-            , url = tokenEndpoint
-            }
-
-
-getUserInfo : Configuration -> OAuth.AuthenticationSuccess -> Cmd Msg
-getUserInfo { userInfoDecoder, userInfoEndpoint } auth =
-    Http.request
-        { method = "GET"
-        , body = Http.emptyBody
-        , headers = OAuth.useToken auth.token []
-        , url = Url.toString userInfoEndpoint
-        , expect = Http.expectJson (GotUserInfo auth) userInfoDecoder
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
 gotRandomBytes : Model -> List Int -> Url -> ( Model, Cmd Msg )
 gotRandomBytes model bytes redirectUri =
     case Api.convertBytes bytes of
@@ -232,32 +195,18 @@ gotAccessToken model authenticationResponse redirectUri =
 
         Ok auth ->
             ( { model | state = Authentication (Authenticated auth) redirectUri }
-            , updateSession model.configuration auth
+            , getUserInfo auth
             )
 
 
-updateSession : Configuration -> OAuth.AuthenticationSuccess -> Cmd Msg
-updateSession configuration auth =
-    let
-        refreshTokens =
-            case auth.expiresIn of
-                Just seconds ->
-                    delay (seconds - 30) AccessTokenExpired
+getUserInfo : OAuth.AuthenticationSuccess -> Cmd Msg
+getUserInfo auth =
+    case ( auth.refreshToken, auth.expiresIn ) of
+        ( Just refreshToken, Just expiresIn ) ->
+            Task.perform (GetUserInfo auth.token refreshToken expiresIn) Time.now
 
-                Nothing ->
-                    Cmd.none
-    in
-    Cmd.batch
-        [ getUserInfo configuration auth
-        , refreshTokens
-        ]
-
-
-delay : Int -> Msg -> Cmd Msg
-delay time msg =
-    Process.sleep (toFloat time * 1000)
-        |> Task.andThen (always <| Task.succeed msg)
-        |> Task.perform identity
+        ( _, _ ) ->
+            Cmd.none
 
 
 
@@ -276,10 +225,13 @@ view model =
         user =
             Session.user model.session
 
+        competitionName =
+            model.competition |> Maybe.andThen (\x -> x.description)
+
         viewPage page toMsg config =
             let
                 { title, body } =
-                    Page.view user page config
+                    Page.view competitionName user page config
             in
             { title = title
             , body = List.map (Html.map toMsg) body
@@ -290,19 +242,19 @@ view model =
             Page.viewAuth
 
         Redirect ->
-            Page.view user Page.Other Blank.view
+            Page.view competitionName user Page.Other Blank.view
 
         NotFound ->
-            Page.view user Page.Other NotFound.view
+            Page.view competitionName user Page.Other NotFound.view
 
         Home home ->
             viewPage Page.Home GotHomeMsg (Home.view home)
 
         LoggingOut ->
-            Page.view user Page.Other LoggingOut.view
+            Page.view competitionName user Page.Other LoggingOut.view
 
         Changelog ->
-            Page.view user Page.Other Changelog.view
+            Page.view competitionName user Page.Other Changelog.view
 
         Prediction prediction ->
             viewPage Page.Prediction GotPredictionMsg (Prediction.view prediction)
@@ -316,13 +268,13 @@ type Msg
     = ChangedUrl Url
     | ClickedLink Browser.UrlRequest
     | GotHomeMsg Home.Msg
-    | GotSession Session
+    | GotSessionMsg Session.Msg
     | GotAccessToken (Result Http.Error OAuth.AuthenticationSuccess)
-    | GotUserInfo OAuth.AuthenticationSuccess (Result Http.Error User)
     | GotRandomBytes (List Int)
-    | AccessTokenExpired
-    | GotCompetitionStatus (Result Http.Error CompetitionStatus)
+    | GotCompetitionStatus (Result Http.Error Competition)
     | GotPredictionMsg Prediction.Msg
+    | GetUserInfo OAuth.Token OAuth.Token Int Posix
+    | SessionLoaded Session.Msg
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -369,7 +321,8 @@ update msg model =
         ( ChangedUrl _, Authentication (Errored (ErrAuthorization { error })) _ ) ->
             case error of
                 Custom "login_required" ->
-                    changeRouteTo (Just Route.Home) { model | state = Redirect }
+                    --changeRouteTo (Just Route.Home) { model | state = Redirect }
+                    ( model, getCompetitionStatus )
 
                 _ ->
                     ( model, Cmd.none )
@@ -387,14 +340,6 @@ update msg model =
         ( GotHomeMsg _, _ ) ->
             ( model, Cmd.none )
 
-        ( GotSession newSession, Redirect ) ->
-            ( { model | state = Redirect, session = newSession }
-            , Route.replaceUrl (Session.navKey newSession) Route.Home
-            )
-
-        ( GotSession _, _ ) ->
-            ( model, Cmd.none )
-
         ( GotRandomBytes bytes, Authentication Idle redirectUri ) ->
             gotRandomBytes model bytes redirectUri
 
@@ -406,42 +351,12 @@ update msg model =
 
         ( GotAccessToken auth, _ ) ->
             ( model
-            , case auth of
-                Ok val ->
-                    updateSession model.configuration val
-
-                Err _ ->
-                    Cmd.none
+            , auth |> Result.map getUserInfo |> Result.withDefault Cmd.none
             )
 
-        ( GotUserInfo auth (Ok user), Authentication (Authenticated _) _ ) ->
-            let
-                key =
-                    Session.navKey model.session
-            in
-            ( { model | state = Redirect, session = Session.fromUser key (Just ( user, auth )) }
-            , getCompetitionStatus
-            )
-
-        ( GotUserInfo auth (Ok user), _ ) ->
-            ( { model | session = Session.fromUser (Session.navKey model.session) (Just ( user, auth )) }
-            , Cmd.none
-            )
-
-        ( GotUserInfo _ _, _ ) ->
-            ( model, Cmd.none )
-
-        ( AccessTokenExpired, _ ) ->
-            case Session.refreshToken model.session of
-                Just token ->
-                    ( model, refreshAccessToken model.configuration token )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        ( GotCompetitionStatus (Ok competitionStatus), _ ) ->
-            ( { model | competitionStatus = Just competitionStatus }
-            , routeToDefault competitionStatus model.session
+        ( GotCompetitionStatus (Ok competition), _ ) ->
+            ( { model | state = Redirect, competition = Just competition }
+            , routeToDefault competition model.session
             )
 
         ( GotCompetitionStatus _, _ ) ->
@@ -454,6 +369,33 @@ update msg model =
         ( GotPredictionMsg _, _ ) ->
             ( model, Cmd.none )
 
+        ( GotSessionMsg subMsg, _ ) ->
+            let
+                ( session, subCmd ) =
+                    Session.update ( model.configuration.clientId, model.configuration.tokenEndpoint ) subMsg model.session
+            in
+            ( { model | session = session }, Cmd.map GotSessionMsg subCmd )
+
+        ( GetUserInfo accessToken refreshToken expiresIn updatedAt, _ ) ->
+            let
+                subMsg =
+                    Session.createTicket accessToken refreshToken (Time.millisToPosix (Time.posixToMillis updatedAt + (1000 * expiresIn)))
+                        |> Session.getUserInfo
+            in
+            ( model, Cmd.map SessionLoaded subMsg )
+
+        ( SessionLoaded subMsg, _ ) ->
+            let
+                ( session, subCmd ) =
+                    Session.update ( model.configuration.clientId, model.configuration.tokenEndpoint ) subMsg model.session
+            in
+            ( { model | session = session }
+            , Cmd.batch
+                [ Cmd.map GotSessionMsg subCmd
+                , getCompetitionStatus
+                ]
+            )
+
 
 updateWith : (subModel -> State) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
 updateWith toState toMsg model ( subModel, subCmd ) =
@@ -462,16 +404,13 @@ updateWith toState toMsg model ( subModel, subCmd ) =
     )
 
 
-routeToDefault : CompetitionStatus -> Session -> Cmd Msg
-routeToDefault competitionStatus session =
-    case competitionStatus of
-        InProgress ->
-            Route.replaceUrl (Session.navKey session) Route.Home
-
-        AcceptPredictions ->
+routeToDefault : Competition -> Session -> Cmd Msg
+routeToDefault competition session =
+    case ( Session.user session, competition.status ) of
+        ( Just _, AcceptPredictions ) ->
             Route.replaceUrl (Session.navKey session) Route.Prediction
 
-        NotActive ->
+        ( _, _ ) ->
             Route.replaceUrl (Session.navKey session) Route.Home
 
 
@@ -481,27 +420,34 @@ routeToDefault competitionStatus session =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.state of
-        Authentication _ _ ->
-            randomBytes GotRandomBytes
+    let
+        sub =
+            case model.state of
+                Authentication _ _ ->
+                    randomBytes GotRandomBytes
 
-        NotFound ->
-            Sub.none
+                NotFound ->
+                    Sub.none
 
-        Redirect ->
-            Session.changes GotSession (Session.navKey model.session)
+                Redirect ->
+                    Sub.none
 
-        Home home ->
-            Sub.map GotHomeMsg (Home.subscriptions home)
+                Home home ->
+                    Sub.map GotHomeMsg (Home.subscriptions home)
 
-        LoggingOut ->
-            Sub.none
+                LoggingOut ->
+                    Sub.none
 
-        Changelog ->
-            Sub.none
+                Changelog ->
+                    Sub.none
 
-        Prediction prediction ->
-            Sub.map GotPredictionMsg (Prediction.subscriptions prediction)
+                Prediction prediction ->
+                    Sub.map GotPredictionMsg (Prediction.subscriptions prediction)
+    in
+    Sub.batch
+        [ sub
+        , Sub.map GotSessionMsg (Session.subscriptions model.session)
+        ]
 
 
 
@@ -520,26 +466,30 @@ main =
         }
 
 
-defaultHttpsUrl : Url
-defaultHttpsUrl =
-    { protocol = Https
-    , host = ""
-    , path = ""
-    , port_ = Nothing
-    , query = Nothing
-    , fragment = Nothing
-    }
-
-
 getCompetitionStatus : Cmd Msg
 getCompetitionStatus =
-    Endpoint.request Endpoint.competitionStatus (Http.expectJson GotCompetitionStatus competitionStatusDecoder) Endpoint.defaultEndpointConfig
+    Endpoint.request Endpoint.competitionStatus (Http.expectJson GotCompetitionStatus competitionDecoder) Endpoint.defaultEndpointConfig
 
 
 type CompetitionStatus
     = AcceptPredictions
     | InProgress
     | NotActive
+
+
+type alias Competition =
+    { startDate : Maybe Posix
+    , description : Maybe String
+    , status : CompetitionStatus
+    }
+
+
+competitionDecoder : Json.Decoder Competition
+competitionDecoder =
+    Json.succeed Competition
+        |> required "startDate" (Json.nullable Json.int |> Json.map (Maybe.map Time.millisToPosix))
+        |> required "description" (Json.nullable Json.string)
+        |> required "status" competitionStatusDecoder
 
 
 competitionStatusDecoder : Json.Decoder CompetitionStatus

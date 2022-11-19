@@ -51,8 +51,8 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+subscriptions _ =
+    Sub.none
 
 
 

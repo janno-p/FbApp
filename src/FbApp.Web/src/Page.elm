@@ -23,11 +23,11 @@ type Page
 -- VIEW
 
 
-view : Maybe User -> Page -> { title : String, content : Html msg } -> Document msg
-view maybeUser page { title, content } =
+view : Maybe String -> Maybe User -> Page -> { title : String, content : Html msg } -> Document msg
+view competitionName maybeUser page { title, content } =
     { title = title ++ " - FbApp"
     , body =
-        [ viewSiteToolbar page maybeUser
+        [ viewSiteToolbar page competitionName maybeUser
         , content
         , viewFooter
         ]
@@ -47,8 +47,8 @@ viewFooter =
     footer [] []
 
 
-viewSiteToolbar : Page -> Maybe User -> Html msg
-viewSiteToolbar _ maybeUser =
+viewSiteToolbar : Page -> Maybe String -> Maybe User -> Html msg
+viewSiteToolbar _ competitionName maybeUser =
     let
         toolbarButtons =
             [ a
@@ -59,7 +59,7 @@ viewSiteToolbar _ maybeUser =
                     [ span [ class "mdi mdi-soccer" ] []
                     , div [ class "text-left" ]
                         [ h5 [ class "py-0 my-0" ] [ text "Ennustusmäng" ]
-                        , div [] [ text "competitionName" ]
+                        , div [] [ text (competitionName |> Maybe.withDefault "") ]
                         ]
                     ]
                 ]
