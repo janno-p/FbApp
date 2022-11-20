@@ -454,7 +454,7 @@ subscriptions model =
 -- MAIN
 
 
-main : Program (Maybe ( List Int, String )) Model Msg
+main : Program ( Maybe (List Int), String ) Model Msg
 main =
     Api.application
         { init = init

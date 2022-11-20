@@ -32,14 +32,20 @@ application :
     , update : msg -> model -> ( model, Cmd msg )
     , view : model -> Browser.Document msg
     }
-    -> Program (Maybe ( List Int, String )) model msg
+    -> Program ( Maybe (List Int), String ) model msg
 application config =
-    --let
-    --    init flags url navKey =
-    --        config.init flags url navKey
-    --in
+    let
+        init ( maybeBytes, path ) url navKey =
+            config.init
+                (maybeBytes
+                    |> Maybe.map (\x -> ( x, path ))
+                    |> Maybe.andThen convertBytes
+                )
+                url
+                navKey
+    in
     Browser.application
-        { init = Maybe.andThen convertBytes >> config.init
+        { init = init
         , onUrlChange = config.onUrlChange
         , onUrlRequest = config.onUrlRequest
         , subscriptions = config.subscriptions
