@@ -22,16 +22,16 @@ spec:
         - --insecure
         - --run-projections=All
         - --enable-atom-pub-over-http
-        - --mem-db=true
         ports:
         - containerPort: 2113
         volumeMounts:
         - mountPath: /var/lib/eventstore
-          name: fbapp-eventstore-volume-data
+          name: pvc
+          subPath: data
         - mountPath: /var/log/eventstore
-          name: fbapp-eventstore-volume-logs
+          name: pvc
+          subPath: logs
       volumes:
-      - name: fbapp-eventstore-volume-data
-        emptyDir: {}
-      - name: fbapp-eventstore-volume-logs
-        emptyDir: {}
+      - name: pvc
+        persistentVolumeClaim:
+          claimName: fbapp-eventstore-pvc

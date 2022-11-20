@@ -49,43 +49,17 @@ viewFooter =
 
 viewSiteToolbar : Page -> Maybe String -> Maybe User -> Html msg
 viewSiteToolbar _ competitionName maybeUser =
-    let
-        toolbarButtons =
-            [ a
-                [ Route.href Route.Home
-                , class "text-white"
-                ]
-                [ div [ class "flex flex-row flex-nowrap" ]
-                    [ span [ class "mdi mdi-soccer" ] []
-                    , div [ class "text-left" ]
-                        [ h5 [ class "py-0 my-0" ] [ text "Ennustusmäng" ]
-                        , div [] [ text (competitionName |> Maybe.withDefault "") ]
-                        ]
-                    ]
-                ]
-
-            {-
-               , a
-                   [ Route.href Route.Changelog
-                   , class "text-white"
-                   ]
-                   [ span [ class "mdi mdi-playlist-check" ] []
-                   , text "Muudatuste logi"
-                   ]
-            -}
+    nav [ class "glossy bg-sky-600 flex flex-row flex-nowrap items-center text-white px-4 py-1.5 gap-2" ]
+        [ a [ Route.href Route.Home, class "text-white grow-0" ]
+            [ span [ class "mdi mdi-soccer text-3xl" ] [] ]
+        , a [ Route.href Route.Home, class "flex flex-col grow text-white gap-2" ]
+            [ span [ class "grow-0 text-xl leading-4" ]
+                [ text "Ennustusmäng" ]
+            , div [ class "grow uppercase text-sm leading-4" ]
+                [ text (competitionName |> Maybe.withDefault "") ]
             ]
-    in
-    nav [ class "glossy bg-sky-600 flex flex-row flex-nowrap items-center text-white px-4 py-1.5 gap-4" ]
-        ([ a [ Route.href Route.Home, class "text-white grow-0" ]
-            [ div [ class "flex flex-row flex-nowrap gap-2 items-center" ]
-                [ span [ class "mdi mdi-soccer text-3xl" ] []
-                , span [ class "text-xl" ] [ text "Ennustusmäng" ]
-                ]
-            ]
-         , div [ class "grow text-right uppercase" ] [ text (competitionName |> Maybe.withDefault "") ]
-         ]
-            ++ viewUser maybeUser
-        )
+        , div [ class "grow-0 py-0.5" ] (viewUser maybeUser)
+        ]
 
 
 viewUser : Maybe User -> List (Html msg)
