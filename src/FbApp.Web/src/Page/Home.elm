@@ -118,10 +118,12 @@ viewChallenge session =
             ]
 
         Nothing ->
-            [ div [ class "flex flex-row justify-center pt-12" ]
+            [ div [ class "text-center pt-12" ]
                 [ span [ class "mr-[0.5ch]" ] [ text "Ennustuse tegemiseks logi sisse kasutades oma" ]
-                , span [ class "mdi mdi-google" ] []
-                , text "oogle kontot"
+                , div [ class "inline-flex flex-nowrap" ]
+                    [ span [ class "mdi mdi-google" ] []
+                    , text "oogle kontot"
+                    ]
                 ]
             , div [ class "flex flex-row justify-center pt-6" ]
                 [ button
