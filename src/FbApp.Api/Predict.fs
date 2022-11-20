@@ -165,15 +165,8 @@ let private getCurrentPrediction: Auth.AuthHttpHandler =
             return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
-let logx : HttpHandler =
-    fun next ctx -> task {
-        let! dto = ctx.BindJsonAsync<Predictions.PredictionRegistrationInput>()
-        let log = ctx.GetLogger<Predictions.PredictionRegistrationInput>()
-        log.LogWarning("{Dto}", dto)
-        return! next ctx
-        }
 
 let predictScope = router {
-    post "/" (logx >=> Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
+    post "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
     get "/fixtures" getFixtures
 }
