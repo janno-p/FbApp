@@ -13,7 +13,7 @@ view : { title : String, content : Html msg }
 view =
     { title = "Page Not Found"
     , content =
-        -- class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center"
+        -- class="flex text-center text-white fullscreen bg-blue q-pa-md flex-center"
         div [ class "w-full bg-blue-400 text-white text-center p-4 flex items-center justify-center" ]
             [ div []
                 [ -- style="font-size: 30vh"

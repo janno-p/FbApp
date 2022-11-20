@@ -3,7 +3,7 @@ module Page exposing (Page(..), view, viewAuth)
 import Avatar
 import Browser exposing (Document)
 import Html exposing (Html, a, div, footer, h5, img, nav, span, text)
-import Html.Attributes exposing (alt, class)
+import Html.Attributes exposing (alt, class, title)
 import Route
 import User exposing (User)
 import Username
@@ -63,17 +63,29 @@ viewSiteToolbar _ competitionName maybeUser =
                         ]
                     ]
                 ]
-            , a
-                [ Route.href Route.Changelog
-                , class "text-white"
-                ]
-                [ span [ class "mdi mdi-playlist-check" ] []
-                , text "Muudatuste logi"
-                ]
+
+            {-
+               , a
+                   [ Route.href Route.Changelog
+                   , class "text-white"
+                   ]
+                   [ span [ class "mdi mdi-playlist-check" ] []
+                   , text "Muudatuste logi"
+                   ]
+            -}
             ]
     in
-    nav []
-        [ div [ class "glossy bg-primary flex flex-row flex-nowrap text-white" ] (toolbarButtons ++ viewUser maybeUser) ]
+    nav [ class "glossy bg-sky-600 flex flex-row flex-nowrap items-center text-white px-4 py-1.5 gap-4" ]
+        ([ a [ Route.href Route.Home, class "text-white grow-0" ]
+            [ div [ class "flex flex-row flex-nowrap gap-2 items-center" ]
+                [ span [ class "mdi mdi-soccer text-3xl" ] []
+                , span [ class "text-xl" ] [ text "Ennustusmäng" ]
+                ]
+            ]
+         , div [ class "grow text-right uppercase" ] [ text (competitionName |> Maybe.withDefault "") ]
+         ]
+            ++ viewUser maybeUser
+        )
 
 
 viewUser : Maybe User -> List (Html msg)
@@ -115,11 +127,6 @@ viewUser maybeUser =
             userInfo ++ controlPanel ++ logout
 
         Nothing ->
-            [ a
-                [ Route.href Route.Login
-                , class "text-white"
-                ]
-                [ span [ class "mdi mdi-google" ] []
-                , text "Logi sisse Google kontoga"
-                ]
+            [ a [ Route.href Route.Login, class "text-white", title "Logi sisse Google kontoga" ]
+                [ div [ class "border border-white rounded-full w-8 h-8 flex items-center justify-center" ] [ span [ class "mdi mdi-google" ] [] ] ]
             ]

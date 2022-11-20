@@ -582,7 +582,7 @@ type Msg
     | PredictionSaved (Result ErrorDetailed ( Http.Metadata, String ))
     | TogglePositionFilter String
     | ToggleCountryFilter Int
-    | CheckedExisting (Result Http.Error ())
+    | CheckedExisting (Result Http.Error (Maybe String))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -591,10 +591,10 @@ update msg model =
         SessionUpdated session ->
             ( { model | session = session }, Cmd.none )
 
-        CheckedExisting (Ok _) ->
+        CheckedExisting (Ok (Just _)) ->
             ( { model | stage = Done }, Cmd.none )
 
-        CheckedExisting (Err _) ->
+        CheckedExisting _ ->
             ( model, getCompetitionInfo )
 
         SetGroupStage ->
@@ -690,8 +690,8 @@ toggleListItem item items =
 checkExisting : Session -> Cmd Msg
 checkExisting session =
     Endpoint.request
-        Endpoint.predictions
-        (Http.expectWhatever CheckedExisting)
+        Endpoint.prediction
+        (Http.expectJson CheckedExisting (Json.nullable Json.string))
         { defaultEndpointConfig | headers = Endpoint.useToken session }
 
 

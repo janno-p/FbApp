@@ -183,8 +183,20 @@ let exchangeToken: HttpHandler =
 
 let googleLogin: HttpHandler =
     fun _ ctx -> task {
+        let returnUrl =
+            match ctx.Request.Query.TryGetValue("returnUrl") with
+            | true, value -> Some (value.ToString())
+            | _ -> None
         let svc = ctx |> Ioc.create
-        let redirectUrl = $"%s{ctx.Request.Scheme}://%s{ctx.Request.Host.Value}/connect/google/complete"
+        let redirectUrl =
+            let uri =
+                UriBuilder(ctx.Request.Scheme, ctx.Request.Host.Host, Path = "/connect/google/complete")
+            if ctx.Request.Host.Port.HasValue then
+                uri.Port <- ctx.Request.Host.Port.Value
+            returnUrl
+                |> Option.iter (fun ret -> uri.Query <- QueryString.Empty.Add("returnUrl", ret).ToUriComponent())
+            uri.Uri.AbsoluteUri
+        ctx.GetService<ILogger<HttpHandler>>().LogWarning("{Scheme} => {Host} => {X}", ctx.Request.Scheme, ctx.Request.Host, redirectUrl)
         let properties = svc.SignInManager().ConfigureExternalAuthenticationProperties(GoogleDefaults.AuthenticationScheme, redirectUrl)
         do! ctx.ChallengeAsync(GoogleDefaults.AuthenticationScheme, properties)
         return Some ctx
@@ -244,6 +256,11 @@ let googleResponse: HttpHandler =
     fun next ctx -> task {
         let svc = ctx |> Ioc.create
 
+        let returnUrl =
+            match ctx.Request.Query.TryGetValue("returnUrl") with
+            | true, value -> value.ToString()
+            | _ -> "/"
+
         match! svc.SignInManager().GetExternalLoginInfoAsync() with
         | null ->
             return! googleLogin next ctx
@@ -268,7 +285,7 @@ let googleResponse: HttpHandler =
                         let! _ = svc.SignInManager().SignInAsync(user, false)
                         ()
 
-            return! redirectTo false "/" next ctx
+            return! redirectTo false returnUrl next ctx
     }
 
 

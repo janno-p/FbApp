@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, competitionInfo, competitionStatus, defaultEndpointConfig, predictions, request, savePrediction, useToken)
+module Api.Endpoint exposing (Endpoint, competitionInfo, competitionStatus, defaultEndpointConfig, prediction, request, savePrediction, useToken)
 
 import Http
 import OAuth
@@ -75,9 +75,9 @@ savePrediction =
     url [ "predict" ] []
 
 
-predictions : Endpoint
-predictions =
-    url [ "predict", "current" ] []
+prediction : Endpoint
+prediction =
+    url [ "prediction" ] []
 
 
 useToken : Session -> List Http.Header

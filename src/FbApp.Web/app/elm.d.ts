@@ -2,17 +2,17 @@
     interface IElmMain {
         ports: {
             randomBytes: {
-                send(bytes: number[]): void
+                send(bytes: [number[], string]): void
             },
             generateRandomBytes: {
-                subscribe(callback: (numberOfBytes: number) => void): void
+                subscribe(callback: ([numberOfBytes, path]: [number, string]) => void): void
             }
         }
     }
 
     export const Elm: {
         Main: {
-            init(args: { node: Element, flags: number[] | undefined }): IElmMain
+            init(args: { node: Element, flags: [number[] | null, string] }): IElmMain
         }
     }
 }

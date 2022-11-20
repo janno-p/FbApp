@@ -8,15 +8,23 @@ function rememberedBytes() {
     return bytes ? bytes.split(',').map(x => parseInt(x, 10)) : null
 }
 
+function rememberedPath() {
+    const path = localStorage.getItem('path') ?? '/'
+    return path
+}
+
 const app = Elm.Main.init({
     node: document.getElementById('app'),
-    flags: rememberedBytes()
+    flags: [rememberedBytes(), rememberedPath()]
 })
 
-app.ports.generateRandomBytes.subscribe(numberOfBytes => {
+app.ports.generateRandomBytes.subscribe(([numberOfBytes, path]) => {
+    console.log('numberOfBytes='+numberOfBytes)
+    console.log('path='+path)
     const buffer = new Uint8Array(numberOfBytes)
     crypto.getRandomValues(buffer)
     const bytes = Array.from(buffer)
     localStorage.setItem('bytes', bytes.join(','))
-    app.ports.randomBytes.send(bytes)
+    localStorage.setItem('path', path)
+    app.ports.randomBytes.send([bytes, path])
 })

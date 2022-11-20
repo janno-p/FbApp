@@ -14,6 +14,7 @@ import Url exposing (Url)
 type alias AuthState =
     { state : String
     , codeVerifier : OAuth.CodeVerifier
+    , path : String
     }
 
 
@@ -31,7 +32,7 @@ application :
     , update : msg -> model -> ( model, Cmd msg )
     , view : model -> Browser.Document msg
     }
-    -> Program (Maybe (List Int)) model msg
+    -> Program (Maybe ( List Int, String )) model msg
 application config =
     --let
     --    init flags url navKey =
@@ -71,8 +72,8 @@ base64 =
     Base64.bytes >> Base64.encode
 
 
-convertBytes : List Int -> Maybe AuthState
-convertBytes bytes =
+convertBytes : ( List Int, String ) -> Maybe AuthState
+convertBytes ( bytes, path ) =
     if List.length bytes < (stateSize + codeVerifierSize) then
         Nothing
 
@@ -90,4 +91,4 @@ convertBytes bytes =
                     |> toBytes
                     |> OAuth.codeVerifierFromBytes
         in
-        Maybe.map (\codeVerifier -> { state = state, codeVerifier = codeVerifier }) maybeCodeVerifier
+        Maybe.map (\codeVerifier -> { state = state, codeVerifier = codeVerifier, path = path }) maybeCodeVerifier

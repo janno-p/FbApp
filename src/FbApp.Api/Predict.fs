@@ -165,5 +165,4 @@ let private getCurrentPrediction: Auth.AuthHttpHandler =
 let predictScope = router {
     post "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
     get "/fixtures" getFixtures
-    get "/current" (Auth.mustBeLoggedIn >=> (Auth.withUser getCurrentPrediction))
 }

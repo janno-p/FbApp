@@ -35,8 +35,10 @@
     <Compile Include="Predictions.fs" />
     <Compile Include="IntegrationEvents.fs" />
     <Compile Include="Competition.Queries.fs" />
+    <Compile Include="Prediction.Queries.fs" />
     <Compile Include="Competition.Dto.fs" />
     <Compile Include="Competition.Api.fs" />
+    <Compile Include="Prediction.Api.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

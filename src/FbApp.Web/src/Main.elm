@@ -1,13 +1,12 @@
 port module Main exposing (generateRandomBytes, main, randomBytes)
 
 import Api exposing (AuthState)
-import Api.Endpoint as Endpoint
 import Browser exposing (Document)
 import Browser.Navigation as Nav
+import Competition exposing (Competition)
 import Html
 import Http
 import Json.Decode as Json
-import Json.Decode.Pipeline exposing (required)
 import OAuth exposing (ErrorCode(..))
 import OAuth.AuthorizationCode.PKCE as OAuth
 import Page
@@ -19,9 +18,10 @@ import Page.NotFound as NotFound
 import Page.Prediction as Prediction
 import Route exposing (Route)
 import Session exposing (Session, navKey)
-import Task exposing (Task)
+import Task
 import Time exposing (Posix)
 import Url exposing (Protocol(..), Url)
+import Url.Builder as Url
 
 
 
@@ -101,7 +101,7 @@ init maybeAuthState url navKey =
     case OAuth.parseCode url of
         OAuth.Empty ->
             ( model
-            , generateRandomBytes (Api.stateSize + Api.codeVerifierSize)
+            , generateRandomBytes ( Api.stateSize + Api.codeVerifierSize, url.path )
             )
 
         OAuth.Success { code, state } ->
@@ -121,7 +121,7 @@ init maybeAuthState url navKey =
                         ( { model | state = Authentication (Authorized code authState.codeVerifier) redirectUri }
                         , Cmd.batch
                             [ getAccessToken model.configuration redirectUri code authState.codeVerifier
-                            , clearUrl
+                            , Nav.replaceUrl navKey authState.path
                             ]
                         )
 
@@ -146,7 +146,7 @@ getAccessToken { clientId, tokenEndpoint } redirectUri code codeVerifier =
             }
 
 
-gotRandomBytes : Model -> List Int -> Url -> ( Model, Cmd Msg )
+gotRandomBytes : Model -> ( List Int, String ) -> Url -> ( Model, Cmd Msg )
 gotRandomBytes model bytes redirectUri =
     case Api.convertBytes bytes of
         Nothing ->
@@ -213,10 +213,10 @@ getUserInfo auth =
 -- VIEW
 
 
-port generateRandomBytes : Int -> Cmd msg
+port generateRandomBytes : ( Int, String ) -> Cmd msg
 
 
-port randomBytes : (List Int -> msg) -> Sub msg
+port randomBytes : (( List Int, String ) -> msg) -> Sub msg
 
 
 view : Model -> Document Msg
@@ -270,8 +270,8 @@ type Msg
     | GotHomeMsg Home.Msg
     | GotSessionMsg Session.Msg
     | GotAccessToken (Result Http.Error OAuth.AuthenticationSuccess)
-    | GotRandomBytes (List Int)
-    | GotCompetitionStatus (Result Http.Error Competition)
+    | GotRandomBytes ( List Int, String )
+    | GotCompetition (Result Http.Error Competition)
     | GotPredictionMsg Prediction.Msg
     | GetUserInfo OAuth.Token OAuth.Token Int Posix
     | SessionLoaded Session.Msg
@@ -286,11 +286,11 @@ changeRouteTo maybeRoute model =
             )
 
         Just Route.Home ->
-            Home.init model.session
+            Home.init model.session (model.competition |> Maybe.withDefault Competition.default)
                 |> updateWith Home GotHomeMsg model
 
         Just Route.Login ->
-            ( model, Nav.load "/connect/google" )
+            ( model, Nav.load (Url.absolute [ "connect", "google" ] []) )
 
         Just Route.Logout ->
             ( { model | state = LoggingOut }, Nav.load "/connect/logout" )
@@ -322,7 +322,7 @@ update msg model =
             case error of
                 Custom "login_required" ->
                     --changeRouteTo (Just Route.Home) { model | state = Redirect }
-                    ( model, getCompetitionStatus )
+                    ( model, Competition.request GotCompetition )
 
                 _ ->
                     ( model, Cmd.none )
@@ -354,12 +354,12 @@ update msg model =
             , auth |> Result.map getUserInfo |> Result.withDefault Cmd.none
             )
 
-        ( GotCompetitionStatus (Ok competition), _ ) ->
+        ( GotCompetition (Ok competition), _ ) ->
             ( { model | state = Redirect, competition = Just competition }
             , routeToDefault competition model.session
             )
 
-        ( GotCompetitionStatus _, _ ) ->
+        ( GotCompetition _, _ ) ->
             ( model, Route.replaceUrl (Session.navKey model.session) Route.Home )
 
         ( GotPredictionMsg subMsg, Prediction prediction ) ->
@@ -392,7 +392,7 @@ update msg model =
             ( { model | session = session }
             , Cmd.batch
                 [ Cmd.map GotSessionMsg subCmd
-                , getCompetitionStatus
+                , Competition.request GotCompetition
                 ]
             )
 
@@ -407,7 +407,7 @@ updateWith toState toMsg model ( subModel, subCmd ) =
 routeToDefault : Competition -> Session -> Cmd Msg
 routeToDefault competition session =
     case ( Session.user session, competition.status ) of
-        ( Just _, AcceptPredictions ) ->
+        ( Just _, Competition.AcceptPredictions ) ->
             Route.replaceUrl (Session.navKey session) Route.Prediction
 
         ( _, _ ) ->
@@ -454,7 +454,7 @@ subscriptions model =
 -- MAIN
 
 
-main : Program (Maybe (List Int)) Model Msg
+main : Program (Maybe ( List Int, String )) Model Msg
 main =
     Api.application
         { init = init
@@ -464,46 +464,3 @@ main =
         , update = update
         , view = view
         }
-
-
-getCompetitionStatus : Cmd Msg
-getCompetitionStatus =
-    Endpoint.request Endpoint.competitionStatus (Http.expectJson GotCompetitionStatus competitionDecoder) Endpoint.defaultEndpointConfig
-
-
-type CompetitionStatus
-    = AcceptPredictions
-    | InProgress
-    | NotActive
-
-
-type alias Competition =
-    { startDate : Maybe Posix
-    , description : Maybe String
-    , status : CompetitionStatus
-    }
-
-
-competitionDecoder : Json.Decoder Competition
-competitionDecoder =
-    Json.succeed Competition
-        |> required "startDate" (Json.nullable Json.int |> Json.map (Maybe.map Time.millisToPosix))
-        |> required "description" (Json.nullable Json.string)
-        |> required "status" competitionStatusDecoder
-
-
-competitionStatusDecoder : Json.Decoder CompetitionStatus
-competitionStatusDecoder =
-    Json.string
-        |> Json.map
-            (\val ->
-                case val of
-                    "accept-predictions" ->
-                        AcceptPredictions
-
-                    "competition-running" ->
-                        InProgress
-
-                    _ ->
-                        NotActive
-            )
