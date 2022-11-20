@@ -4,7 +4,8 @@ import Browser.Navigation as Nav
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Url exposing (Url)
-import Url.Parser as Parser exposing (Parser, oneOf, s)
+import Url.Builder exposing (absolute)
+import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
 
 
 
@@ -17,6 +18,8 @@ type Route
     | Logout
     | Changelog
     | Prediction
+    | Fixture (Maybe String)
+    | Leaderboard
 
 
 
@@ -31,6 +34,9 @@ parser =
         , Parser.map Logout (s "logout")
         , Parser.map Changelog (s "changelog")
         , Parser.map Prediction (s "prediction")
+        , Parser.map (Fixture Nothing) (s "fixture")
+        , Parser.map (Just >> Fixture) (s "fixture" </> string)
+        , Parser.map Leaderboard (s "leaderboard")
         ]
 
 
@@ -59,7 +65,7 @@ replaceUrl key route =
 
 toString : Route -> String
 toString route =
-    "/" ++ String.join "/" (toPieces route)
+    absolute (toPieces route) []
 
 
 toPieces : Route -> List String
@@ -79,3 +85,12 @@ toPieces page =
 
         Prediction ->
             [ "prediction" ]
+
+        Fixture (Just fixtureId) ->
+            [ "fixture", fixtureId ]
+
+        Fixture Nothing ->
+            [ "fixture" ]
+
+        Leaderboard ->
+            [ "leaderboard" ]

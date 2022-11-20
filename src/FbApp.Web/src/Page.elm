@@ -1,8 +1,8 @@
-module Page exposing (Page(..), view, viewAuth)
+module Page exposing (Page(..), PageTab(..), view, viewAuth, viewResultsTabs)
 
 import Avatar
 import Browser exposing (Document)
-import Html exposing (Html, a, div, footer, h5, img, nav, span, text)
+import Html exposing (Html, a, div, footer, img, li, nav, span, text, ul)
 import Html.Attributes exposing (alt, class, title)
 import Route
 import User exposing (User)
@@ -17,6 +17,8 @@ type Page
     = Other
     | Home
     | Prediction
+    | Fixture
+    | Leaderboard
 
 
 
@@ -104,3 +106,38 @@ viewUser maybeUser =
             [ a [ Route.href Route.Login, class "text-white", title "Logi sisse Google kontoga" ]
                 [ div [ class "border border-white rounded-full w-8 h-8 flex items-center justify-center" ] [ span [ class "mdi mdi-google" ] [] ] ]
             ]
+
+
+type PageTab
+    = FixtureTab
+    | LeaderboardTab
+
+
+viewResultsTabs : PageTab -> Html msg
+viewResultsTabs activeTab =
+    let
+        tabClass tab =
+            if activeTab == tab then
+                class "cursor-default bg-gray-100 text-gray-900 active"
+
+            else
+                class "cursor-pointer bg-white hover:text-gray-700 hover:bg-gray-100"
+    in
+    ul [ class "text-3xl font-medium text-center text-gray-500 divide-x divide-gray-200 shadow flex" ]
+        [ li [ class "w-full" ]
+            [ a
+                [ class "inline-block p-4 w-full focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                , tabClass FixtureTab
+                , Route.href (Route.Fixture Nothing)
+                ]
+                [ span [ class "mdi mdi-scoreboard-outline" ] [] ]
+            ]
+        , li [ class "w-full" ]
+            [ a
+                [ class "inline-block p-4 w-full focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                , tabClass LeaderboardTab
+                , Route.href Route.Leaderboard
+                ]
+                [ span [ class "mdi mdi-chart-line" ] [] ]
+            ]
+        ]

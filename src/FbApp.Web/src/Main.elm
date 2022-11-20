@@ -12,7 +12,9 @@ import OAuth.AuthorizationCode.PKCE as OAuth
 import Page
 import Page.Blank as Blank
 import Page.Changelog as Changelog
+import Page.Fixture as Fixture
 import Page.Home as Home
+import Page.Leaderboard as Leaderboard
 import Page.LoggingOut as LoggingOut
 import Page.NotFound as NotFound
 import Page.Prediction as Prediction
@@ -59,6 +61,8 @@ type State
     | LoggingOut
     | Changelog
     | Prediction Prediction.Model
+    | Fixture Fixture.Model
+    | Leaderboard Leaderboard.Model
 
 
 type alias Model =
@@ -259,6 +263,12 @@ view model =
         Prediction prediction ->
             viewPage Page.Prediction GotPredictionMsg (Prediction.view prediction)
 
+        Fixture fixture ->
+            viewPage Page.Fixture GotFixtureMsg (Fixture.view fixture)
+
+        Leaderboard leaderboard ->
+            viewPage Page.Leaderboard GotLeaderboardMsg (Leaderboard.view leaderboard)
+
 
 
 -- UPDATE
@@ -273,6 +283,8 @@ type Msg
     | GotRandomBytes ( List Int, String )
     | GotCompetition (Result Http.Error Competition)
     | GotPredictionMsg Prediction.Msg
+    | GotFixtureMsg Fixture.Msg
+    | GotLeaderboardMsg Leaderboard.Msg
     | GetUserInfo OAuth.Token OAuth.Token Int Posix
     | SessionLoaded Session.Msg
 
@@ -301,6 +313,14 @@ changeRouteTo maybeRoute model =
         Just Route.Prediction ->
             Prediction.init model.session
                 |> updateWith Prediction GotPredictionMsg model
+
+        Just (Route.Fixture _) ->
+            Fixture.init model.session
+                |> updateWith Fixture GotFixtureMsg model
+
+        Just Route.Leaderboard ->
+            Leaderboard.init model.session
+                |> updateWith Leaderboard GotLeaderboardMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -396,6 +416,12 @@ update msg model =
                 ]
             )
 
+        ( GotFixtureMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( GotLeaderboardMsg _, _ ) ->
+            ( model, Cmd.none )
+
 
 updateWith : (subModel -> State) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
 updateWith toState toMsg model ( subModel, subCmd ) =
@@ -443,6 +469,12 @@ subscriptions model =
 
                 Prediction prediction ->
                     Sub.map GotPredictionMsg (Prediction.subscriptions prediction)
+
+                Fixture _ ->
+                    Sub.none
+
+                Leaderboard _ ->
+                    Sub.none
     in
     Sub.batch
         [ sub

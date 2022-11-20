@@ -34,28 +34,44 @@ let kubectlExec (command: string) (env: string) =
 let deployDockerImage (name: string) =
     Trace.trace $"Building docker image: %s{name}"
 
+    let dockerfile, context =
+        match name with
+        | "fbapp-api" -> (__SOURCE_DIRECTORY__ </> "src" </> "FbApp.Api" </> "Dockerfile", __SOURCE_DIRECTORY__)
+        | "fbapp-auth" -> (__SOURCE_DIRECTORY__ </> "src" </> "FbApp.Auth" </> "Dockerfile", __SOURCE_DIRECTORY__)
+        | "fbapp-proxy" -> (__SOURCE_DIRECTORY__ </> "src" </> "FbApp.Proxy" </> "Dockerfile", __SOURCE_DIRECTORY__)
+        | "fbapp-web" -> (__SOURCE_DIRECTORY__ </> "src" </> "FbApp.Web" </> "Dockerfile", __SOURCE_DIRECTORY__ </> "src" </> "FbApp.Web")
+        | _ -> failwith $"Unknown project: %s{name}"
+
     let result =
-        ["build"; "-t"; $"localhost:32000/%s{name}:registry"; "-f"; $"%s{name}/Dockerfile"; __SOURCE_DIRECTORY__]
-        |> CreateProcess.fromRawCommand "docker"
+        ["build"; "-t"; $"localhost:32000/%s{name}:latest"; "-f"; dockerfile; context]
+        |> CreateProcess.fromRawCommand "podman"
         |> Proc.run
 
     if result.ExitCode <> 0 then
         failwith "Failed result from Docker"
 
     let result =
-        ["push"; $"localhost:32000/%s{name}:registry"]
-        |> CreateProcess.fromRawCommand "docker"
+        ["push"; $"localhost:32000/%s{name}:latest --tls-verify=false"]
+        |> CreateProcess.fromRawCommand "podman"
         |> Proc.run
 
     if result.ExitCode <> 0 then
         failwith "Failed result from Docker"
 
-Target.create "fbapp" (fun _ ->
-    deployDockerImage "fbapp"
+Target.create "fbapp-api" (fun _ ->
+    deployDockerImage "fbapp-api"
 )
 
-Target.create "fbapp-ui" (fun _ ->
-    deployDockerImage "fbapp-ui"
+Target.create "fbapp-auth" (fun _ ->
+    deployDockerImage "fbapp-auth"
+)
+
+Target.create "fbapp-proxy" (fun _ ->
+    deployDockerImage "fbapp-proxy"
+)
+
+Target.create "fbapp-web" (fun _ ->
+    deployDockerImage "fbapp-web"
 )
 
 Target.create "delete-production" (fun _ ->

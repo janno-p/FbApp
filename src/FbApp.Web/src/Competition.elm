@@ -53,7 +53,7 @@ competitionStatusDecoder =
                     "accept-predictions" ->
                         AcceptPredictions
 
-                    "competition-running" ->
+                    "in-progress" ->
                         InProgress
 
                     _ ->

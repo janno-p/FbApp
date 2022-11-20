@@ -377,6 +377,7 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
             options.CallbackPath <- PathString "/connect/google/callback"
             options.SignInScheme <- IdentityConstants.ExternalScheme
             options.Scope.Add("profile")
+            options.AuthorizationEndpoint <- $"%s{options.AuthorizationEndpoint}?prompt=select_account"
             options.ClaimActions.MapJsonKey(OpenIddictConstants.Claims.Picture, "picture"))
     |> ignore
 

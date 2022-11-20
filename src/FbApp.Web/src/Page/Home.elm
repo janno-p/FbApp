@@ -26,11 +26,23 @@ type alias Model =
 
 init : Session -> Competition -> ( Model, Cmd Msg )
 init session competition =
+    let
+        cmd =
+            case competition.status of
+                AcceptPredictions ->
+                    Task.perform UpdateCounter Time.now
+
+                InProgress ->
+                    Route.replaceUrl (Session.navKey session) (Route.Fixture Nothing)
+
+                NotActive ->
+                    Cmd.none
+    in
     ( { session = session
       , competition = competition
       , currentTime = Nothing
       }
-    , Task.perform UpdateCounter Time.now
+    , cmd
     )
 
 
