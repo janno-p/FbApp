@@ -26,6 +26,7 @@
     <Compile Include="Configuration.fs" />
     <Compile Include="CommandHandlers.fs" />
     <Compile Include="Repositories.fs" />
+    <Compile Include="MongoDbSetup.fs" />
     <Compile Include="ProcessManager.fs" />
     <Compile Include="Auth.fs" />
     <Compile Include="Dashboard.fs" />

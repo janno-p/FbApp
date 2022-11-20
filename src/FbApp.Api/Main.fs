@@ -21,11 +21,13 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.IdentityModel.Tokens
+open MongoDB.Bson
 open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
 open System
 
+MongoDbSetup.init()
 
 let mapGoals (value: (int * int) option) : Fixtures.FixtureGoals option =
     value |> Option.map (fun (home, away) -> { Home = home; Away = away })
@@ -183,8 +185,8 @@ let configureApp (app: IApplicationBuilder) =
         let db = scope.ServiceProvider.GetRequiredService<IMongoDatabase>()
 
         let! count =
-            db.GetCollection<MongoDB.Bson.BsonDocument>("competitions")
-                .CountDocumentsAsync(Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("ExternalId", 2000L))
+            db.GetCollection<BsonDocument>("competitions")
+                .CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("ExternalId", 2000L))
 
         if count = 0 then
             let input: Competitions.CreateInput =
