@@ -1,10 +1,13 @@
 module FbApp.Api.Predict
 
+open DnsClient.Internal
 open FbApp.Api
 open FbApp.Api.Domain
 open FbApp.Api.Repositories
+open FbApp.Api.Repositories.ReadModels
 open Giraffe
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Saturn
 open Saturn.Endpoint
@@ -162,7 +165,15 @@ let private getCurrentPrediction: Auth.AuthHttpHandler =
             return! RequestErrors.NOT_FOUND "No active competition" next context
     })
 
+let logx : HttpHandler =
+    fun next ctx -> task {
+        let! dto = ctx.BindJsonAsync<Predictions.PredictionRegistrationInput>()
+        let log = ctx.GetLogger<Predictions.PredictionRegistrationInput>()
+        log.LogWarning("{Dto}", dto)
+        return! next ctx
+        }
+
 let predictScope = router {
-    post "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
+    post "/" (logx >=> Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
     get "/fixtures" getFixtures
 }
