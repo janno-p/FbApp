@@ -5,7 +5,6 @@ import Browser
 import Browser.Navigation as Nav
 import Bytes exposing (Bytes)
 import Bytes.Encode as Bytes
-import Json.Decode as Decode exposing (Decoder)
 import OAuth
 import OAuth.AuthorizationCode.PKCE as OAuth
 import Url exposing (Url)
@@ -14,7 +13,6 @@ import Url exposing (Url)
 type alias AuthState =
     { state : String
     , codeVerifier : OAuth.CodeVerifier
-    , path : String
     }
 
 
@@ -25,7 +23,7 @@ type alias AuthState =
 
 
 application :
-    { init : Maybe AuthState -> Url -> Nav.Key -> ( model, Cmd msg )
+    { init : ( Maybe AuthState, String ) -> Url -> Nav.Key -> ( model, Cmd msg )
     , onUrlChange : Url -> msg
     , onUrlRequest : Browser.UrlRequest -> msg
     , subscriptions : model -> Sub msg
@@ -34,18 +32,8 @@ application :
     }
     -> Program ( Maybe (List Int), String ) model msg
 application config =
-    let
-        init ( maybeBytes, path ) url navKey =
-            config.init
-                (maybeBytes
-                    |> Maybe.map (\x -> ( x, path ))
-                    |> Maybe.andThen convertBytes
-                )
-                url
-                navKey
-    in
     Browser.application
-        { init = init
+        { init = andThenFst convertBytes >> config.init
         , onUrlChange = config.onUrlChange
         , onUrlRequest = config.onUrlRequest
         , subscriptions = config.subscriptions
@@ -78,8 +66,8 @@ base64 =
     Base64.bytes >> Base64.encode
 
 
-convertBytes : ( List Int, String ) -> Maybe AuthState
-convertBytes ( bytes, path ) =
+convertBytes : List Int -> Maybe AuthState
+convertBytes bytes =
     if List.length bytes < (stateSize + codeVerifierSize) then
         Nothing
 
@@ -97,4 +85,9 @@ convertBytes ( bytes, path ) =
                     |> toBytes
                     |> OAuth.codeVerifierFromBytes
         in
-        Maybe.map (\codeVerifier -> { state = state, codeVerifier = codeVerifier, path = path }) maybeCodeVerifier
+        Maybe.map (\codeVerifier -> { state = state, codeVerifier = codeVerifier }) maybeCodeVerifier
+
+
+andThenFst : (a -> Maybe b) -> ( Maybe a, c ) -> ( Maybe b, c )
+andThenFst mapper ( maybe, other ) =
+    ( Maybe.andThen mapper maybe, other )

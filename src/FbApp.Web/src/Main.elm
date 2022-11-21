@@ -54,7 +54,7 @@ type Flow
 
 
 type State
-    = Authentication Flow Url
+    = Authentication Flow Url String
     | Redirect
     | NotFound
     | Home Home.Model
@@ -86,18 +86,18 @@ initConfiguration baseUrl =
     }
 
 
-init : Maybe AuthState -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init maybeAuthState url navKey =
+init : ( Maybe AuthState, String ) -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init ( authState, originalPath ) url navKey =
     let
         redirectUri =
             { url | query = Nothing, fragment = Nothing, path = "/" }
 
         clearUrl =
-            Nav.replaceUrl navKey (Url.toString redirectUri)
+            Nav.replaceUrl navKey originalPath
 
         model =
             { session = Session.init navKey
-            , state = Authentication Idle redirectUri
+            , state = Authentication Idle redirectUri originalPath
             , competition = Nothing
             , configuration = initConfiguration { url | query = Nothing, fragment = Nothing, path = "" }
             }
@@ -109,28 +109,28 @@ init maybeAuthState url navKey =
             )
 
         OAuth.Success { code, state } ->
-            case maybeAuthState of
+            case authState of
                 Nothing ->
-                    ( { model | state = Authentication (Errored ErrStateMismatch) redirectUri }
+                    ( { model | state = Authentication (Errored ErrStateMismatch) redirectUri originalPath }
                     , clearUrl
                     )
 
-                Just authState ->
-                    if state /= Just authState.state then
-                        ( { model | state = Authentication (Errored ErrStateMismatch) redirectUri }
+                Just bytes ->
+                    if state /= Just bytes.state then
+                        ( { model | state = Authentication (Errored ErrStateMismatch) redirectUri originalPath }
                         , clearUrl
                         )
 
                     else
-                        ( { model | state = Authentication (Authorized code authState.codeVerifier) redirectUri }
+                        ( { model | state = Authentication (Authorized code bytes.codeVerifier) redirectUri originalPath }
                         , Cmd.batch
-                            [ getAccessToken model.configuration redirectUri code authState.codeVerifier
-                            , Nav.replaceUrl navKey authState.path
+                            [ getAccessToken model.configuration redirectUri code bytes.codeVerifier
+                            , clearUrl
                             ]
                         )
 
         OAuth.Error error ->
-            ( { model | state = Authentication (Errored <| ErrAuthorization error) redirectUri }
+            ( { model | state = Authentication (Errored <| ErrAuthorization error) redirectUri originalPath }
             , clearUrl
             )
 
@@ -150,11 +150,11 @@ getAccessToken { clientId, tokenEndpoint } redirectUri code codeVerifier =
             }
 
 
-gotRandomBytes : Model -> ( List Int, String ) -> Url -> ( Model, Cmd Msg )
-gotRandomBytes model bytes redirectUri =
+gotRandomBytes : Model -> ( List Int, String ) -> Url -> String -> ( Model, Cmd Msg )
+gotRandomBytes model ( bytes, path ) redirectUri originalPath =
     case Api.convertBytes bytes of
         Nothing ->
-            ( { model | state = Authentication (Errored ErrFailedToConvertBytes) redirectUri }
+            ( { model | state = Authentication (Errored ErrFailedToConvertBytes) redirectUri originalPath }
             , Cmd.none
             )
 
@@ -169,7 +169,7 @@ gotRandomBytes model bytes redirectUri =
                     , url = model.configuration.authorizationEndpoint
                     }
             in
-            ( { model | state = Authentication Idle redirectUri }
+            ( { model | state = Authentication Idle redirectUri originalPath }
             , authorization
                 |> OAuth.makeAuthorizationUrl
                 |> Url.toString
@@ -177,28 +177,28 @@ gotRandomBytes model bytes redirectUri =
             )
 
 
-gotAccessToken : Model -> Result Http.Error OAuth.AuthenticationSuccess -> Url -> ( Model, Cmd Msg )
-gotAccessToken model authenticationResponse redirectUri =
+gotAccessToken : Model -> Result Http.Error OAuth.AuthenticationSuccess -> Url -> String -> ( Model, Cmd Msg )
+gotAccessToken model authenticationResponse redirectUri originalPath =
     case authenticationResponse of
         Err (Http.BadBody body) ->
             case Json.decodeString OAuth.defaultAuthenticationErrorDecoder body of
                 Ok error ->
-                    ( { model | state = Authentication (Errored <| ErrAuthentication error) redirectUri }
+                    ( { model | state = Authentication (Errored <| ErrAuthentication error) redirectUri originalPath }
                     , Cmd.none
                     )
 
                 _ ->
-                    ( { model | state = Authentication (Errored ErrHttpGetAccessToken) redirectUri }
+                    ( { model | state = Authentication (Errored ErrHttpGetAccessToken) redirectUri originalPath }
                     , Cmd.none
                     )
 
         Err _ ->
-            ( { model | state = Authentication (Errored ErrHttpGetAccessToken) redirectUri }
+            ( { model | state = Authentication (Errored ErrHttpGetAccessToken) redirectUri originalPath }
             , Cmd.none
             )
 
         Ok auth ->
-            ( { model | state = Authentication (Authenticated auth) redirectUri }
+            ( { model | state = Authentication (Authenticated auth) redirectUri originalPath }
             , getUserInfo auth
             )
 
@@ -242,7 +242,7 @@ view model =
             }
     in
     case model.state of
-        Authentication _ _ ->
+        Authentication _ _ _ ->
             Page.viewAuth
 
         Redirect ->
@@ -281,7 +281,7 @@ type Msg
     | GotSessionMsg Session.Msg
     | GotAccessToken (Result Http.Error OAuth.AuthenticationSuccess)
     | GotRandomBytes ( List Int, String )
-    | GotCompetition (Result Http.Error Competition)
+    | GotCompetition String (Result Http.Error Competition)
     | GotPredictionMsg Prediction.Msg
     | GotFixtureMsg Fixture.Msg
     | GotLeaderboardMsg Leaderboard.Msg
@@ -338,16 +338,16 @@ update msg model =
                     , Nav.load href
                     )
 
-        ( ChangedUrl _, Authentication (Errored (ErrAuthorization { error })) _ ) ->
+        ( ChangedUrl _, Authentication (Errored (ErrAuthorization { error })) _ originalPath ) ->
             case error of
                 Custom "login_required" ->
                     --changeRouteTo (Just Route.Home) { model | state = Redirect }
-                    ( model, Competition.request GotCompetition )
+                    ( model, Competition.request (GotCompetition originalPath) )
 
                 _ ->
                     ( model, Cmd.none )
 
-        ( ChangedUrl _, Authentication _ _ ) ->
+        ( ChangedUrl _, Authentication _ _ _ ) ->
             ( model, Cmd.none )
 
         ( ChangedUrl url, _ ) ->
@@ -360,27 +360,24 @@ update msg model =
         ( GotHomeMsg _, _ ) ->
             ( model, Cmd.none )
 
-        ( GotRandomBytes bytes, Authentication Idle redirectUri ) ->
-            gotRandomBytes model bytes redirectUri
+        ( GotRandomBytes bytes, Authentication Idle redirectUri originalPath ) ->
+            gotRandomBytes model bytes redirectUri originalPath
 
         ( GotRandomBytes _, _ ) ->
             ( model, Cmd.none )
 
-        ( GotAccessToken auth, Authentication (Authorized _ _) redirectUri ) ->
-            gotAccessToken model auth redirectUri
+        ( GotAccessToken auth, Authentication (Authorized _ _) redirectUri originalPath ) ->
+            gotAccessToken model auth redirectUri originalPath
 
         ( GotAccessToken auth, _ ) ->
             ( model
             , auth |> Result.map getUserInfo |> Result.withDefault Cmd.none
             )
 
-        ( GotCompetition (Ok competition), _ ) ->
-            ( { model | state = Redirect, competition = Just competition }
-            , routeToDefault competition model.session
+        ( GotCompetition originalPath competitionResult, _ ) ->
+            ( { model | state = Redirect, competition = Result.toMaybe competitionResult }
+            , Nav.replaceUrl (Session.navKey model.session) originalPath
             )
-
-        ( GotCompetition _, _ ) ->
-            ( model, Route.replaceUrl (Session.navKey model.session) Route.Home )
 
         ( GotPredictionMsg subMsg, Prediction prediction ) ->
             Prediction.update subMsg prediction
@@ -404,7 +401,7 @@ update msg model =
             in
             ( model, Cmd.map SessionLoaded subMsg )
 
-        ( SessionLoaded subMsg, _ ) ->
+        ( SessionLoaded subMsg, state ) ->
             let
                 ( session, subCmd ) =
                     Session.update ( model.configuration.clientId, model.configuration.tokenEndpoint ) subMsg model.session
@@ -412,7 +409,12 @@ update msg model =
             ( { model | session = session }
             , Cmd.batch
                 [ Cmd.map GotSessionMsg subCmd
-                , Competition.request GotCompetition
+                , case state of
+                    Authentication _ _ originalPath ->
+                        Competition.request (GotCompetition originalPath)
+
+                    _ ->
+                        Cmd.none
                 ]
             )
 
@@ -430,16 +432,6 @@ updateWith toState toMsg model ( subModel, subCmd ) =
     )
 
 
-routeToDefault : Competition -> Session -> Cmd Msg
-routeToDefault competition session =
-    case ( Session.user session, competition.status ) of
-        ( Just _, Competition.AcceptPredictions ) ->
-            Route.replaceUrl (Session.navKey session) Route.Prediction
-
-        ( _, _ ) ->
-            Route.replaceUrl (Session.navKey session) Route.Home
-
-
 
 -- SUBSCRIPTIONS
 
@@ -449,7 +441,7 @@ subscriptions model =
     let
         sub =
             case model.state of
-                Authentication _ _ ->
+                Authentication _ _ _ ->
                     randomBytes GotRandomBytes
 
                 NotFound ->

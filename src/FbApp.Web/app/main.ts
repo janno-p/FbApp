@@ -9,8 +9,7 @@ function rememberedBytes() {
 }
 
 function rememberedPath() {
-    const path = localStorage.getItem('path') ?? '/'
-    return path
+    return localStorage.getItem('path') ?? '/'
 }
 
 const app = Elm.Main.init({
@@ -19,8 +18,6 @@ const app = Elm.Main.init({
 })
 
 app.ports.generateRandomBytes.subscribe(([numberOfBytes, path]) => {
-    console.log('numberOfBytes='+numberOfBytes)
-    console.log('path='+path)
     const buffer = new Uint8Array(numberOfBytes)
     crypto.getRandomValues(buffer)
     const bytes = Array.from(buffer)
