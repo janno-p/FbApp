@@ -89,8 +89,10 @@ let updateFixtures: HttpHandler =
 let mainRouter = router {
     get "/dapr/config" (obj() |> Successful.OK)
 
-    get "/api/competition/status" FbApp.Competition.Api.getCompetitionStatus
-    get "/api/prediction" (Auth.mustBeLoggedIn >=> (Auth.withUser FbApp.Prediction.Api.getUserPrediction))
+    get "/api/competition/status" FbApp.Competitions.Api.getCompetitionStatus
+    get "/api/fixtures" FbApp.Fixtures.Api.getDefaultFixture
+    getf "/api/fixtures/%O" FbApp.Fixtures.Api.getFixture
+    get "/api/prediction" (Auth.mustBeLoggedIn >=> (Auth.withUser FbApp.Predictions.Api.getUserPrediction))
 
     forward "/api/predict" Predict.predictScope
     forward "/api/fixtures" Fixtures.scope

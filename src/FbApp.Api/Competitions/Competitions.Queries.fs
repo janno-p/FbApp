@@ -1,4 +1,4 @@
-﻿module FbApp.Competition.Queries
+﻿module FbApp.Competitions.Queries
 
 open System
 open System.Threading.Tasks

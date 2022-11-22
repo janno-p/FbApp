@@ -35,11 +35,14 @@
     <Compile Include="Leagues.fs" />
     <Compile Include="Predictions.fs" />
     <Compile Include="IntegrationEvents.fs" />
-    <Compile Include="Competition.Queries.fs" />
-    <Compile Include="Prediction.Queries.fs" />
-    <Compile Include="Competition.Dto.fs" />
-    <Compile Include="Competition.Api.fs" />
-    <Compile Include="Prediction.Api.fs" />
+    <Compile Include="Competitions\Competitions.Queries.fs" />
+    <Compile Include="Competitions\Competitions.Dto.fs" />
+    <Compile Include="Competitions\Competitions.Api.fs" />
+    <Compile Include="Fixtures\Fixtures.Queries.fs" />
+    <Compile Include="Fixtures\Fixtures.Dto.fs" />
+    <Compile Include="Fixtures\Fixtures.Api.fs" />
+    <Compile Include="Predictions\Predictions.Queries.fs" />
+    <Compile Include="Predictions\Predictions.Api.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

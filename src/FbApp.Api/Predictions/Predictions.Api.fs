@@ -1,7 +1,7 @@
-﻿module FbApp.Prediction.Api
+﻿module FbApp.Predictions.Api
 
 open FbApp.Api.Auth
-open FbApp.Prediction.Queries
+open FbApp.Predictions.Queries
 open Giraffe
 
 

@@ -34,8 +34,8 @@ parser =
         , Parser.map Logout (s "logout")
         , Parser.map Changelog (s "changelog")
         , Parser.map Prediction (s "prediction")
-        , Parser.map (Fixture Nothing) (s "fixture")
         , Parser.map (Just >> Fixture) (s "fixture" </> string)
+        , Parser.map (Fixture Nothing) (s "fixture")
         , Parser.map Leaderboard (s "leaderboard")
         ]
 

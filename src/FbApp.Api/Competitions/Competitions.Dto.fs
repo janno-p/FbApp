@@ -1,7 +1,7 @@
-﻿namespace FbApp.Competition.Dto
+﻿namespace FbApp.Competitions.Dto
 
 open System
-open FbApp.Competition.Queries
+open FbApp.Competitions.Queries
 
 
 type CompetitionStatusDto = {
@@ -17,7 +17,7 @@ module CompetitionStatusDto =
         match competition with
         | Some c when c.Date < DateTimeOffset.Now ->
             "in-progress"
-        | Some c ->
+        | Some _ ->
             "accept-predictions"
         | None ->
             "not-active"

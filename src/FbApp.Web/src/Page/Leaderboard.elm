@@ -24,7 +24,7 @@ view _ =
                 , div [ class "mt-8 text-center" ] [ text "Tuleb varsti ..." ]
                 ]
     in
-    { title = "Ennustuste punktitable"
+    { title = "Ennustuste punktitabel"
     , content = content
     }
 

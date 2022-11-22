@@ -97,7 +97,7 @@ let getTimelyFixture : HttpHandler =
     })
 
 let scope = router {
-    getf "/%O" getFixture
+    // getf "/%O" getFixture
     getf "/%O/status" getFixtureStatus
     get "/timely" getTimelyFixture
 }

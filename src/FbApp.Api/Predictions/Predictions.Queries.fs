@@ -1,4 +1,4 @@
-﻿module FbApp.Prediction.Queries
+﻿module FbApp.Predictions.Queries
 
 open System
 open System.Threading.Tasks
@@ -7,10 +7,10 @@ open MongoDB.Bson
 open MongoDB.Driver
 
 
-type getUserPrediction = IMongoDatabase -> string -> Task<Guid option>
+type GetUserPrediction = IMongoDatabase -> string -> Task<Guid option>
 
 
-let getUserPrediction: getUserPrediction =
+let getUserPrediction: GetUserPrediction =
     fun db email  -> task {
         let competitionId = Competitions.createId 2000L
         let predictionId = Predictions.createId (competitionId, Predictions.Email email)

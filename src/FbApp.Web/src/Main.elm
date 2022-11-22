@@ -314,8 +314,8 @@ changeRouteTo maybeRoute model =
             Prediction.init model.session
                 |> updateWith Prediction GotPredictionMsg model
 
-        Just (Route.Fixture _) ->
-            Fixture.init model.session
+        Just (Route.Fixture fixtureId) ->
+            Fixture.init model.session fixtureId
                 |> updateWith Fixture GotFixtureMsg model
 
         Just Route.Leaderboard ->
@@ -418,8 +418,14 @@ update msg model =
                 ]
             )
 
-        ( GotFixtureMsg _, _ ) ->
-            ( model, Cmd.none )
+        ( GotFixtureMsg subMsg, state ) ->
+            case state of
+                Fixture fixture ->
+                    Fixture.update subMsg fixture
+                        |> updateWith Fixture GotFixtureMsg model
+
+                _ ->
+                    ( model, Cmd.none )
 
         ( GotLeaderboardMsg _, _ ) ->
             ( model, Cmd.none )

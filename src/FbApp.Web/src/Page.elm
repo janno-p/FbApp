@@ -126,18 +126,22 @@ viewResultsTabs activeTab =
     ul [ class "text-3xl font-medium text-center text-gray-500 divide-x divide-gray-200 shadow flex" ]
         [ li [ class "w-full" ]
             [ a
-                [ class "inline-block p-4 w-full focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                [ class "inline-flex flex-row flex-nowrap items-center justify-center gap-3 p-4 w-full focus:outline-none"
                 , tabClass FixtureTab
                 , Route.href (Route.Fixture Nothing)
                 ]
-                [ span [ class "mdi mdi-scoreboard-outline" ] [] ]
+                [ span [ class "mdi mdi-scoreboard-outline" ] []
+                , span [ class "hidden sm:inline text-base uppercase" ] [ text "Mängude tulemused" ]
+                ]
             ]
         , li [ class "w-full" ]
             [ a
-                [ class "inline-block p-4 w-full focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                [ class "inline-flex flex-row flex-nowrap items-center justify-center gap-3 p-4 w-full focus:outline-none"
                 , tabClass LeaderboardTab
                 , Route.href Route.Leaderboard
                 ]
-                [ span [ class "mdi mdi-chart-line" ] [] ]
+                [ span [ class "mdi mdi-chart-line" ] []
+                , span [ class "hidden sm:inline text-base uppercase" ] [ text "Ennustuste punktitabel" ]
+                ]
             ]
         ]

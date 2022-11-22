@@ -1,8 +1,8 @@
-﻿module FbApp.Competition.Api
+﻿module FbApp.Competitions.Api
 
 open Giraffe
-open FbApp.Competition.Dto
-open FbApp.Competition.Queries
+open FbApp.Competitions.Dto
+open FbApp.Competitions.Queries
 
 
 let getCompetitionStatus : HttpHandler =
