@@ -1,16 +1,15 @@
 module FbApp.Api.Main
 
-
 open System.IdentityModel.Tokens.Jwt
 open System.Text.Json
 open System.Text.Json.Serialization
-open Dapr
 open EventStore.Client
 open FbApp.Api
 open FbApp.Api.Aggregate
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
 open FbApp.Api.EventStore
+open FbApp.Api.LiveUpdate
 open Giraffe
 open Giraffe.EndpointRouting
 open Microsoft.AspNetCore.Authentication.JwtBearer
@@ -19,71 +18,16 @@ open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.Logging
 open Microsoft.IdentityModel.Tokens
 open MongoDB.Bson
 open MongoDB.Driver
+open Quartz
 open Saturn
 open Saturn.Endpoint
 open System
 
+
 MongoDbSetup.init()
-
-let mapGoals (value: (int * int) option) : Fixtures.FixtureGoals option =
-    value |> Option.map (fun (home, away) -> { Home = home; Away = away })
-
-
-let updateFixtures: HttpHandler =
-    (fun next ctx -> task {
-        let logger = ctx.GetLogger()
-        let! evt = ctx.BindJsonAsync<FixturesUpdatedIntegrationEvent>()
-        for fixture in evt.Fixtures do
-            let competitionGuid = Competitions.createId fixture.CompetitionId
-            let maybeCommand =
-                match fixture.Stage with
-                | "GROUP_STAGE" ->
-                    Fixtures.UpdateFixture {
-                        Status = fixture.Status
-                        FullTime = mapGoals fixture.FullTime
-                        ExtraTime = mapGoals fixture.ExtraTime
-                        Penalties = mapGoals fixture.Penalties
-                        }
-                    |> Some
-                | "LAST_16" | "QUARTER_FINAL" | "SEMI_FINAL" | "FINAL" ->
-                    match fixture.HomeTeamId, fixture.AwayTeamId with
-                    | Some(homeTeamId), Some(awayTeamId) ->
-                        Fixtures.UpdateQualifiers {
-                            CompetitionId = competitionGuid
-                            ExternalId = fixture.FixtureId
-                            HomeTeamId = homeTeamId
-                            AwayTeamId = awayTeamId
-                            Date = fixture.UtcDate
-                            Stage = fixture.Stage
-                            Status = fixture.Status
-                            FullTime = mapGoals fixture.FullTime
-                            ExtraTime = mapGoals fixture.ExtraTime
-                            Penalties = mapGoals fixture.Penalties
-                            }
-                        |> Some
-                    | _ ->
-                        None
-                | _ ->
-                    logger.LogError($"Unknown stage value for fixture %A{id}: %s{fixture.Stage}")
-                    None
-
-            match maybeCommand with
-            | Some command ->
-                let fixtureId = Fixtures.createId (competitionGuid, fixture.FixtureId)
-                match! CommandHandlers.fixturesHandler (fixtureId, Any) command with
-                | Ok _ ->
-                    ()
-                | Error err ->
-                    logger.LogError($"Failed to update fixture %A{id}: %A{err}")
-            | None ->
-                ()
-
-        return! Successful.OK "" next ctx
-    })
 
 
 let mainRouter = router {
@@ -105,11 +49,6 @@ let mainRouter = router {
 
         forward "/dashboard" Dashboard.dashboardScope
     })
-
-    forward "/api/fixture-updates" (POST [
-        route "" updateFixtures
-        |> addMetadata (TopicAttribute("live-update-pubsub", "fixture-updates"))
-    ])
 }
 
 
@@ -141,6 +80,40 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.AddEventStorePersistentSubscriptionsClient(eventStoreConnection, setConnectionName) |> ignore
 
     services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
+
+    services.AddQuartz(fun quartz ->
+        quartz.UseMicrosoftDependencyInjectionJobFactory()
+        quartz.UseSimpleTypeLoader()
+        quartz.UseInMemoryStore()
+
+        let jobKey = JobKey("live update")
+        quartz.AddJob<LiveUpdateJob>(fun job -> job.WithIdentity(jobKey) |> ignore)
+            |> ignore
+
+        quartz.AddTrigger(fun trigger ->
+            trigger.WithIdentity("partial update")
+                .ForJob(jobKey)
+                .UsingJobData("fullUpdate", false)
+                .StartAt(DateTimeOffset.UtcNow.AddMinutes(1))
+                .WithSimpleSchedule(fun schedule -> schedule.WithIntervalInMinutes(1).RepeatForever() |> ignore)
+            |> ignore
+        ) |> ignore
+
+        quartz.AddTrigger(fun trigger ->
+            trigger.WithIdentity("full update")
+                .ForJob(jobKey)
+                .UsingJobData("fullUpdate", true)
+                .StartNow()
+                .WithSimpleSchedule(fun schedule -> schedule.WithIntervalInHours(1).RepeatForever() |> ignore)
+            |> ignore
+        ) |> ignore
+    ) |> ignore
+
+    services.AddQuartzHostedService(fun options ->
+        options.WaitForJobsToComplete <- true
+    ) |> ignore
+
+    services.AddDaprClient()
 
 
 let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =

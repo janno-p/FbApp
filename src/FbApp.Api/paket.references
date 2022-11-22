@@ -6,4 +6,5 @@ EventStore.Client.Grpc.ProjectionManagement
 EventStore.Client.Grpc.Streams
 FSharp.SystemTextJson
 MongoDB.Driver
+Quartz.Extensions.Hosting
 Saturn

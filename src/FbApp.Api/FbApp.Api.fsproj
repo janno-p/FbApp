@@ -43,6 +43,7 @@
     <Compile Include="Fixtures\Fixtures.Api.fs" />
     <Compile Include="Predictions\Predictions.Queries.fs" />
     <Compile Include="Predictions\Predictions.Api.fs" />
+    <Compile Include="LiveUpdate.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

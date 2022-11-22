@@ -208,8 +208,8 @@ type FixtureResult =
         Duration: string
         FullTime: FixtureScore
         HalfTime: FixtureScore
-        ExtraTime: FixtureScore
-        Penalties: FixtureScore
+        ExtraTime: FixtureScore option
+        Penalties: FixtureScore option
     }
 
 [<CLIMutable>]
@@ -228,6 +228,8 @@ type CompetitionFixture =
         HomeTeam: CompetitionFixtureTeam option
         AwayTeam: CompetitionFixtureTeam option
         [<JsonProperty("score")>] Result: FixtureResult option
+        Stage: string
+        LastUpdated: DateTimeOffset
         //Odds
     }
 

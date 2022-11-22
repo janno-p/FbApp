@@ -1,9 +1,8 @@
 module Page.Fixture exposing (Model, Msg, init, update, view)
 
 import Api.Endpoint as Endpoint exposing (defaultEndpointConfig, fixture)
-import Browser.Navigation as Nav
 import DateFormat
-import Html exposing (Attribute, Html, button, div, img, span, text)
+import Html exposing (Html, button, div, img, span, table, tbody, td, text, tr)
 import Html.Attributes exposing (class, disabled, src, title)
 import Html.Events exposing (onClick)
 import Http
@@ -99,7 +98,7 @@ view model =
         content =
             div []
                 [ viewResultsTabs FixtureTab
-                , div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-4 sm:mt-8 sm:shadow-lg" ]
+                , div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg" ]
                     [ viewFixtureHeader model.fixture
                     , case model.fixture of
                         Just fixture ->
@@ -123,17 +122,25 @@ viewFixtureHeader fixture =
 
         nextFixtureId =
             Maybe.andThen (\x -> x.nextFixtureId) fixture
+
+        buttonStateAttrs refId =
+            case refId of
+                Nothing ->
+                    [ disabled True, class "text-gray-200 cursor-default" ]
+
+                Just id ->
+                    [ onClick (LoadFixture id), class "cursor-pointer hover:bg-gray-100 shadow" ]
     in
-    div [ class "flex flex-row flex-nowrap border-b border-gray-200" ]
+    div [ class "flex flex-row flex-nowrap border-b border-gray-200 p-4" ]
         [ button
-            ([ title "Eelmine mäng", disabled (previousFixtureId == Nothing), class "grow-0" ]
-                ++ ([ previousFixtureId |> Maybe.map (LoadFixture >> onClick) ] |> List.filterMap identity)
+            ([ title "Eelmine mäng", class "grow-0 w-8 h-8 rounded-full border border-gray-100" ]
+                ++ buttonStateAttrs previousFixtureId
             )
             [ span [ class "mdi mdi-arrow-left" ] [] ]
         , div [ class "grow text-center" ] [ text <| fixtureTitle fixture ]
         , button
-            ([ title "Järgmine mäng", disabled (nextFixtureId == Nothing), class "grow-0" ]
-                ++ ([ nextFixtureId |> Maybe.map (LoadFixture >> onClick) ] |> List.filterMap identity)
+            ([ title "Järgmine mäng", class "grow-0 w-8 h-8 rounded-full border border-gray-100" ]
+                ++ buttonStateAttrs nextFixtureId
             )
             [ span [ class "mdi mdi-arrow-right" ] [] ]
         ]
@@ -160,13 +167,15 @@ viewFixture zone fixture =
                     )
     in
     div []
-        [ div [ class "flex flex-row flex-nowrap border-b border-gray-200" ]
+        [ div [ class "flex flex-row flex-nowrap border-b border-gray-200 py-2" ]
             [ viewTeam fixture.homeTeam
             , viewScore zone fixture
             , viewTeam fixture.awayTeam
             ]
-        , div [ class "flex flex-col" ]
-            (List.map (viewResultPrediction fixture expectedResult) fixture.resultPredictions)
+        , table [ class "w-full mt-4 mb-8" ]
+            [ tbody []
+                (List.map (viewResultPrediction fixture expectedResult) fixture.resultPredictions)
+            ]
         ]
 
 
@@ -183,9 +192,9 @@ viewScore zone fixture =
     div [ class "grow" ]
         (div
             [ class "flex flex-col text-center" ]
-            [ span [] [ text <| fixtureStage fixture ]
-            , span [] [ text (homeGoals fixture ++ " : " ++ awayGoals fixture) ]
-            , span [] [ text <| dateFormatter zone fixture.date ]
+            [ div [ class "text-3xl font-bold" ] [ text (homeGoals fixture ++ " : " ++ awayGoals fixture) ]
+            , div [ class "text-xs mt-2" ] [ text <| dateFormatter zone fixture.date ]
+            , div [ class "text-xs uppercase" ] [ text <| fixtureStage fixture ]
             ]
             :: (case fixture.penalties of
                     Just ( home, away ) ->
@@ -211,10 +220,10 @@ viewResultPrediction fixture expectedResult fixtureResult =
                 Tie ->
                     text "Viik"
     in
-    div []
-        [ viewResultIcon expectedResult fixtureResult
-        , text fixtureResult.name
-        , predictionText
+    tr [ class "border-b" ]
+        [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult ]
+        , td [] [ text fixtureResult.name ]
+        , td [] [ predictionText ]
         ]
 
 
@@ -223,13 +232,13 @@ viewResultIcon expectedResult fixtureResult =
     case expectedResult of
         Just result ->
             if result == fixtureResult.result then
-                span [ class "mdi mdi-check" ] []
+                span [ class "mdi mdi-check text-green-500 text-2xl" ] []
 
             else
-                span [ class "mdi mdi-close" ] []
+                span [ class "mdi mdi-close text-red-500 text-2xl" ] []
 
         Nothing ->
-            span [ class "mdi mdi-minus" ] []
+            span [ class "mdi mdi-minus text-gray-200 text-2xl" ] []
 
 
 viewPlayOffPrediction : Html Msg
