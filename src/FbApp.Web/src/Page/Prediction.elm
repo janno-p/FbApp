@@ -885,8 +885,8 @@ fixtureDecoder : Json.Decoder Fixture
 fixtureDecoder =
     Json.succeed Fixture
         |> required "id" Json.int
-        |> required "awayTeamId" Json.int
         |> required "homeTeamId" Json.int
+        |> required "awayTeamId" Json.int
 
 
 groupDecoder : Json.Decoder Group

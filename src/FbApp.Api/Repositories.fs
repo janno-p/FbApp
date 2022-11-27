@@ -493,40 +493,6 @@ module Predictions =
         ()
     }
 
-    let getScoreTable db (competitionId: Guid) = task {
-        return! (getCollection db).Aggregate(
-            PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionScore>.Create(
-                $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",
-                """{ $addFields: {
-                    q32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $eq: [ "$$f.PredictedResult", "$$f.ActualResult" ] }, then: 1, else: 0 } } } } },
-                    c32: { $sum: { $map: { input: "$Fixtures", as: "f", in: { $cond: { if: { $ne: [ "$$f.ActualResult", null ] }, then: 1, else: 0 } } } } },
-                    q16: { $sum: { $map: { input: "$QualifiersRoundOf16", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 2, else: 0 } } } } },
-                    c16: { $sum: { $map: { input: "$QualifiersRoundOf16", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 2, else: 0 } } } } },
-                    q8: { $sum: { $map: { input: "$QualifiersRoundOf8", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 3, else: 0 } } } } },
-                    c8: { $sum: { $map: { input: "$QualifiersRoundOf8", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 3, else: 0 } } } } },
-                    q4: { $sum: { $map: { input: "$QualifiersRoundOf4", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 4, else: 0 } } } } },
-                    c4: { $sum: { $map: { input: "$QualifiersRoundOf4", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 4, else: 0 } } } } },
-                    q2: { $sum: { $map: { input: "$QualifiersRoundOf2", as: "q", in: { $cond: { if: "$$q.HasQualified", then: 5, else: 0 } } } } },
-                    c2: { $sum: { $map: { input: "$QualifiersRoundOf2", as: "q", in: { $cond: { if: { $ne: [ "$$q.HasQualified", null ] }, then: 5, else: 0 } } } } },
-                    q1: { $cond: { if: "$Winner.HasQualified", then: 6, else: 0 } },
-                    c1: { $cond: { if: { $ne: ["$Winner.HasQualified", null] }, then: 6, else: 0 } }
-                } }""",
-                """{ $addFields: {
-                    Points: ["$q32", "$q16", "$q8", "$q4", "$q2", "$q1"]
-                } }""",
-                """{ $addFields: {
-                    Total: { $sum: "$Points" },
-                    max: { $sum: ["$c32", "$c16", "$c8", "$c4", "$c2", "$c1"] }
-                } }""",
-                """{ $addFields: {
-                    Ratio: { $multiply: [ 100.0, { $divide: [ "$Total", "$max" ] } ] }
-                } }""",
-                """{ $sort: { Total: -1, Ratio: -1, _id: 1 } }""",
-                """{ $project: { Name: 1, Points: 1, Total: 1, Ratio: 1 } }"""
-            )
-        ).ToListAsync()
-    }
-
 module Leagues =
     let private getCollection (db: IMongoDatabase) =
         db.GetCollection<ReadModels.League>("leagues")

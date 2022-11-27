@@ -5,6 +5,7 @@ module Api.Endpoint exposing
     , defaultEndpointConfig
     , defaultFixture
     , fixture
+    , leaderboard
     , prediction
     , request
     , savePrediction
@@ -99,6 +100,11 @@ defaultFixture =
 fixture : String -> Endpoint
 fixture fixtureId =
     url [ "fixtures", fixtureId ] []
+
+
+leaderboard : Endpoint
+leaderboard =
+    url [ "prediction", "board" ] []
 
 
 useToken : Session -> List Http.Header

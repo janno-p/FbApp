@@ -418,14 +418,16 @@ update msg model =
                 ]
             )
 
-        ( GotFixtureMsg subMsg, state ) ->
-            case state of
-                Fixture fixture ->
-                    Fixture.update subMsg fixture
-                        |> updateWith Fixture GotFixtureMsg model
+        ( GotFixtureMsg subMsg, Fixture fixture ) ->
+            Fixture.update subMsg fixture
+                |> updateWith Fixture GotFixtureMsg model
 
-                _ ->
-                    ( model, Cmd.none )
+        ( GotFixtureMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( GotLeaderboardMsg subMsg, Leaderboard leaderboard ) ->
+            Leaderboard.update subMsg leaderboard
+                |> updateWith Leaderboard GotLeaderboardMsg model
 
         ( GotLeaderboardMsg _, _ ) ->
             ( model, Cmd.none )

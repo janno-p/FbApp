@@ -1,6 +1,7 @@
 ﻿module FbApp.Fixtures.Dto
 
 open System
+open FbApp.Common
 open FbApp.Fixtures.Queries
 
 
@@ -38,14 +39,6 @@ type FixtureDto = {
     ResultPredictions: FixturePredictionDto array
     QualifierPredictions: QualifierPredictionDto array
 }
-
-
-module private Helpers =
-
-    let excludeLastName (name: string) =
-        match name.LastIndexOf ' ' with
-        | -1 -> name
-        | index -> name.Substring(0, index)
 
 
 module TeamDto =

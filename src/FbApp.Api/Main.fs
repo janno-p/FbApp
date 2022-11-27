@@ -37,6 +37,7 @@ let mainRouter = router {
     get "/api/fixtures" FbApp.Fixtures.Api.getDefaultFixture
     getf "/api/fixtures/%O" FbApp.Fixtures.Api.getFixture
     get "/api/prediction" (Auth.mustBeLoggedIn >=> (Auth.withUser FbApp.Predictions.Api.getUserPrediction))
+    get "/api/prediction/board" FbApp.PredictionResults.Api.getLeaderboard
 
     forward "/api/predict" Predict.predictScope
     forward "/api/fixtures" Fixtures.scope

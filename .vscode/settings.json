@@ -1,6 +1,19 @@
 {
   "[elm]": {
-    "files.encoding": "utf8"
+    "files.encoding": "utf8",
+    "tailwindCSS.experimental.classRegex": [
+      "\\bclass[\\s(<|]+\"([^\"]*)\"",
+      "\\bclass[\\s(]+\"[^\"]*\"[\\s+]+\"([^\"]*)\"",
+      "\\bclass[\\s<|]+\"[^\"]*\"\\s*\\+{2}\\s*\" ([^\"]*)\"",
+      "\\bclass[\\s<|]+\"[^\"]*\"\\s*\\+{2}\\s*\" [^\"]*\"\\s*\\+{2}\\s*\" ([^\"]*)\"",
+      "\\bclass[\\s<|]+\"[^\"]*\"\\s*\\+{2}\\s*\" [^\"]*\"\\s*\\+{2}\\s*\" [^\"]*\"\\s*\\+{2}\\s*\" ([^\"]*)\"",
+      "\\bclassList[\\s\\[\\(]+\"([^\"]*)\"",
+      "\\bclassList[\\s\\[\\(]+\"[^\"]*\",\\s[^\\)]+\\)[\\s\\[\\(,]+\"([^\"]*)\"",
+      "\\bclassList[\\s\\[\\(]+\"[^\"]*\",\\s[^\\)]+\\)[\\s\\[\\(,]+\"[^\"]*\",\\s[^\\)]+\\)[\\s\\[\\(,]+\"([^\"]*)\""
+    ]
+  },
+  "editor.quickSuggestions": {
+    "strings": "on"
   },
   "files.exclude": {
     ".fake": true,
@@ -11,12 +24,7 @@
     "src/FbApp.Web/elm-stuff": true,
     "src/FbApp.Web/node_modules": true
   },
-  "windicss.includeLanguages": {
-    "elm": {
-      "type": "html",
-      "patterns": [
-        "(\\s+class\\s+\")[^\"]*$"
-      ]
-    }
+  "tailwindCSS.includeLanguages": {
+    "elm": "html"
   }
 }

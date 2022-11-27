@@ -222,7 +222,7 @@ viewResultPrediction fixture expectedResult fixtureResult =
     in
     tr [ class "border-b" ]
         [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult ]
-        , td [] [ text fixtureResult.name ]
+        , td [ class "capitalize" ] [ text fixtureResult.name ]
         , td [] [ predictionText ]
         ]
 
