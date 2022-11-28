@@ -7,11 +7,6 @@ open System
 
 let [<Literal>] ApplicationName = "FbApp"
 
-let epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-
-let toUnixTime (dateTimeOffset: DateTimeOffset) =
-    Convert.ToInt64((dateTimeOffset.UtcDateTime - epoch).TotalSeconds);
-
 [<CLIMutable>]
 type Metadata =
     {
@@ -36,7 +31,7 @@ with
             Guid = Guid.Empty
             EventType = ""
             Timestamp = now
-            TimestampEpoch = now |> toUnixTime
+            TimestampEpoch = now.ToUnixTimeSeconds()
             AggregateSequenceNumber = 0L
             AggregateId = aggregateId
             AggregateName = aggregateName

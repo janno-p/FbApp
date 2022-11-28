@@ -26,7 +26,6 @@
     <Compile Include="Configuration.fs" />
     <Compile Include="CommandHandlers.fs" />
     <Compile Include="Repositories.fs" />
-    <Compile Include="MongoDbSetup.fs" />
     <Compile Include="ProcessManager.fs" />
     <Compile Include="Auth.fs" />
     <Compile Include="Dashboard.fs" />
@@ -49,6 +48,7 @@
     <Compile Include="Predictions\Predictions.Queries.fs" />
     <Compile Include="Predictions\Predictions.Api.fs" />
     <Compile Include="LiveUpdate.fs" />
+    <Compile Include="MongoDbSetup.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

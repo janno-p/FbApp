@@ -14,12 +14,6 @@ open MongoDB.Driver
 open System
 
 
-module Result =
-    let unwrap f = function
-        | Ok(x) -> x
-        | Error(x) -> failwith $"%A{f x}"
-
-
 let (|Nullable|_|) (x: Nullable<_>) =
     if x.HasValue then Some(x.Value) else None
 
@@ -50,11 +44,11 @@ let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Me
         try
             do! args |> upsertCompetition (logger, db) md e
             let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
-            let teams = teams |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
+            let teams = teams |> Result.defaultWith (fun (_,_,err) -> failwith err.Error)
             let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
-            let fixtures = fixtures |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
+            let fixtures = fixtures |> Result.defaultWith (fun (_,_,err) -> failwith err.Error)
             let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
-            let groups = groups |> Result.unwrap (fun (_,_,err) -> failwith err.Error)
+            let groups = groups |> Result.defaultWith (fun (_,_,err) -> failwith err.Error)
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
                     (
