@@ -18,16 +18,15 @@ type alias Model =
 
 
 type alias PredictionResult =
-    { id : String
-    , name : String
-    , matches : Float
-    , qualifiers : Float
-    , quarterFinals : Float
-    , semiFinals : Float
-    , finals : Float
-    , winner : Float
-    , topScorer : Float
-    , total : Float
+    { name : String
+    , matches : Int
+    , qualifiers : Int
+    , quarterFinals : Int
+    , semiFinals : Int
+    , finals : Int
+    , winner : Int
+    , topScorer : Int
+    , total : Int
     , ratio : Float
     , rank : Int
     }
@@ -103,15 +102,15 @@ viewPredictionResult ratioRange predictionResult =
     div [ class "grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(7,2rem)_3.5rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
         [ div [ class "text-right pr-2" ] [ text (String.fromInt predictionResult.rank ++ ".") ]
         , div [ class "capitalize" ] [ text predictionResult.name ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.matches) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.qualifiers) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.quarterFinals) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.semiFinals) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.finals) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.winner) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromFloat predictionResult.topScorer) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.matches) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.qualifiers) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.quarterFinals) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.semiFinals) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.finals) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.winner) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.topScorer) ]
         , div [ class "tabular-nums text-center border-l border-gray-200 space-x-1" ]
-            [ span [] [ text (String.fromFloat predictionResult.total) ]
+            [ span [] [ text (String.fromInt predictionResult.total) ]
             , viewRatio predictionResult.ratio ratioRange
             ]
         ]
@@ -169,10 +168,9 @@ leaderboardDecoder =
     Json.list predictionResultDecoder
 
 
-mapPredictionResult : String -> String -> List Float -> Float -> Float -> Int -> PredictionResult
-mapPredictionResult id name points total ratio rank =
-    { id = id
-    , name = name
+mapPredictionResult : String -> List Int -> Int -> Float -> Int -> PredictionResult
+mapPredictionResult name points total ratio rank =
+    { name = name
     , matches =
         case points of
             x :: _ ->
@@ -225,9 +223,8 @@ mapPredictionResult id name points total ratio rank =
 predictionResultDecoder : Json.Decoder PredictionResult
 predictionResultDecoder =
     Json.succeed mapPredictionResult
-        |> required "id" Json.string
         |> required "name" Json.string
-        |> required "points" (Json.list Json.float)
-        |> required "total" Json.float
+        |> required "points" (Json.list Json.int)
+        |> required "total" Json.int
         |> required "ratio" Json.float
         |> required "rank" Json.int

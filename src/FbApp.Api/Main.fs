@@ -18,6 +18,8 @@ open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Options
 open Microsoft.IdentityModel.Tokens
 open MongoDB.Bson
 open MongoDB.Driver
@@ -155,6 +157,11 @@ let configureApp (app: IApplicationBuilder) =
         ProcessManager.connectSubscription app.ApplicationServices
 
     processManagerInitTask.Wait()
+
+    FbApp.PredictionResults.ReadModel.registerPredictionResultHandlers
+        (app.ApplicationServices.GetRequiredService<ILoggerFactory>().CreateLogger("PredictionResults.ReadModel"))
+        (app.ApplicationServices.GetRequiredService<EventStoreClient>())
+        (app.ApplicationServices.GetRequiredService<IOptions<SubscriptionsSettings>>().Value)
 
     let initCompetition = task {
         use scope = app.ApplicationServices.CreateScope()

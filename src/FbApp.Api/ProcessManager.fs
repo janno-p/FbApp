@@ -118,6 +118,8 @@ let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Me
                 logger.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Competitions.GroupsAssigned groups ->
         do! (dict groups) |> Competitions.updateGroups db (md.AggregateId, md.AggregateSequenceNumber)
+    | Competitions.StandingsUpdated _ ->
+        ()
 }
 
 
@@ -346,9 +348,6 @@ let processFixtures (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task 
 
         with :? MongoWriteException as ex ->
             log.LogInformation(ex, "Already exists: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
-
-    | Fixtures.ScoreChanged (homeGoals, awayGoals) ->
-        do! updateScore db (md.AggregateId, md.AggregateSequenceNumber, { Home = homeGoals; Away = awayGoals }, None, None)
 
     | Fixtures.ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties } ->
         do! updateScore db (md.AggregateId, md.AggregateSequenceNumber, fullTime, extraTime, penalties)

@@ -20,6 +20,9 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
     let fixtureKey id =
         $"fixture-%d{id}"
 
+    let standingsKey competitionId group =
+        $"standings-%d{competitionId}-%s{group}"
+
     let getRequestFilters isFullUpdate =
         if isFullUpdate then [] else
         let today = DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero)
@@ -155,6 +158,57 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
             logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
     }
 
+    let updateGroupTable cancellationToken (standings: FootballData.CompetitionLeagueTableStandings) = task {
+        let key = standingsKey CompetitionId standings.Group
+
+        let! previousHashCode, tag =
+            dapr.GetStateAndETagAsync<string>(StoreName, key, cancellationToken = cancellationToken)
+
+        let bytes = snd (Serialization.serialize(standings))
+        let currentHash = Convert.ToBase64String(System.Security.Cryptography.SHA1.Create().ComputeHash(bytes.ToArray()))
+
+        if previousHashCode = currentHash then () else
+
+        if standings.Table |> Array.exists (fun x -> x.PlayedGames > 0) then
+            let rows =
+                standings.Table
+                |> Seq.map (fun x ->
+                    let r: Competitions.StandingRow = {
+                        Position = x.Position
+                        TeamId = x.Team.Id
+                        PlayedGames = x.PlayedGames
+                        Won = x.Won
+                        Draw = x.Draw
+                        Lost = x.Lost
+                        GoalsFor = x.GoalsFor
+                        GoalsAgainst = x.GoalsAgainst
+                    }
+                    r
+                )
+                |> Seq.toList
+
+            let command = Competitions.Command.UpdateStandings (standings.Group, rows)
+
+            let competitionId = Competitions.createId 2000L
+            match! CommandHandlers.competitionsHandler (competitionId, Aggregate.Any) command with
+            | Ok _ ->
+                ()
+            | Error err ->
+                logger.LogError($"Failed to update fixture %A{id}: %A{err}")
+
+        let! _ = dapr.TrySaveStateAsync(StoreName, key, currentHash, tag, cancellationToken = cancellationToken)
+        ()
+    }
+
+    let updateStandings cancellationToken = task {
+        match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken CompetitionId with
+        | Ok competition ->
+            for group in competition.Standings |> Array.filter (fun x -> x.Stage = "GROUP_STAGE") do
+                do! updateGroupTable cancellationToken group
+        | Error (errorCode, reason, error) ->
+            logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
+    }
+
     interface IJob with
         member _.Execute context = task {
             try
@@ -163,6 +217,9 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
                 logger.LogInformation("Performing {Type} update of fixture data", if isFullUpdate then "full" else "partial")
                 do! updateFixtures isFullUpdate context.CancellationToken
                 logger.LogInformation("Fixture update completed at {Time}", DateTimeOffset.UtcNow)
+                logger.LogInformation("Updating competition standings")
+                do! updateStandings context.CancellationToken
+                logger.LogInformation("Standings update completed at {Time}", DateTimeOffset.UtcNow)
             with e ->
                 logger.LogError(e, "Exception occured while updating fixtures.")
         }

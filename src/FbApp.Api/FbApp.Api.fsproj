@@ -42,7 +42,7 @@
     <Compile Include="Fixtures\Fixtures.Queries.fs" />
     <Compile Include="Fixtures\Fixtures.Dto.fs" />
     <Compile Include="Fixtures\Fixtures.Api.fs" />
-    <Compile Include="PredictionResults\PredictionResults.Queries.fs" />
+    <Compile Include="PredictionResults\PredictionResults.ReadModel.fs" />
     <Compile Include="PredictionResults\PredictionResults.Dto.fs" />
     <Compile Include="PredictionResults\PredictionResults.Api.fs" />
     <Compile Include="Predictions\Predictions.Queries.fs" />

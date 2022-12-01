@@ -14,9 +14,12 @@ type FixtureStatus =
     | Scheduled
     | Timed
     | InPlay
+    | Paused
     | Finished
+    | Suspended
     | Postponed
-    | Canceled
+    | Cancelled
+    | Awarded
     | Unknown of string
 with
     static member FromString value =
@@ -24,18 +27,24 @@ with
         | "SCHEDULED" -> Scheduled
         | "TIMED" -> Timed
         | "IN_PLAY" -> InPlay
+        | "PAUSED" -> Paused
         | "FINISHED" -> Finished
+        | "SUSPENDED" -> Suspended
         | "POSTPONED" -> Postponed
-        | "CANCELED" -> Canceled
+        | "CANCELLED" -> Cancelled
+        | "AWARDED" -> Awarded
         | status -> Unknown status
     override this.ToString() =
         match this with
         | Scheduled -> "SCHEDULED"
         | Timed -> "TIMED"
         | InPlay -> "IN_PLAY"
+        | Paused -> "PAUSED"
         | Finished -> "FINISHED"
+        | Suspended -> "SUSPENDED"
         | Postponed -> "POSTPONED"
-        | Canceled -> "CANCELED"
+        | Cancelled -> "CANCELLED"
+        | Awarded -> "AWARDED"
         | Unknown x -> x
 
 type FixtureGoals =
@@ -96,7 +105,6 @@ type ScoreChangedArgs =
 type Event =
     | Added of AddFixtureInput
     | StatusChanged of FixtureStatus
-    | ScoreChanged of int * int
     | ScoreChanged2 of ScoreChangedArgs
 
 type Command =
@@ -154,8 +162,6 @@ let evolve : State option -> Event -> State =
                 | InPlay, None -> Some({ Home = 0; Away = 0 })
                 | _, fullTime -> fullTime
             { state.Value with Status = status; FullTime = fullTime }
-        | ScoreChanged (homeGoals, awayGoals) ->
-            { state.Value with FullTime = Some({ Home = homeGoals; Away = awayGoals }) }
         | ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties } ->
             { state.Value with FullTime = Some(fullTime); ExtraTime = extraTime; Penalties = penalties }
     )

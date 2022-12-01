@@ -48,9 +48,22 @@ type CreateInput =
         Date: DateTimeOffset
     }
 
+type StandingRow =
+    {
+        Position: int
+        TeamId: int64
+        PlayedGames: int
+        Won: int
+        Draw: int
+        Lost: int
+        GoalsFor: int
+        GoalsAgainst: int
+    }
+
 type Command =
     | Create of CreateInput
     | AssignTeamsAndFixtures of TeamAssignment list * FixtureAssignment list * GroupAssignment list * PlayerAssignment list
+    | UpdateStandings of string * StandingRow list
 
 type Event =
     | Created of Created
@@ -58,6 +71,7 @@ type Event =
     | FixturesAssigned of FixtureAssignment list
     | GroupsAssigned of GroupAssignment list
     | PlayersAssigned of PlayerAssignment list
+    | StandingsUpdated of string * StandingRow list
 
 let decide: State option -> Command -> Result<Event list,unit> =
     (fun _ -> function
@@ -65,6 +79,8 @@ let decide: State option -> Command -> Result<Event list,unit> =
             Ok([Created { Description = description; ExternalId = externalId; Date = date }])
         | AssignTeamsAndFixtures (teams, fixtures, groups, players) ->
             Ok([TeamsAssigned teams; FixturesAssigned fixtures; GroupsAssigned groups; PlayersAssigned players])
+        | UpdateStandings(s, standingRowInputs) ->
+            Ok([StandingsUpdated (s, standingRowInputs)])
     )
 
 let evolve: State option -> Event -> State =
@@ -74,6 +90,7 @@ let evolve: State option -> Event -> State =
         | FixturesAssigned _ -> ()
         | GroupsAssigned _ -> ()
         | PlayersAssigned _ -> ()
+        | StandingsUpdated _ -> ()
     )
 
 let competitionsNamespace =

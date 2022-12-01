@@ -41,6 +41,9 @@ type GroupEntry =
         Team: GroupEntryTeam
         PlayedGames: int
         Points: int
+        Won: int
+        Draw: int
+        Lost: int
         GoalsFor: int
         GoalsAgainst: int
         GoalDifference: int
