@@ -47,6 +47,11 @@ type FixtureResult
     | AwayWin
 
 
+type QualifierSide
+    = Home Bool
+    | Away Bool
+
+
 type alias Team =
     { name : String
     , flagUrl : String
@@ -56,6 +61,13 @@ type alias Team =
 type alias FixtureResultPrediction =
     { name : String
     , result : FixtureResult
+    }
+
+
+type alias QualifierPrediction =
+    { name : String
+    , homeQualifies : Bool
+    , awayQualifies : Bool
     }
 
 
@@ -71,6 +83,7 @@ type alias Fixture =
     , fullTime : Maybe ( Int, Int )
     , penalties : Maybe ( Int, Int )
     , resultPredictions : List FixtureResultPrediction
+    , qualifierPredictions : List QualifierPrediction
     }
 
 
@@ -165,6 +178,12 @@ viewFixture zone fixture =
                         else
                             Tie
                     )
+
+        resultPredictions =
+            List.map (viewResultPrediction fixture expectedResult) fixture.resultPredictions
+
+        qualifierPredictions =
+            List.map (viewPlayOffPrediction expectedResult) fixture.qualifierPredictions
     in
     div []
         [ div [ class "flex flex-row flex-nowrap border-b border-gray-200 py-2" ]
@@ -173,9 +192,7 @@ viewFixture zone fixture =
             , viewTeam fixture.awayTeam
             ]
         , table [ class "w-full mt-4 mb-8" ]
-            [ tbody []
-                (List.map (viewResultPrediction fixture expectedResult) fixture.resultPredictions)
-            ]
+            [ tbody [] (resultPredictions ++ qualifierPredictions) ]
         ]
 
 
@@ -221,17 +238,17 @@ viewResultPrediction fixture expectedResult fixtureResult =
                     text "Viik"
     in
     tr [ class "border-b" ]
-        [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult ]
+        [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult.result ]
         , td [ class "capitalize" ] [ text fixtureResult.name ]
         , td [] [ predictionText ]
         ]
 
 
-viewResultIcon : Maybe FixtureResult -> FixtureResultPrediction -> Html Msg
-viewResultIcon expectedResult fixtureResult =
+viewResultIcon : Maybe FixtureResult -> FixtureResult -> Html Msg
+viewResultIcon expectedResult predictedResult =
     case expectedResult of
         Just result ->
-            if result == fixtureResult.result then
+            if result == predictedResult then
                 span [ class "mdi mdi-check text-green-500 text-2xl" ] []
 
             else
@@ -241,9 +258,51 @@ viewResultIcon expectedResult fixtureResult =
             span [ class "mdi mdi-minus text-gray-200 text-2xl" ] []
 
 
-viewPlayOffPrediction : Html Msg
-viewPlayOffPrediction =
-    div [] []
+qualifierIconClass : Bool -> Html.Attribute Msg
+qualifierIconClass expectQualifies =
+    if expectQualifies then
+        class "mdi mdi-check"
+
+    else
+        class "mdi mdi-close"
+
+
+qualifierColorClass : Maybe FixtureResult -> QualifierSide -> Html.Attribute Msg
+qualifierColorClass maybeFixtureResult qualifierSide =
+    case ( maybeFixtureResult, qualifierSide ) of
+        ( Nothing, _ ) ->
+            class "text-gray-200"
+
+        ( Just Tie, _ ) ->
+            class "text-orange-400"
+
+        ( Just HomeWin, Home True ) ->
+            class "text-green-500"
+
+        ( Just HomeWin, Away False ) ->
+            class "text-green-500"
+
+        ( Just AwayWin, Away True ) ->
+            class "text-green-500"
+
+        ( Just AwayWin, Home False ) ->
+            class "text-green-500"
+
+        ( Just _, _ ) ->
+            class "text-red-500"
+
+
+viewPlayOffPrediction : Maybe FixtureResult -> QualifierPrediction -> Html Msg
+viewPlayOffPrediction expectedResult prediction =
+    tr [ class "border-b" ]
+        [ td [ class "px-4 w-32 text-center" ]
+            [ span [ qualifierIconClass prediction.homeQualifies, class "text-2xl", qualifierColorClass expectedResult (Home prediction.homeQualifies) ] []
+            ]
+        , td [ class "capitalize text-center" ] [ text prediction.name ]
+        , td [ class "px-4 w-32 text-center" ]
+            [ span [ qualifierIconClass prediction.awayQualifies, class "text-2xl", qualifierColorClass expectedResult (Away prediction.awayQualifies) ] []
+            ]
+        ]
 
 
 type Msg
@@ -315,6 +374,15 @@ fixtureDecoder =
         |> required "fullTime" scoreDecoder
         |> required "penalties" scoreDecoder
         |> required "resultPredictions" (Json.list fixtureResultPredictionDecoder)
+        |> required "qualifierPredictions" (Json.list qualifierPredictionDecoder)
+
+
+qualifierPredictionDecoder : Json.Decoder QualifierPrediction
+qualifierPredictionDecoder =
+    Json.succeed QualifierPrediction
+        |> required "name" Json.string
+        |> required "homeQualifies" Json.bool
+        |> required "awayQualifies" Json.bool
 
 
 fixtureResultPredictionDecoder : Json.Decoder FixtureResultPrediction
@@ -348,7 +416,7 @@ fixtureStageDecoder =
         |> Json.map
             (\value ->
                 case value of
-                    "ROUND_OF_16" ->
+                    "LAST_16" ->
                         RoundOf16
 
                     "QUARTER_FINALS" ->
@@ -399,7 +467,7 @@ fixtureStage fixture =
             "Alagrupimäng"
 
         RoundOf16 ->
-            "Väljakukkumismäng"
+            "Kohamäng"
 
         QuarterFinals ->
             "Veerandfinaal"

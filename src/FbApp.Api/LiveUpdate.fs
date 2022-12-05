@@ -2,23 +2,45 @@
 
 open System
 open System.Collections.Generic
-open Dapr.Client
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
+open FbApp.Common.SimpleTypes
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
 open Quartz
 
+
+type Posix =
+    private Posix of int64
+
+
+module Posix =
+    let create (value: DateTimeOffset) =
+        Posix (value.ToUnixTimeSeconds())
+
+    let value (Posix posix) =
+        posix
+
+
+module InMemoryCache =
+    let Fixtures = Dictionary<FixtureId, string>()
+    let FixtureUpdates = Dictionary<FixtureId, Posix>()
+    let Standings = Dictionary<string, string>()
+
+
+module Hash =
+    let calculate (o: obj) =
+        let bytes = snd (Serialization.serialize(o))
+        Convert.ToBase64String(System.Security.Cryptography.SHA1.Create().ComputeHash(bytes.ToArray()))
+
+
 [<DisallowConcurrentExecution>]
-type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger: ILogger<LiveUpdateJob>) =
-    let [<Literal>] StoreName = "fbapp-state"
-    let [<Literal>] CompetitionId = 2000L
+type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpdateJob>) =
+    let [<Literal>] CompetitionApiId =
+        2000L
 
-    let competitionKey id =
-        $"competition-%d{id}"
-
-    let fixtureKey id =
-        $"fixture-%d{id}"
+    let competitionId =
+        CompetitionId.create CompetitionApiId
 
     let standingsKey competitionId group =
         $"standings-%d{competitionId}-%s{group}"
@@ -80,29 +102,18 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
                 ()
     }
 
-    let updateFixtures isFullUpdate cancellationToken = task {
-        match! FootballData.getCompetitionFixtures authOptions.Value.FootballDataToken CompetitionId (getRequestFilters isFullUpdate)  with
+    let updateFixtures isFullUpdate _ = task {
+        match! FootballData.getCompetitionFixtures authOptions.Value.FootballDataToken CompetitionApiId (getRequestFilters isFullUpdate)  with
         | Ok matches ->
             logger.LogInformation("Loaded data of {count} fixtures.", matches.Fixtures.Length)
 
-            let! fixtureUpdatesLookup, tag =
-                dapr.GetStateAndETagAsync<Dictionary<int64, DateTimeOffset>>(
-                    StoreName,
-                    competitionKey CompetitionId,
-                    cancellationToken = cancellationToken
-                )
-
-            let fixtureUpdatesLookup =
-                match fixtureUpdatesLookup with
-                | null -> Dictionary<int64, DateTimeOffset>()
-                | value -> value
-
             let isUpdated (fixture: FootballData.CompetitionFixture) =
-                match fixtureUpdatesLookup.TryGetValue fixture.Id with
-                | false, v | true, v when v < fixture.LastUpdated -> true
-                | _ -> false
+                let fixtureId = FixtureId.create competitionId fixture.Id
+                match InMemoryCache.FixtureUpdates.TryGetValue fixtureId with
+                | true, lastUpdatePosix -> Posix.value lastUpdatePosix >= fixture.LastUpdated.ToUnixTimeSeconds()
+                | _ -> true
 
-            let fixtureUpdates = ResizeArray<FixtureDto * string>()
+            let fixtureUpdates = ResizeArray<FixtureDto>()
 
             let mapGoals (g: FootballData.FixtureScore option) =
                 let homeTeam, awayTeam = g |> Option.map (fun x -> (x.Home, x.Away)) |> Option.defaultValue (None, None)
@@ -110,17 +121,19 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
                 | Some(home), Some(away) -> Some(home, away)
                 | _ -> None
 
+            let updateCache = ResizeArray<_>()
+
             for fixture in matches.Fixtures |> Array.filter isUpdated do
-                let! previousFixture, tag =
-                    dapr.GetStateAndETagAsync<FixtureDto>(
-                        StoreName,
-                        fixtureKey fixture.Id,
-                        cancellationToken = cancellationToken
-                    )
+                let fixtureId = FixtureId.create competitionId fixture.Id
+
+                let previousFixtureHashCode =
+                    match InMemoryCache.Fixtures.TryGetValue(fixtureId) with
+                    | true, hashCode -> Some(hashCode)
+                    | _ -> None
 
                 let newFixture: FixtureDto = {
                     FixtureId = fixture.Id
-                    CompetitionId = CompetitionId
+                    CompetitionId = CompetitionApiId
                     HomeTeamId = fixture.HomeTeam |> Option.bind (fun x -> x.Id)
                     AwayTeamId = fixture.AwayTeam |> Option.bind (fun x -> x.Id)
                     UtcDate = fixture.Date
@@ -134,40 +147,37 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
                     Duration = fixture.Result |> Option.map (fun x -> x.Duration) |> Option.defaultValue "REGULAR"
                 }
 
-                if newFixture <> previousFixture then
-                    logger.LogInformation("Updating fixture {FixtureId} state updated", fixture.Id)
-                    fixtureUpdates.Add((newFixture, tag))
+                let currentFixtureHashCode = Hash.calculate newFixture
 
-                fixtureUpdatesLookup[fixture.Id] <- fixture.LastUpdated
+                if Some(currentFixtureHashCode) <> previousFixtureHashCode then
+                    logger.LogInformation("Updating fixture {FixtureId} state updated", fixture.Id)
+                    fixtureUpdates.Add(newFixture)
+
+                updateCache.Add(fun () ->
+                    InMemoryCache.Fixtures[fixtureId] <- currentFixtureHashCode
+                    InMemoryCache.FixtureUpdates[fixtureId] <- Posix.create fixture.LastUpdated
+                )
 
             if fixtureUpdates.Count > 0 then
-                do! updateFixturesHandler { Fixtures = fixtureUpdates |> Seq.map fst |> Seq.toArray }
-                let! _ =
-                    dapr.TrySaveStateAsync(
-                        StoreName,
-                        competitionKey CompetitionId,
-                        fixtureUpdatesLookup,
-                        tag,
-                        cancellationToken = cancellationToken
-                    )
-                for f, t in fixtureUpdates do
-                    let! _ = dapr.TrySaveStateAsync(StoreName, fixtureKey f.FixtureId, f, t, cancellationToken = cancellationToken)
-                    ()
+                do! updateFixturesHandler { Fixtures = fixtureUpdates |> Seq.toArray }
+
+            updateCache |> Seq.iter (fun f -> f())
 
         | Error (errorCode, reason, error) ->
             logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
     }
 
-    let updateGroupTable cancellationToken (standings: FootballData.CompetitionLeagueTableStandings) = task {
-        let key = standingsKey CompetitionId standings.Group
+    let updateGroupTable _ (standings: FootballData.CompetitionLeagueTableStandings) = task {
+        let key = standingsKey CompetitionApiId standings.Group
 
-        let! previousHashCode, tag =
-            dapr.GetStateAndETagAsync<string>(StoreName, key, cancellationToken = cancellationToken)
+        let previousHashCode =
+            match InMemoryCache.Standings.TryGetValue(key) with
+            | true, hashCode -> Some(hashCode)
+            | _ -> None
 
-        let bytes = snd (Serialization.serialize(standings))
-        let currentHash = Convert.ToBase64String(System.Security.Cryptography.SHA1.Create().ComputeHash(bytes.ToArray()))
+        let currentHashCode = Hash.calculate standings
 
-        if previousHashCode = currentHash then () else
+        if previousHashCode = Some(currentHashCode) then () else
 
         if standings.Table |> Array.exists (fun x -> x.PlayedGames > 0) then
             let rows =
@@ -196,12 +206,13 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, dapr: DaprClient, logger
             | Error err ->
                 logger.LogError($"Failed to update fixture %A{id}: %A{err}")
 
-        let! _ = dapr.TrySaveStateAsync(StoreName, key, currentHash, tag, cancellationToken = cancellationToken)
+        InMemoryCache.Standings[key] <- currentHashCode
+
         ()
     }
 
     let updateStandings cancellationToken = task {
-        match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken CompetitionId with
+        match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken CompetitionApiId with
         | Ok competition ->
             for group in competition.Standings |> Array.filter (fun x -> x.Stage = "GROUP_STAGE") do
                 do! updateGroupTable cancellationToken group

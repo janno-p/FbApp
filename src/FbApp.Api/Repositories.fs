@@ -335,14 +335,14 @@ module Fixtures =
     }
 
     let getFixtureCount db (competitionId: Guid, stage: string) = task {
-        return! (getCollection db).CountDocumentsAsync(FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), Stage: {{ $eq: "%s{stage}" }} }}""")
+        return! (getCollection db).CountDocumentsAsync(FilterDefinition.op_Implicit $"""{{ CompetitionId: UUID("{competitionId:N}"), Stage: {{ $eq: "%s{stage}" }} }}""")
     }
 
     let getQualifiedTeams db (competitionId: Guid) = task {
         let! teams =
             (getCollection db).Aggregate(
                 PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
-                    $"""{{ $match: {{ CompetitionId: CSUUID("{competitionId}"), Stage: "LAST_16" }} }}""",
+                    $"""{{ $match: {{ CompetitionId: UUID("{competitionId:N}"), Stage: "LAST_16" }} }}""",
                     """{ $project: { _id: 0, TeamId: ["$HomeTeam.ExternalId", "$AwayTeam.ExternalId"] } }""",
                     """{ $unwind: "$TeamId" }"""
                 )
@@ -363,7 +363,7 @@ module Predictions =
     let ofFixture db (competitionId: Guid) (externalFixtureId: int64) = task {
         let pipelines =
             PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionFixture>.Create(
-                $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }}, "Fixtures.FixtureId": {{ $eq: %d{externalFixtureId} }} }} }}""",
+                $"""{{ $match: {{ CompetitionId: {{ $eq: UUID("{competitionId:N}") }}, "Fixtures.FixtureId": {{ $eq: %d{externalFixtureId} }} }} }}""",
                 $"""{{ $project: {{ Name: 1, Fixtures: {{ $filter: {{ input: "$Fixtures", as: "fixture", cond: {{ $eq: ["$$fixture.FixtureId", %d{externalFixtureId}] }} }} }} }} }}"""
             )
         return! (getCollection db).Aggregate(pipelines).ToListAsync()
@@ -372,13 +372,13 @@ module Predictions =
     let ofStage db (competitionId: Guid, stage: string) =
         match stage with
         | "LAST_16"
-        | "QUARTER_FINAL"
-        | "SEMI_FINAL" ->
+        | "QUARTER_FINALS"
+        | "SEMI_FINALS" ->
             task {
-                let qualName = if stage = "LAST_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINAL" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
+                let qualName = if stage = "LAST_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINALS" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
-                        $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",
+                        $"""{{ $match: {{ CompetitionId: {{ $eq: UUID("{competitionId:N}") }} }} }}""",
                         $"""{{ $project: {{ Name: 1, Qualifiers: "$%s{qualName}" }} }}"""
                     )
                 return! (getCollection db).Aggregate(pipelines).ToListAsync()
@@ -387,7 +387,7 @@ module Predictions =
             task {
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
-                        $"""{{ $match: {{ CompetitionId: {{ $eq: CSUUID("{competitionId}") }} }} }}""",
+                        $"""{{ $match: {{ CompetitionId: {{ $eq: UUID("{competitionId:N}") }} }} }}""",
                         """{ $project: { Name: 1, Qualifiers: ["$Winner"] } }"""
                     )
                 return! (getCollection db).Aggregate(pipelines).ToListAsync()
@@ -448,8 +448,8 @@ module Predictions =
     let private getColName = function
         | "GROUP_STAGE" -> "QualifiersRoundOf16"
         | "LAST_16" -> "QualifiersRoundOf8"
-        | "QUARTER_FINAL" -> "QualifiersRoundOf4"
-        | "SEMI_FINAL" -> "QualifiersRoundOf2"
+        | "QUARTER_FINALS" -> "QualifiersRoundOf4"
+        | "SEMI_FINALS" -> "QualifiersRoundOf2"
         | "FINAL" -> "Winner"
         | x -> failwith $"Unexpected value: `%s{x}`"
 
@@ -457,7 +457,7 @@ module Predictions =
         let colName = getColName stage
         let! _ =
             (getCollection db).UpdateManyAsync(
-                FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), "%s{colName}._id": %d{teamId} }}""",
+                FilterDefinition.op_Implicit $"""{{ CompetitionId: UUID("{competitionId:N}"), "%s{colName}._id": %d{teamId} }}""",
                 UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{colName}.$.HasQualified": %b{hasQualified} }} }}"""
             )
         ()
@@ -469,7 +469,7 @@ module Predictions =
         let updateQualifiers name = task {
             let! _ =
                 (getCollection db).UpdateManyAsync(
-                    FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}") }}""",
+                    FilterDefinition.op_Implicit $"""{{ CompetitionId: UUID("{competitionId:N}") }}""",
                     UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{name}.$[q].HasQualified": false }} }}""",
                     UpdateOptions(
                         ArrayFilters = [
@@ -487,7 +487,7 @@ module Predictions =
 
         let! _ =
             (getCollection db).UpdateManyAsync(
-                FilterDefinition.op_Implicit $"""{{ CompetitionId: CSUUID("{competitionId}"), "Winner.HasQualified": {{ $eq: null }}, "Winner._id": {{ $in: [%s{teamList}] }} }}""",
+                FilterDefinition.op_Implicit $"""{{ CompetitionId: UUID("{competitionId:N}"), "Winner.HasQualified": {{ $eq: null }}, "Winner._id": {{ $in: [%s{teamList}] }} }}""",
                 UpdateDefinition.op_Implicit """{ $set: { "Winner.HasQualified": false } }"""
             )
         ()

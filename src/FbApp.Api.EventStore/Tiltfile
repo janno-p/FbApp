@@ -2,4 +2,10 @@ k8s_yaml('./kubernetes/pvc.yaml')
 k8s_yaml('./kubernetes/statefulset.yaml')
 k8s_yaml('./kubernetes/service.yaml')
 
-k8s_resource('fbapp-eventstore', port_forwards='2113:2113', labels=['fbapp-api'])
+k8s_resource(new_name='fbapp-eventstore-resources', labels=['fbapp-api'], objects=[
+    'fbapp-eventstore-pvc:persistentvolumeclaim'
+])
+
+k8s_resource('fbapp-eventstore', port_forwards='2113:2113', labels=['fbapp-api'], resource_deps=[
+    'fbapp-eventstore-resources'
+])

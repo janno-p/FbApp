@@ -12,7 +12,6 @@ helm_remote('redis',
 
 k8s_resource(new_name='fbapp-api-redis-resources', labels=['fbapp-api'], objects=[
     'fbapp-api-redis:serviceaccount',
-    'fbapp-eventstore-pvc:persistentvolumeclaim',
     'fbapp-api-redis-configuration:configmap',
     'fbapp-api-redis-health:configmap',
     'fbapp-api-redis-scripts:configmap',

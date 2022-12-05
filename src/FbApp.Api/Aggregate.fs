@@ -40,7 +40,7 @@ let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
                 match expectedVersion with
                 | New -> NewStream
                 | Version v -> Value v
-                | Any -> Value ver
+                | Any -> if ver = 0 then NewStream else Value ver
             return! commit (streamId, expectedCommitVersion) events
         | Error(err) ->
             return Error(DomainError(err))
