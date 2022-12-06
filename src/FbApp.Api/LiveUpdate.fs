@@ -110,7 +110,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
             let isUpdated (fixture: FootballData.CompetitionFixture) =
                 let fixtureId = FixtureId.create competitionId fixture.Id
                 match InMemoryCache.FixtureUpdates.TryGetValue fixtureId with
-                | true, lastUpdatePosix -> Posix.value lastUpdatePosix >= fixture.LastUpdated.ToUnixTimeSeconds()
+                | true, lastUpdatePosix -> Posix.value lastUpdatePosix < fixture.LastUpdated.ToUnixTimeSeconds()
                 | _ -> true
 
             let fixtureUpdates = ResizeArray<FixtureDto>()
