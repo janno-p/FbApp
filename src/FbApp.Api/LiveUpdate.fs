@@ -58,6 +58,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
 
         for fixture in evt.Fixtures do
             let competitionGuid = Competitions.createId fixture.CompetitionId
+            let fixtureId = FixtureId.create competitionId fixture.FixtureId
             let maybeCommand =
                 match fixture.Stage with
                 | "GROUP_STAGE" ->
@@ -87,7 +88,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                     | _ ->
                         None
                 | _ ->
-                    logger.LogError($"Unknown stage value for fixture %A{id}: %s{fixture.Stage}")
+                    logger.LogError($"Unknown stage value for fixture %A{fixtureId}: %s{fixture.Stage}")
                     None
 
             match maybeCommand with
@@ -97,7 +98,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                 | Ok _ ->
                     ()
                 | Error err ->
-                    logger.LogError($"Failed to update fixture %A{id}: %A{err}")
+                    logger.LogError($"Failed to update fixture %A{fixtureId}: %A{err}")
             | None ->
                 ()
     }
@@ -204,7 +205,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
             | Ok _ ->
                 ()
             | Error err ->
-                logger.LogError($"Failed to update fixture %A{id}: %A{err}")
+                logger.LogError($"Failed to update competition standings in group %s{standings.Group}: %A{err}")
 
         InMemoryCache.Standings[key] <- currentHashCode
 

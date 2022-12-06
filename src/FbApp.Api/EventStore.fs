@@ -74,9 +74,9 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
                 let domainEvents = pages |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
                 let eventNumber =
                     if pages.Count > 0 then
-                        pages[pages.Count - 1].OriginalEventNumber.ToInt64()
+                        Some(pages[pages.Count - 1].OriginalEventNumber.ToInt64())
                     else
-                        StreamPosition.Start.ToInt64()
+                        None
                 return (eventNumber, domainEvents)
             }
         )

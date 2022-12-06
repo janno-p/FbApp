@@ -206,21 +206,25 @@ viewTeam team =
 
 viewScore : Zone -> Fixture -> Html Msg
 viewScore zone fixture =
-    div [ class "grow" ]
-        (div
-            [ class "flex flex-col text-center" ]
-            [ div [ class "text-3xl font-bold" ] [ text (homeGoals fixture ++ " : " ++ awayGoals fixture) ]
-            , div [ class "text-xs mt-2" ] [ text <| dateFormatter zone fixture.date ]
-            , div [ class "text-xs uppercase" ] [ text <| fixtureStage fixture ]
-            ]
-            :: (case fixture.penalties of
-                    Just ( home, away ) ->
-                        [ text ("(" ++ String.fromInt home ++ " : " ++ String.fromInt away ++ ")") ]
+    let
+        penalties =
+            case fixture.penalties of
+                Just ( home, away ) ->
+                    [ div [ class "text-xs font-semibold uppercase" ] [ text ("(pen " ++ String.fromInt home ++ " : " ++ String.fromInt away ++ ")") ] ]
 
-                    Nothing ->
-                        []
-               )
-        )
+                Nothing ->
+                    []
+    in
+    div [ class "grow" ]
+        [ div
+            [ class "flex flex-col text-center" ]
+            (div [ class "text-3xl font-bold" ] [ text (homeGoals fixture ++ " : " ++ awayGoals fixture) ]
+                :: penalties
+                ++ [ div [ class "text-xs mt-2" ] [ text <| dateFormatter zone fixture.date ]
+                   , div [ class "text-xs uppercase" ] [ text <| fixtureStage fixture ]
+                   ]
+            )
+        ]
 
 
 viewResultPrediction : Fixture -> Maybe FixtureResult -> FixtureResultPrediction -> Html Msg

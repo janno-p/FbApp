@@ -81,7 +81,10 @@ module FixtureDto =
             AwayTeam = TeamDto.fromTeam fixture.AwayTeam
             Status = fixture.Status
             Stage = fixture.Stage
-            FullTime = fixture.FullTime
+            FullTime =
+                match fixture.FullTime, fixture.Penalties with
+                | [| fth; fta |], [| pth; pta |] -> [| fth - pth; fta - pta |]
+                | _ -> fixture.FullTime
             ExtraTime = fixture.ExtraTime
             Penalties = fixture.Penalties
             ResultPredictions =
