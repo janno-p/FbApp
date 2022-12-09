@@ -11,6 +11,7 @@ open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Options
 open Saturn
 open System
 open System.Collections.Generic
@@ -35,8 +36,11 @@ type DaprConfigFilter(configuration: IConfiguration) =
                 originalCluster.Destinations
                 |> Seq.tryExactlyOne
                 |> Option.iter (fun kvp ->
-                    let destination = kvp.Value.``<Clone>$``()
-                    destination.Address <- connectionString
+                    let destination = DestinationConfig(
+                        Address = connectionString,
+                        Health = kvp.Value.Health,
+                        Metadata = kvp.Value.Metadata
+                    )
                     newDestinations.Add(kvp.Key, destination)
                 )
             | None ->
@@ -48,15 +52,26 @@ type DaprConfigFilter(configuration: IConfiguration) =
                 originalCluster.Destinations
                 |> Seq.iter (fun kvp ->
                     if kvp.Value.Address.StartsWith(DaprPrefix) then
-                        let destination = kvp.Value.``<Clone>$``()
-                        destination.Address <- $"http://localhost:%d{daprPort}%s{kvp.Value.Address.Substring(DaprPrefix.Length)}"
+                        let destination = DestinationConfig(
+                            Address = $"http://localhost:%d{daprPort}%s{kvp.Value.Address.Substring(DaprPrefix.Length)}",
+                            Health = kvp.Value.Health,
+                            Metadata = kvp.Value.Metadata
+                        )
                         newDestinations.Add(kvp.Key, destination)
                     else
                         newDestinations.Add(kvp.Key, kvp.Value)
                 )
 
-            let cluster = originalCluster.``<Clone>$``()
-            cluster.Destinations <- newDestinations
+            let cluster = ClusterConfig(
+                Destinations = newDestinations,
+                Metadata = originalCluster.Metadata,
+                ClusterId = originalCluster.ClusterId,
+                HealthCheck = originalCluster.HealthCheck,
+                HttpClient = originalCluster.HttpClient,
+                HttpRequest = originalCluster.HttpRequest,
+                SessionAffinity = originalCluster.SessionAffinity,
+                LoadBalancingPolicy = originalCluster.LoadBalancingPolicy
+            )
 
             ValueTask<ClusterConfig>(cluster)
 
@@ -82,7 +97,14 @@ type ProxyJwtBearerEvents () =
             Type = "https://tools.ietf.org/html/rfc7235#section-3.1"
         )
 
-        do! context.Response.WriteAsJsonAsync(details, null, contentType = MediaTypeNames.Application.Json)
+        let jsonOptions = context.HttpContext.RequestServices.GetRequiredService<IOptions<JsonOptions>>().Value
+
+        do! context.Response.WriteAsJsonAsync(
+            details,
+            jsonOptions.JsonSerializerOptions,
+            MediaTypeNames.Application.Json,
+            context.HttpContext.RequestAborted
+        )
     }
 
 
