@@ -5,9 +5,9 @@ FROM docker.io/library/node:lts-alpine AS build
 WORKDIR /app
 RUN wget -O - 'https://github.com/elm/compiler/releases/download/0.19.1/binary-for-linux-64-bit.gz' | gunzip -c >/usr/local/bin/elm
 RUN chmod +x /usr/local/bin/elm
-COPY package*.json ./
-COPY yarn.lock ./
-RUN yarn
+COPY .yarn ./.yarn
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --immutable
 COPY . .
 RUN yarn build
 
