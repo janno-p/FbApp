@@ -1,4 +1,4 @@
-coverlet.collector
+﻿coverlet.collector
 FSharp.Core
 FsUnit.xUnit
 Microsoft.AspNetCore.Mvc.Testing

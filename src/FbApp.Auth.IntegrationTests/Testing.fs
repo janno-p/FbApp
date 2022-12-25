@@ -1,13 +1,15 @@
 ﻿namespace FbApp.Auth.IntegrationTests
 
+open System
 open System.Collections.Generic
+open System.Net.Http
 open DotNet.Testcontainers.Builders
 open DotNet.Testcontainers.Configurations
 open DotNet.Testcontainers.Containers
 open FbApp.Auth
 open Microsoft.AspNetCore.Mvc.Testing
 open Microsoft.Extensions.Configuration
-open NUnit.Framework
+open Xunit
 
 type AuthApiFactory (configuration: IDictionary<_,_>) =
     inherit WebApplicationFactory<Program.Metadata>()
@@ -21,9 +23,8 @@ type AuthApiFactory (configuration: IDictionary<_,_>) =
                 opt.AddInMemoryCollection(configuration) |> ignore
                 ) |> ignore
 
-[<SetUpFixture>]
-module Testing =
-    let private dbContainer =
+type AuthApiFixture () =
+    let dbContainer =
         let configuration = new PostgreSqlTestcontainerConfiguration(
             Database = "fbapp-auth",
             Username = "postgres",
@@ -33,23 +34,29 @@ module Testing =
             .WithDatabase(configuration)
             .Build()
 
-    let mutable private factory = Unchecked.defaultof<AuthApiFactory>
+    let mutable factory = Unchecked.defaultof<AuthApiFactory>
 
-    [<OneTimeSetUp>]
-    let ``run before any tests`` () = task {
-        do! dbContainer.StartAsync()
-        let configuration = dict [
-            "ConnectionStrings:postgres", dbContainer.ConnectionString
-            "Google:Authentication:ClientId", "**id**"
-            "Google:Authentication:ClientSecret", "**secret**"
-        ]
-        factory <- new AuthApiFactory(configuration)
-    }
+    member _.Client with get(): HttpClient = factory.CreateClient()
 
-    [<OneTimeTearDown>]
-    let ``run after all tests`` () = task {
-        do! dbContainer.StopAsync()
-    }
+    interface IAsyncLifetime with
+        member _.InitializeAsync() = task {
+            do! dbContainer.StartAsync()
+            let configuration = dict [
+                "ConnectionStrings:postgres", dbContainer.ConnectionString
+                "Google:Authentication:ClientId", "**id**"
+                "Google:Authentication:ClientSecret", "**secret**"
+            ]
+            factory <- new AuthApiFactory(configuration)
+        }
 
-    let createClient() =
-        factory.CreateClient()
+        member _.DisposeAsync() = task {
+            do! dbContainer.StopAsync()
+        }
+
+    interface IDisposable with
+        member _.Dispose() =
+            ()
+
+[<CollectionDefinition("Api")>]
+type ApiCollectionDefinition () =
+    interface ICollectionFixture<AuthApiFixture>
