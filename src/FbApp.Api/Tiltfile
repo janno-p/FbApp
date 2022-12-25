@@ -2,7 +2,7 @@ load('ext://restart_process', 'docker_build_with_restart')
 
 local_resource(
     'fbapp-api-build',
-    'dotnet publish -c Release -o out',
+    'dotnet publish --configuration Debug --output out',
     deps=['fbapp-api'],
     ignore=['obj'],
     labels=['fbapp-api']

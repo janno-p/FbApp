@@ -3,6 +3,7 @@
   <PropertyGroup>
     <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
     <TargetFramework>net7.0</TargetFramework>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.fs" />

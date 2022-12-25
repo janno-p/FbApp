@@ -2,7 +2,7 @@ load('ext://restart_process', 'docker_build_with_restart')
 
 local_resource(
     'fbapp-proxy-build',
-    'dotnet publish -c Release -o out',
+    'dotnet publish --configuration Release --output out',
     deps=['fbapp-proxy'],
     ignore=['obj'],
     labels=['fbapp-proxy']
