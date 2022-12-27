@@ -2,6 +2,7 @@
 
 open System
 open System.Collections.Generic
+open System.Threading
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
 open FbApp.Common.SimpleTypes
@@ -26,6 +27,7 @@ module InMemoryCache =
     let Fixtures = Dictionary<FixtureId, string>()
     let FixtureUpdates = Dictionary<FixtureId, Posix>()
     let Standings = Dictionary<string, string>()
+    let mutable Scorers = Option<string>.None
 
 
 module Hash =
@@ -208,8 +210,6 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                 logger.LogError($"Failed to update competition standings in group %s{standings.Group}: %A{err}")
 
         InMemoryCache.Standings[key] <- currentHashCode
-
-        ()
     }
 
     let updateStandings cancellationToken = task {
@@ -217,6 +217,38 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
         | Ok competition ->
             for group in competition.Standings |> Array.filter (fun x -> x.Stage = "GROUP_STAGE") do
                 do! updateGroupTable cancellationToken group
+        | Error (errorCode, reason, error) ->
+            logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
+    }
+
+    let updateCompetitionScorers (scorers: FootballData.CompetitionScorer array) (_: CancellationToken) = task {
+        let previousHashCode = InMemoryCache.Scorers
+
+        let currentHashCode = Hash.calculate scorers
+
+        if previousHashCode = Some(currentHashCode) then () else
+
+        let command =
+            Competitions.Command.UpdateScorers
+                (scorers
+                    |> List.ofArray
+                    |> List.map (fun x -> { PlayerId = x.Player.Id; TeamId = x.Team.Id; Goals = x.Goals })
+                )
+
+        let competitionId = Competitions.createId 2000L
+        match! CommandHandlers.competitionsHandler (competitionId, Aggregate.Any) command with
+        | Ok _ ->
+            ()
+        | Error err ->
+            logger.LogError($"Failed to update competition scorers: %A{err}")
+
+        InMemoryCache.Scorers <- Some currentHashCode
+    }
+
+    let updateScorers cancellationToken = task {
+        match! FootballData.getScorers authOptions.Value.FootballDataToken CompetitionApiId with
+        | Ok competition ->
+            do! updateCompetitionScorers competition.Scorers cancellationToken
         | Error (errorCode, reason, error) ->
             logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
     }
@@ -232,6 +264,9 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                 logger.LogInformation("Updating competition standings")
                 do! updateStandings context.CancellationToken
                 logger.LogInformation("Standings update completed at {Time}", DateTimeOffset.UtcNow)
+                logger.LogInformation("Updating competition scorers")
+                do! updateScorers context.CancellationToken
+                logger.LogInformation("Scorers update completed at {Time}", DateTimeOffset.UtcNow)
             with e ->
                 logger.LogError(e, "Exception occured while updating fixtures.")
         }

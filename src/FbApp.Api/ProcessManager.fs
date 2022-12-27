@@ -118,7 +118,8 @@ let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Me
                 logger.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Competitions.GroupsAssigned groups ->
         do! (dict groups) |> Competitions.updateGroups db (md.AggregateId, md.AggregateSequenceNumber)
-    | Competitions.StandingsUpdated _ ->
+    | Competitions.StandingsUpdated _
+    | Competitions.ScorersUpdated _ ->
         ()
 }
 

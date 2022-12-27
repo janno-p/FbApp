@@ -419,3 +419,20 @@ let getCompetitionLeagueTable authToken (competitionId: Id) = task {
     let uri = $"/v4/competitions/%d{competitionId}/standings"
     return! apiCall<CompetitionLeagueTable> authToken uri
 }
+
+[<CLIMutable>]
+type CompetitionScorer = {
+    Player: CompetitionPlayer
+    Team: CompetitionTeam
+    Goals: int
+}
+
+[<CLIMutable>]
+type CompetitionScorers = {
+    Scorers: CompetitionScorer array
+}
+
+let getScorers authToken (competitionId: Id) = task {
+    let uri = $"/v4/competitions/%d{competitionId}/scorers"
+    return! apiCall<CompetitionScorers> authToken uri
+}

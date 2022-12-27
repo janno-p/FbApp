@@ -213,7 +213,13 @@ mapPredictionResult name points total ratio rank =
 
             _ ->
                 0
-    , topScorer = 0
+    , topScorer =
+        case points of
+            _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
+                x
+
+            _ ->
+                0
     , total = total
     , ratio = ratio
     , rank = rank

@@ -110,6 +110,9 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
                     |> Dict.tryGet fixtureId
                     |> Option.map (fun predictedResult -> Some (predictedResult = fixtureResult))
                     |> Option.defaultValue (Some false))
+    member this.UpdateScorers(scorers: PlayerId list) =
+        this.Scorer
+            |> Seq.iter (fun kvp -> this.Scorer[kvp.Key] <- (if scorers |> List.contains kvp.Key then Some true else None))
 
 // TODO : Concurrent collections !?
 module InMemoryStore =
@@ -209,6 +212,11 @@ let processCompetitions _ _ = function
                 let unqualified = snd InMemoryStore.qualifiedTeams |> Seq.toList
                 scoresheet.UpdateQualifers(qualified, unqualified)
             )
+    | Competitions.Event.ScorersUpdated scorers ->
+        let maxGoals = if scorers |> List.isEmpty then None else Some (scorers |> List.map (fun x -> x.Goals) |> List.max)
+        let topScorers = scorers |> List.filter (fun x -> Some x.Goals = maxGoals) |> List.map (fun x -> PlayerId.create x.PlayerId)
+        InMemoryStore.scoresheets.Values
+            |> Seq.iter (fun scoresheet -> scoresheet.UpdateScorers(topScorers))
     | Competitions.Event.Created _
     | Competitions.Event.FixturesAssigned _
     | Competitions.Event.GroupsAssigned _
