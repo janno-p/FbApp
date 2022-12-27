@@ -458,7 +458,11 @@ module Predictions =
         let! _ =
             (getCollection db).UpdateManyAsync(
                 FilterDefinition.op_Implicit $"""{{ CompetitionId: UUID("{competitionId:N}"), "%s{colName}._id": %d{teamId} }}""",
-                UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{colName}.$.HasQualified": %b{hasQualified} }} }}"""
+                match colName with
+                | "Winner" ->
+                    UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{colName}.HasQualified": %b{hasQualified} }} }}"""
+                | _ ->
+                    UpdateDefinition.op_Implicit $"""{{ $set: {{ "%s{colName}.$.HasQualified": %b{hasQualified} }} }}"""
             )
         ()
     }

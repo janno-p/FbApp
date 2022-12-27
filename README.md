@@ -77,8 +77,6 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 --set controller.config.use-forwarded-headers=true
 --set controller.service.ports.https=8090
 --wait
-
-kubectl port-forward service/ingress-nginx-controller 8090:443 --namespace ingress-nginx
 ```
 
 

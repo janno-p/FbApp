@@ -38,11 +38,3 @@ cmd_button(
     location=location.NAV,
     icon_name='hive'
 )
-
-cmd_button(
-    name='launch_fbapp',
-    argv=['kubectl', 'port-forward', 'service/ingress-nginx-controller', '8090:443', '--namespace', 'ingress-nginx'],
-    text='Launch FbApp',
-    location=location.NAV,
-    icon_name='rocket_launch'
-)

@@ -2,7 +2,6 @@
 
 open System
 open System.Collections.Generic
-open System.Text
 open EventStore.Client
 open FbApp.Api
 open FbApp.Api.Configuration
@@ -20,7 +19,7 @@ let MaxTotalPoints
     + 1 * 6 // Winner
     + 1 * 5 // Top scorer
 
-type Fixture (fixtureId: FixtureId, homeTeamId: TeamId, awayTeamId: TeamId, fixtureStatus: Fixtures.FixtureStatus, fixtureStage: string, version: int64) =
+type Fixture (fixtureId: FixtureId, homeTeamId: TeamId, awayTeamId: TeamId, fixtureStatus: Fixtures.FixtureStatus, fixtureStage: Fixtures.FixtureStage, version: int64) =
     member val FixtureId = fixtureId with get
     member val HomeTeamId = homeTeamId with get
     member val AwayTeamId = awayTeamId with get
@@ -39,46 +38,78 @@ type Predictions = {
     TopScorers: PlayerId list
 }
 
-type DetailedScore () =
-    member val Matches = ResizeArray<FixtureId>() with get
-    member val Qualifiers = ResizeArray<TeamId>() with get
-    member val QuarterFinals = ResizeArray<TeamId>() with get
-    member val SemiFinals = ResizeArray<TeamId>() with get
-    member val Finals = ResizeArray<TeamId>() with get
-    member val Winner: TeamId option = None with get, set
-    member val TopScorer: PlayerId option = None with get, set
-    override this.ToString() =
-        Encoding.UTF8.GetString((Serialization.serialize this |> snd).ToArray())
-
-type PredictionResult = {
-    PredictionId: PredictionId
-    Name: string
-    Predictions: Predictions
-    GainedPoints: DetailedScore
-    PendingPoints: DetailedScore
-    LostPoints: DetailedScore
-    TotalPoints: int32
-    Version: int64
-}
-
 module Dict =
-    let tryGet (key: 'Key) (values: Dictionary<'Key, 'Value>) =
+    let tryGet (key: 'Key) (values: #IDictionary<'Key, 'Value>) =
         match values.TryGetValue(key) with
         | true, value -> Some(value)
         | _ -> None
 
-module PredictionResult =
-    let create (predictionId: PredictionId) (name: string) (predictions: Predictions) (version: int64) =
-        {
-            PredictionId = predictionId
-            Name = name
-            Predictions = predictions
-            GainedPoints = DetailedScore()
-            PendingPoints = DetailedScore()
-            LostPoints = DetailedScore()
-            TotalPoints = 0
-            Version = version
-        }
+    let tryUpdate (key: 'Key) (getNewValue: 'Value -> 'Value) (values: #IDictionary<'Key, 'Value>) =
+        match values.TryGetValue(key) with
+        | true, value -> values[key] <- getNewValue(value)
+        | _ -> ()
+
+type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictions) =
+    member val Scorer =
+        predictions.TopScorers
+            |> Seq.map (fun id -> KeyValuePair<_, bool option>(id, None))
+            |> Dictionary<_,_>
+        with get
+    member val GroupStage =
+        predictions.Matches
+            |> Seq.map (fun kvp -> KeyValuePair<_, bool option>(kvp.Key, None))
+            |> Dictionary<_,_>
+        with get
+    member val Qualifiers =
+        predictions.Qualifiers
+            |> Seq.map (fun id -> KeyValuePair<_, bool option>(id, None))
+            |> Dictionary<_,_>
+        with get
+    member val Quarters =
+        predictions.QuarterFinals
+            |> Seq.map (fun id -> KeyValuePair<_, bool option>(id, None))
+            |> Dictionary<_,_>
+        with get
+    member val Semis =
+        predictions.SemiFinals
+            |> Seq.map (fun id -> KeyValuePair<_, bool option>(id, None))
+            |> Dictionary<_,_>
+        with get
+    member val Final =
+        predictions.Finals
+            |> Seq.map (fun id -> KeyValuePair<_, bool option>(id, None))
+            |> Dictionary<_,_>
+        with get
+    member val Winner: TeamId * bool option = (predictions.Winner, None) with get, set
+    member val Predictions = predictions with get
+    member val PredictionId = predictionId with get
+    member val Name = name with get
+    member this.UpdateQualifers(qualified: TeamId list, unqualified: TeamId list) =
+        qualified |> List.iter (fun teamId -> if this.Qualifiers.ContainsKey(teamId) then this.Qualifiers[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Qualifiers.ContainsKey(teamId) then this.Qualifiers[teamId] <- Some false else ())
+        this.UpdateQuarters([], unqualified)
+    member this.UpdateQuarters(qualified: TeamId list, unqualified: TeamId list) =
+        qualified |> List.iter (fun teamId -> if this.Quarters.ContainsKey(teamId) then this.Quarters[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Quarters.ContainsKey(teamId) then this.Quarters[teamId] <- Some false else ())
+        this.UpdateSemis([], unqualified)
+    member this.UpdateSemis(qualified: TeamId list, unqualified: TeamId list) =
+        qualified |> List.iter (fun teamId -> if this.Semis.ContainsKey(teamId) then this.Semis[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Semis.ContainsKey(teamId) then this.Semis[teamId] <- Some false else ())
+        this.UpdateFinal([], unqualified)
+    member this.UpdateFinal(qualified: TeamId list, unqualified: TeamId list) =
+        qualified |> List.iter (fun teamId -> if this.Final.ContainsKey(teamId) then this.Final[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Final.ContainsKey(teamId) then this.Final[teamId] <- Some false else ())
+        this.UpdateWinner([], unqualified)
+    member this.UpdateWinner(qualified: TeamId list, unqualified: TeamId list) =
+        qualified |> List.iter (fun teamId -> if fst this.Winner = teamId then this.Winner <- (teamId, Some true) else ())
+        unqualified |> List.iter (fun teamId -> if fst this.Winner = teamId then this.Winner <- (teamId, Some false) else ())
+    member this.SetFixtureResult(fixtureId: FixtureId, fixtureResult: Predictions.FixtureResult) =
+        this.GroupStage
+            |> Dict.tryUpdate fixtureId (fun _ ->
+                predictions.Matches
+                    |> Dict.tryGet fixtureId
+                    |> Option.map (fun predictedResult -> Some (predictedResult = fixtureResult))
+                    |> Option.defaultValue (Some false))
 
 // TODO : Concurrent collections !?
 module InMemoryStore =
@@ -88,7 +119,7 @@ module InMemoryStore =
     let semiFinalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
     let finalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
     let winner = (HashSet<TeamId>(), HashSet<TeamId>())
-    let predictionResults = Dictionary<PredictionId, PredictionResult>()
+    let scoresheets = Dictionary<PredictionId, Scoresheet>()
 
 let getMetadata (e: ResolvedEvent) : Metadata option =
     e.Event
@@ -172,13 +203,11 @@ let updateQualifiedTeams (rows: Competitions.StandingRow list) =
 let processCompetitions _ _ = function
     | Competitions.Event.StandingsUpdated (_, rows) ->
         updateQualifiedTeams rows
-        InMemoryStore.predictionResults.Values
-            |> Seq.iter (fun prediction ->
-                prediction.PendingPoints.Qualifiers.Clear()
-                prediction.GainedPoints.Qualifiers.Clear()
-                prediction.GainedPoints.Qualifiers.AddRange(selectCorrect InMemoryStore.qualifiedTeams prediction.Predictions.Qualifiers)
-                prediction.LostPoints.Qualifiers.Clear()
-                prediction.LostPoints.Qualifiers.AddRange(selectWrong InMemoryStore.qualifiedTeams prediction.Predictions.Qualifiers)
+        InMemoryStore.scoresheets.Values
+            |> Seq.iter (fun scoresheet ->
+                let qualified = fst InMemoryStore.qualifiedTeams |> Seq.toList
+                let unqualified = snd InMemoryStore.qualifiedTeams |> Seq.toList
+                scoresheet.UpdateQualifers(qualified, unqualified)
             )
     | Competitions.Event.Created _
     | Competitions.Event.FixturesAssigned _
@@ -193,16 +222,18 @@ let removeTeamsFrom (arr: ResizeArray<TeamId>) (tms: TeamId list) =
 let processFixtures (aggregateId: Guid) _ (version: int64) = function
     | Fixtures.Added args ->
         let competitionId = CompetitionId.fromGuid args.CompetitionId
-        let fixture =
-            Fixture(
-                FixtureId.create competitionId args.ExternalId,
-                TeamId.create args.HomeTeamId,
-                TeamId.create args.AwayTeamId,
-                Fixtures.FixtureStatus.FromString args.Status,
-                args.Stage,
-                version
+        Fixtures.FixtureStage.tryFromString args.Stage
+            |> Option.map (fun fixtureStage ->
+                Fixture(
+                    FixtureId.create competitionId args.ExternalId,
+                    TeamId.create args.HomeTeamId,
+                    TeamId.create args.AwayTeamId,
+                    Fixtures.FixtureStatus.FromString args.Status,
+                    fixtureStage,
+                    version
+                )
             )
-        InMemoryStore.fixtures.Add(fixture.FixtureId, fixture)
+            |> Option.iter (fun fixture -> InMemoryStore.fixtures.Add(fixture.FixtureId, fixture))
     | Fixtures.ScoreChanged2 args ->
         let fixtureId = FixtureId.fromGuid aggregateId
         let fixtureResult = fixtureResultFromScore args
@@ -212,145 +243,46 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
             fixture.FixtureResult <- fixtureResult
             match fixture.FixtureStatus with
             | Fixtures.FixtureStatus.Finished ->
-                InMemoryStore.predictionResults.Values
-                    |> Seq.iter (fun prediction ->
+                InMemoryStore.scoresheets.Values
+                    |> Seq.iter (fun scoresheet ->
                         match fixture.FixtureStage with
-                        | "GROUP_STAGE" ->
-                            let predictionResult = prediction.Predictions.Matches[fixtureId]
-                            prediction.PendingPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.GainedPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.LostPoints.Matches.Remove(fixtureId) |> ignore
-                            if fixtureResult = predictionResult then
-                                prediction.GainedPoints.Matches.Add(fixtureId)
-                            else
-                                prediction.LostPoints.Matches.Add(fixtureId)
-                        | "LAST_16" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.QuarterFinals)
+                        | Fixtures.Group ->
+                            scoresheet.SetFixtureResult(fixtureId, fixture.FixtureResult)
+                        | Fixtures.Last16 ->
                             match fixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.GainedPoints.QuarterFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.LostPoints.QuarterFinals.Add(fixture.AwayTeamId)
+                                scoresheet.UpdateQuarters([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.LostPoints.QuarterFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.GainedPoints.QuarterFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "QUARTER_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.SemiFinals)
+                                scoresheet.UpdateQuarters([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateQuarters([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.QuarterFinals ->
                             match fixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.GainedPoints.SemiFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.LostPoints.SemiFinals.Add(fixture.AwayTeamId)
+                                scoresheet.UpdateSemis([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.LostPoints.SemiFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.GainedPoints.SemiFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "SEMI_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.Finals)
-                            match fixtureResult with
+                                scoresheet.UpdateSemis([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateSemis([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.SemiFinals ->
+                            match fixture.FixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.GainedPoints.Finals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.LostPoints.Finals.Add(fixture.AwayTeamId)
+                                scoresheet.UpdateFinal([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.LostPoints.Finals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.GainedPoints.Finals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "FINAL" ->
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> x.Winner <- None)
-                            match fixtureResult with
+                                scoresheet.UpdateFinal([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateFinal([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.Final ->
+                            match fixture.FixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.Winner = fixture.HomeTeamId then
-                                    prediction.GainedPoints.Winner <- Some(fixture.HomeTeamId)
-                                if prediction.Predictions.Winner = fixture.AwayTeamId then
-                                    prediction.LostPoints.Winner <- Some(fixture.AwayTeamId)
+                                scoresheet.UpdateWinner([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.Winner = fixture.HomeTeamId then
-                                    prediction.LostPoints.Winner <- Some(fixture.HomeTeamId)
-                                if prediction.Predictions.Winner = fixture.AwayTeamId then
-                                    prediction.GainedPoints.Winner <- Some(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | _ ->
-                            ()
+                                scoresheet.UpdateWinner([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateWinner([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | _ -> ()
                     )
-            | _ ->
-                InMemoryStore.predictionResults.Values
-                    |> Seq.iter (fun prediction ->
-                        match fixture.FixtureStage with
-                        | "GROUP_STAGE" ->
-                            let predictionResult = prediction.Predictions.Matches[fixtureId]
-                            prediction.PendingPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.GainedPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.LostPoints.Matches.Remove(fixtureId) |> ignore
-                            if fixtureResult = predictionResult then
-                                prediction.PendingPoints.Matches.Add(fixtureId)
-                        | "LAST_16" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.QuarterFinals)
-                            match fixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.PendingPoints.QuarterFinals.Add(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.PendingPoints.QuarterFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "QUARTER_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.SemiFinals)
-                            match fixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.PendingPoints.SemiFinals.Add(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.PendingPoints.SemiFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "SEMI_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.Finals)
-                            match fixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.PendingPoints.Finals.Add(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.PendingPoints.Finals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "FINAL" ->
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> x.Winner <- None)
-                            match fixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.Winner = fixture.HomeTeamId then
-                                    prediction.PendingPoints.Winner <- Some(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.Winner = fixture.AwayTeamId then
-                                    prediction.PendingPoints.Winner <- Some(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | _ ->
-                            ()
-                    )
+            | _ -> ()
         )
     | Fixtures.StatusChanged fixtureStatus ->
         let fixtureId = FixtureId.fromGuid aggregateId
@@ -359,152 +291,50 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
         |> Option.iter (fun fixture ->
             fixture.FixtureStatus <- fixtureStatus
             match fixtureStatus with
-            | Fixtures.FixtureStatus.InPlay
-            | Fixtures.FixtureStatus.Paused ->
-                InMemoryStore.predictionResults.Values
-                    |> Seq.iter (fun prediction ->
-                        match fixture.FixtureStage with
-                        | "GROUP_STAGE" ->
-                            let predictionResult = prediction.Predictions.Matches[fixtureId]
-                            prediction.PendingPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.GainedPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.LostPoints.Matches.Remove(fixtureId) |> ignore
-                            if fixture.FixtureResult = predictionResult then
-                                prediction.PendingPoints.Matches.Add(fixtureId)
-                        | "LAST_16" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.QuarterFinals)
-                            match fixture.FixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.PendingPoints.QuarterFinals.Add(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.PendingPoints.QuarterFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "QUARTER_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.SemiFinals)
-                            match fixture.FixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.PendingPoints.SemiFinals.Add(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.PendingPoints.SemiFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "SEMI_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.Finals)
-                            match fixture.FixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.PendingPoints.Finals.Add(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.PendingPoints.Finals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "FINAL" ->
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> x.Winner <- None)
-                            match fixture.FixtureResult with
-                            | Predictions.HomeWin ->
-                                if prediction.Predictions.Winner = fixture.HomeTeamId then
-                                    prediction.PendingPoints.Winner <- Some(fixture.HomeTeamId)
-                            | Predictions.AwayWin ->
-                                if prediction.Predictions.Winner = fixture.AwayTeamId then
-                                    prediction.PendingPoints.Winner <- Some(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | _ ->
-                            ()
-                    )
             | Fixtures.FixtureStatus.Finished ->
-                InMemoryStore.predictionResults.Values
-                    |> Seq.iter (fun prediction ->
+                InMemoryStore.scoresheets.Values
+                    |> Seq.iter (fun scoresheet ->
                         match fixture.FixtureStage with
-                        | "GROUP_STAGE" ->
-                            let predictionResult = prediction.Predictions.Matches[fixtureId]
-                            prediction.PendingPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.GainedPoints.Matches.Remove(fixtureId) |> ignore
-                            prediction.LostPoints.Matches.Remove(fixtureId) |> ignore
-                            if fixture.FixtureResult = predictionResult then
-                                prediction.GainedPoints.Matches.Add(fixtureId)
-                            else
-                                prediction.LostPoints.Matches.Add(fixtureId)
-                        | "LAST_16" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.QuarterFinals)
+                        | Fixtures.Group ->
+                            scoresheet.SetFixtureResult(fixtureId, fixture.FixtureResult)
+                        | Fixtures.Last16 ->
                             match fixture.FixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.GainedPoints.QuarterFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.LostPoints.QuarterFinals.Add(fixture.AwayTeamId)
+                                scoresheet.UpdateQuarters([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.LostPoints.QuarterFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.QuarterFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.GainedPoints.QuarterFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "QUARTER_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.SemiFinals)
+                                scoresheet.UpdateQuarters([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateQuarters([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.QuarterFinals ->
                             match fixture.FixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.GainedPoints.SemiFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.LostPoints.SemiFinals.Add(fixture.AwayTeamId)
+                                scoresheet.UpdateSemis([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.LostPoints.SemiFinals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.SemiFinals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.GainedPoints.SemiFinals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "SEMI_FINALS" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> teams |> removeTeamsFrom x.Finals)
+                                scoresheet.UpdateSemis([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateSemis([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.SemiFinals ->
                             match fixture.FixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.GainedPoints.Finals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.LostPoints.Finals.Add(fixture.AwayTeamId)
+                                scoresheet.UpdateFinal([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.HomeTeamId) then
-                                    prediction.LostPoints.Finals.Add(fixture.HomeTeamId)
-                                if prediction.Predictions.Finals |> List.exists ((=) fixture.AwayTeamId) then
-                                    prediction.GainedPoints.Finals.Add(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | "FINAL" ->
-                            let teams = [fixture.HomeTeamId; fixture.AwayTeamId]
-                            [ prediction.PendingPoints; prediction.GainedPoints; prediction.LostPoints ]
-                            |> List.iter (fun x -> x.Winner <- None)
+                                scoresheet.UpdateFinal([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateFinal([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.Final ->
                             match fixture.FixtureResult with
                             | Predictions.HomeWin ->
-                                if prediction.Predictions.Winner = fixture.HomeTeamId then
-                                    prediction.GainedPoints.Winner <- Some(fixture.HomeTeamId)
-                                if prediction.Predictions.Winner = fixture.AwayTeamId then
-                                    prediction.LostPoints.Winner <- Some(fixture.AwayTeamId)
+                                scoresheet.UpdateWinner([fixture.HomeTeamId], [fixture.AwayTeamId])
                             | Predictions.AwayWin ->
-                                if prediction.Predictions.Winner = fixture.HomeTeamId then
-                                    prediction.LostPoints.Winner <- Some(fixture.HomeTeamId)
-                                if prediction.Predictions.Winner = fixture.AwayTeamId then
-                                    prediction.GainedPoints.Winner <- Some(fixture.AwayTeamId)
-                            | Predictions.Tie -> ()
-                        | _ ->
-                            ()
+                                scoresheet.UpdateWinner([fixture.AwayTeamId], [fixture.HomeTeamId])
+                            | Predictions.Tie ->
+                                scoresheet.UpdateWinner([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | _ -> ()
                     )
             | _ -> ()
         )
 
-let processPredictions _ (version: int64) = function
+let processPredictions _ _ = function
     | Predictions.Registered args ->
         let competitionId = CompetitionId.fromGuid args.CompetitionId
         let predictionId = PredictionId.create competitionId (Predictions.Email args.Email)
@@ -528,8 +358,8 @@ let processPredictions _ (version: int64) = function
                 Winner = TeamId.create args.Winner
                 TopScorers = args.TopScorers |> List.map PlayerId.create
             }
-        let predictionResult = PredictionResult.create predictionId args.Name predictions version
-        InMemoryStore.predictionResults.Add(predictionResult.PredictionId, predictionResult)
+        let scoresheet = Scoresheet(predictionId, args.Name, predictions)
+        InMemoryStore.scoresheets.Add(predictionId, scoresheet)
     | Predictions.Declined ->
         ()
 
@@ -579,5 +409,5 @@ let registerPredictionResultHandlers (logger: ILogger) (client: EventStoreClient
     logger.LogInformation("Prediction results handler initialized")
 
 let getPredictionResults () =
-    InMemoryStore.predictionResults.Values
+    InMemoryStore.scoresheets.Values
         |> Seq.toList

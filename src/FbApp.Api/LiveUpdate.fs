@@ -60,8 +60,8 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
             let competitionGuid = Competitions.createId fixture.CompetitionId
             let fixtureId = FixtureId.create competitionId fixture.FixtureId
             let maybeCommand =
-                match fixture.Stage with
-                | "GROUP_STAGE" ->
+                match Fixtures.FixtureStage.tryFromString fixture.Stage with
+                | Some Fixtures.Group ->
                     Fixtures.UpdateFixture {
                         Status = fixture.Status
                         FullTime = mapGoals fixture.FullTime
@@ -69,7 +69,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                         Penalties = mapGoals fixture.Penalties
                         }
                     |> Some
-                | "LAST_16" | "QUARTER_FINALS" | "SEMI_FINALS" | "THIRD_PLACE" | "FINAL" ->
+                | Some (Fixtures.Last16 | Fixtures.QuarterFinals | Fixtures.SemiFinals | Fixtures.ThirdPlace | Fixtures.Final) ->
                     match fixture.HomeTeamId, fixture.AwayTeamId with
                     | Some(homeTeamId), Some(awayTeamId) ->
                         Fixtures.UpdateQualifiers {

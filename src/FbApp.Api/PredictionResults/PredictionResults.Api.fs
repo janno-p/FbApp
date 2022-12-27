@@ -13,7 +13,7 @@ let getLeaderboard : HttpHandler =
         ctx.GetLogger(nameof getPredictionResults).LogInformation("Loading leaderboard of competition {CompetitionId}", CompetitionId.value competitionId)
         let dto =
             getPredictionResults ()
-            |> List.map PredictionResultDto.fromPredictionResult
+            |> List.map PredictionResultDto.fromScoresheet
             |> List.groupBy (fun x -> (x.Total, x.Ratio))
             |> List.sortByDescending fst
             |> List.fold

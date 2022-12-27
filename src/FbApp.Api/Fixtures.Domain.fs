@@ -10,6 +10,24 @@ type Error =
     | FixtureAlreadyAdded
     | UnknownFixture
 
+type FixtureStage =
+    | Group
+    | Last16
+    | QuarterFinals
+    | SemiFinals
+    | ThirdPlace
+    | Final
+
+module FixtureStage =
+    let tryFromString = function
+        | "GROUP_STAGE" -> Some Group
+        | "LAST_16" -> Some Last16
+        | "QUARTER_FINALS" -> Some QuarterFinals
+        | "SEMI_FINALS" -> Some SemiFinals
+        | "THIRD_PLACE" -> Some ThirdPlace
+        | "FINAL" -> Some Final
+        | _ -> None
+
 type FixtureStatus =
     | Scheduled
     | Timed
