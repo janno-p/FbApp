@@ -5,10 +5,9 @@ open FbApp.Api.Domain
 open FbApp.Api.Repositories
 open FbApp.Api.Repositories.ReadModels
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
-open Saturn
-open Saturn.Endpoint
 open System
 
 
@@ -108,7 +107,11 @@ let private savePredictions: Auth.AuthHttpHandler =
     })
 
 
-let predictScope = router {
-    post "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
-    get "/fixtures" getFixtures
-}
+let endpoints = [
+    GET [
+        route "/fixtures" getFixtures
+    ]
+    POST [
+        route "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
+    ]
+]

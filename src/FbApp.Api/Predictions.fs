@@ -2,10 +2,9 @@ module FbApp.Api.Predictions
 
 open FbApp.Api.Repositories
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
-open Saturn
-open Saturn.Endpoint
 
 
 let findPredictions term : HttpHandler =
@@ -19,11 +18,12 @@ let findPredictions term : HttpHandler =
             return! RequestErrors.NOT_FOUND "No active competition" next ctx
     })
 
-let scope = router {
-    forward "/admin" (router {
-        pipe_through Auth.mustBeLoggedIn
-        pipe_through Auth.mustBeAdmin
-
-        getf "/search/%s" findPredictions
-    })
-}
+let endpoints = [
+    subRoute "/admin" [
+        GET [
+            routef "/search/%s" findPredictions
+        ]
+    ]
+    |> applyBefore Auth.mustBeLoggedIn
+    |> applyBefore Auth.mustBeAdmin
+]

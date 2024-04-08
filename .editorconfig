@@ -8,13 +8,7 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.elm]
-indent_size = 4
-
-[*.{htm,html}]
-indent_size = 2
-
-[*.json]
+[*.{csproj,fsproj,htm,html,json,props,yml,yaml}]
 indent_size = 2
 
 [*.md]
@@ -22,6 +16,3 @@ trim_trailing_whitespace = false
 
 [*.sh]
 end_of_line = lf
-
-[*.{fsproj,yml,yaml}]
-indent_size = 2

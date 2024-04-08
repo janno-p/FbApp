@@ -5,6 +5,7 @@ Playground application for trying out new technologies, libraries, frameworks, p
 
 ## Primary Objectives ##
 
+* Local development environment using [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/).
 * Client application using [Elm](https://elm-lang.org/) and [Vite](https://vitejs.dev/).
 * Server API built with [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) and [F# Programming Language](https://fsharp.org).
 * Apply [CQRS](https://martinfowler.com/bliki/CQRS.html) and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) principles to [Microservices](https://microservices.io/) architecture.
@@ -12,16 +13,24 @@ Playground application for trying out new technologies, libraries, frameworks, p
 
 ## Prerequisites ##
 
-### Run local application ###
-
-* [Docker Desktop with Kubernetes enabled](https://docs.docker.com/docker-for-windows/install/)
-* [Tilt](https://tilt.dev/)
-
 ### Development environment ###
 
-* [.NET Core SDK](https://www.microsoft.com/net/download)
-* [Node.js](https://nodejs.org/en/)
-* [Yarn](https://yarnpkg.com/en/)
+* [.NET Core 8.0 SDK](https://www.microsoft.com/net/download)
+
+### Install .NET Aspire workload
+
+```sh
+$ dotnet workload update
+$ dotnet workload install aspire
+```
+
+### Run local application ###
+
+```sh
+$ dotnet run --project src/FbApp.AppHost/FbApp.AppHost.csproj
+```
+
+Open .NET Aspire [Dashboard](http://localhost:15090)
 
 
 ## Quick Start ##

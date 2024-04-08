@@ -3,10 +3,9 @@ module FbApp.Api.Leagues
 open FbApp.Api
 open FbApp.Api.Domain
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
-open Saturn
-open Saturn.Endpoint
 open System
 
 let private getLeague (code: string) : HttpHandler =
@@ -46,17 +45,21 @@ let private getLeagues : HttpHandler =
         return! Successful.OK leagues next ctx
     })
 
-let scope = router {
-    get "/" getDefaultLeague
-    getf "/league/%s" getLeague
+let endpoints = [
+    GET [
+        route "/" getDefaultLeague
+        routef "/league/%s" getLeague
+    ]
 
-    forward "/admin" (router {
-        pipe_through Auth.mustBeLoggedIn
-        pipe_through Auth.mustBeAdmin
-
-        get "/" getLeagues
-
-        post "/" addLeague
-        postf "/%s/%s" addPrediction
-    })
-}
+    subRoute "/admin" [
+        GET [
+            route "/" getLeagues
+        ]
+        POST [
+            route "/" addLeague
+            routef "/%s/%s" addPrediction
+        ]
+    ]
+    |> applyBefore Auth.mustBeLoggedIn
+    |> applyBefore Auth.mustBeAdmin
+]
