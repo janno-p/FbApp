@@ -1,4 +1,4 @@
-module FbApp.Api.Main
+module FbApp.Api.Program
 
 open System.IdentityModel.Tokens.Jwt
 open System.Text.Json
@@ -21,6 +21,8 @@ open Microsoft.Extensions.Hosting
 open Microsoft.IdentityModel.Tokens
 open MongoDB.Driver
 open System
+
+module UserAccessModule = FbApp.Modules.UserAccess.Module
 
 
 MongoDbSetup.init()
@@ -165,6 +167,14 @@ let configureAppConfiguration (builder: WebApplicationBuilder) =
     |> ignore
 
 
+let getEndpoints (configuration: IConfiguration) = [
+    yield! endpoints
+
+    if configuration.GetValue("Modules:UserAccess:Enabled") then
+        yield! UserAccessModule.endpoints
+]
+
+
 let configureApp (app: WebApplication) =
     let forwardedHeaders = ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto
 
@@ -180,7 +190,7 @@ let configureApp (app: WebApplication) =
 
     app.MapDefaultEndpoints() |> ignore
     app.MapSubscribeHandler() |> ignore
-    app.MapGiraffeEndpoints(endpoints)
+    app.MapGiraffeEndpoints(getEndpoints app.Configuration)
 
     let client = app.Services.GetService<EventStoreClient>()
 

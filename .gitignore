@@ -1,7 +1,7 @@
 ﻿/.api/
 
 /.fake/
-/.idea/
+.idea/
 /paket-files/
 
 /.paket/*

@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Api", "FbApp.Api\FbApp.Api.fsproj", "{5F271EA0-7206-4FCB-83A5-03679199DB9B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FbApp.AppHost", "FbApp.AppHost\FbApp.AppHost.csproj", "{EA9B2580-D0B5-40E0-A58A-7D80B9A063A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FbApp.ServiceDefaults", "FbApp.ServiceDefaults\FbApp.ServiceDefaults.csproj", "{A9326629-2827-4756-8B87-D5355A7918A4}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Modules.UserAccess", "FbApp.Modules.UserAccess\FbApp.Modules.UserAccess.fsproj", "{39B0AFBC-E4F3-4741-B685-76A0C9A3973F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".", ".", "{02A309F9-45F0-4B83-B663-B28FDB1E8B20}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Packages.props = Directory.Packages.props
+		..\README.md = ..\README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5F271EA0-7206-4FCB-83A5-03679199DB9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F271EA0-7206-4FCB-83A5-03679199DB9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5F271EA0-7206-4FCB-83A5-03679199DB9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F271EA0-7206-4FCB-83A5-03679199DB9B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA9B2580-D0B5-40E0-A58A-7D80B9A063A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA9B2580-D0B5-40E0-A58A-7D80B9A063A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA9B2580-D0B5-40E0-A58A-7D80B9A063A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA9B2580-D0B5-40E0-A58A-7D80B9A063A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9326629-2827-4756-8B87-D5355A7918A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9326629-2827-4756-8B87-D5355A7918A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9326629-2827-4756-8B87-D5355A7918A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9326629-2827-4756-8B87-D5355A7918A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39B0AFBC-E4F3-4741-B685-76A0C9A3973F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39B0AFBC-E4F3-4741-B685-76A0C9A3973F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39B0AFBC-E4F3-4741-B685-76A0C9A3973F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39B0AFBC-E4F3-4741-B685-76A0C9A3973F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

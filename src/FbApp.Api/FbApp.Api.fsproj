@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FbApp.Modules.UserAccess\FbApp.Modules.UserAccess.fsproj" />
     <ProjectReference Include="..\FbApp.ServiceDefaults\FbApp.ServiceDefaults.csproj" />
   </ItemGroup>
 
@@ -60,7 +61,7 @@
     <Compile Include="Predictions\Predictions.Api.fs" />
     <Compile Include="LiveUpdate.fs" />
     <Compile Include="MongoDbSetup.fs" />
-    <Compile Include="Main.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>

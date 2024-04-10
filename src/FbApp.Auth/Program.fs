@@ -341,25 +341,6 @@ let logout: HttpHandler =
     }
 
 
-module Routes =
-    let [<Literal>] Authorize = "/connect/authorize"
-    let [<Literal>] Google = "/connect/google"
-    let [<Literal>] GoogleComplete = "/connect/google/complete"
-    let [<Literal>] Logout = "/connect/logout"
-    let [<Literal>] Token = "/connect/token"
-    let [<Literal>] Userinfo = "/connect/userinfo"
-
-
-let routes = router {
-    get Routes.Authorize authorize
-    get Routes.Google googleLogin
-    get Routes.GoogleComplete googleResponse
-    get Routes.Logout logout
-    post Routes.Token exchangeToken
-    get Routes.Userinfo userinfo
-}
-
-
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     services.AddAuthorization() |> ignore
 

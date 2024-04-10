@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Giraffe" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Endpoints.fs" />
+    <Compile Include="Module.fs" />
+  </ItemGroup>
+
+</Project>
