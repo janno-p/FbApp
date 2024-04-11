@@ -1,9 +1,6 @@
 FSharp.Control.AsyncSeq
-Microsoft.AspNetCore.Authentication.Google
-Microsoft.AspNetCore.Identity.EntityFrameworkCore
 Npgsql.EntityFrameworkCore.PostgreSQL
 OpenIddict.AspNetCore
 OpenIddict.EntityFrameworkCore
 OpenIddict.Quartz
 Quartz.Extensions.Hosting
-Saturn

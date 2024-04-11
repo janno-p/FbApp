@@ -181,28 +181,6 @@ let exchangeToken: HttpHandler =
     }
 
 
-let googleLogin: HttpHandler =
-    fun _ ctx -> task {
-        let returnUrl =
-            match ctx.Request.Query.TryGetValue("returnUrl") with
-            | true, value -> Some (value.ToString())
-            | _ -> None
-        let svc = ctx |> Ioc.create
-        let redirectUrl =
-            let uri =
-                UriBuilder(ctx.Request.Scheme, ctx.Request.Host.Host, Path = "/connect/google/complete")
-            if ctx.Request.Host.Port.HasValue then
-                uri.Port <- ctx.Request.Host.Port.Value
-            returnUrl
-                |> Option.iter (fun ret -> uri.Query <- QueryString.Empty.Add("returnUrl", ret).ToUriComponent())
-            uri.Uri.AbsoluteUri
-        ctx.GetService<ILogger<HttpHandler>>().LogWarning("{Scheme} => {Host} => {X}", ctx.Request.Scheme, ctx.Request.Host, redirectUrl)
-        let properties = svc.SignInManager().ConfigureExternalAuthenticationProperties(GoogleDefaults.AuthenticationScheme, redirectUrl)
-        do! ctx.ChallengeAsync(GoogleDefaults.AuthenticationScheme, properties)
-        return Some ctx
-    }
-
-
 [<AllowNullLiteral>]
 type Source () =
     member val ``type`` = Unchecked.defaultof<string> with get, set
@@ -226,67 +204,6 @@ type PeopleApiPhotos () =
     member val resourceName = Unchecked.defaultof<string> with get, set
     member val etag = Unchecked.defaultof<string> with get, set
     member val photos = ResizeArray<Photo>() with get, set
-
-
-let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
-    user.Email <- principal.FindFirstValue(ClaimTypes.Email)
-    user.EmailConfirmed <- true
-    user.FullName <- principal.FindFirstValue(ClaimTypes.Name)
-    user.GivenName <- principal.FindFirstValue(ClaimTypes.GivenName)
-    user.PictureUrl <- principal.FindFirstValue(OpenIddictConstants.Claims.Picture)
-    user.Provider <- "Google"
-    user.ProviderId <- principal.FindFirstValue(ClaimTypes.NameIdentifier)
-    user.Surname <- principal.FindFirstValue(ClaimTypes.Surname)
-    user.UserName <- principal.FindFirstValue(ClaimTypes.Email)
-
-
-let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: HttpContext) = task {
-    let svc = ctx |> Ioc.create
-    let userEmail = principal.FindFirstValue(ClaimTypes.Email)
-    let isDefaultAdmin = userEmail.Equals(svc.Configuration()["Authorization:DefaultAdmin"])
-    let! hasAdminRole = svc.UserManager().IsInRoleAsync(user, "admin")
-    if isDefaultAdmin <> hasAdminRole then
-        let action = if hasAdminRole then svc.UserManager().RemoveFromRoleAsync else svc.UserManager().AddToRoleAsync
-        let! _ = action(user, "admin")
-        ()
-}
-
-
-let googleResponse: HttpHandler =
-    fun next ctx -> task {
-        let svc = ctx |> Ioc.create
-
-        let returnUrl =
-            match ctx.Request.Query.TryGetValue("returnUrl") with
-            | true, value -> value.ToString()
-            | _ -> "/"
-
-        match! svc.SignInManager().GetExternalLoginInfoAsync() with
-        | null ->
-            return! googleLogin next ctx
-        | info ->
-            let! result = svc.SignInManager().ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false)
-            if result.Succeeded then
-                let! user = svc.UserManager().FindByNameAsync(info.Principal.FindFirstValue(ClaimTypes.Email))
-                updateUser user info.Principal
-                do! ctx |> updateAdminRole user info.Principal
-                let! _ = svc.UserManager().UpdateAsync(user)
-                ()
-            else
-                let user = ApplicationUser()
-                updateUser user info.Principal
-
-                let! identityResult = svc.UserManager().CreateAsync(user)
-                if identityResult.Succeeded then
-                    let! _ = svc.UserManager().UpdateAsync(user)
-                    do! ctx |> updateAdminRole user info.Principal
-                    let! identityResult = svc.UserManager().AddLoginAsync(user, info)
-                    if identityResult.Succeeded then
-                        let! _ = svc.SignInManager().SignInAsync(user, false)
-                        ()
-
-            return! redirectTo false returnUrl next ctx
-    }
 
 
 let userinfo: HttpHandler =
@@ -332,40 +249,12 @@ let userinfo: HttpHandler =
     }
 
 
-let logout: HttpHandler =
-    fun _ ctx -> task {
-        let svc = ctx |> Ioc.create
-        do! svc.SignInManager().SignOutAsync()
-        do! ctx.SignOutAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(RedirectUri = "/"))
-        return Some ctx
-    }
-
-
 let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
-    services.AddAuthorization() |> ignore
-
     services.AddDbContext<ApplicationDbContext>(fun options ->
         let connectionString = context.Configuration.GetConnectionString("postgres")
         options.UseNpgsql(connectionString) |> ignore
         options.UseOpenIddict<Guid>() |> ignore
     ) |> ignore
-
-    services.AddAuthentication()
-        .AddGoogle(fun options ->
-            let googleSection = context.Configuration.GetSection("Google:Authentication")
-            options.ClientId <- googleSection["ClientId"]
-            options.ClientSecret <- googleSection["ClientSecret"]
-            options.CallbackPath <- PathString "/connect/google/callback"
-            options.SignInScheme <- IdentityConstants.ExternalScheme
-            options.Scope.Add("profile")
-            options.AuthorizationEndpoint <- $"%s{options.AuthorizationEndpoint}?prompt=select_account"
-            options.ClaimActions.MapJsonKey(OpenIddictConstants.Claims.Picture, "picture"))
-    |> ignore
-
-    services.AddIdentity<ApplicationUser, ApplicationRole>()
-        .AddEntityFrameworkStores<ApplicationDbContext>()
-        .AddDefaultTokenProviders()
-    |> ignore
 
     services.Configure<IdentityOptions>(fun (options: IdentityOptions) ->
         options.ClaimsIdentity.UserNameClaimType <- OpenIddictConstants.Claims.Name
@@ -424,30 +313,6 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
     services.AddHostedService<Worker>() |> ignore
 
 
-let configureApplication (app: IApplicationBuilder) =
-    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
-    app.UseAuthentication() |> ignore
-    app.UseAuthorization() |> ignore
-    app
-
-
-let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
-    config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
-          .AddJsonFile($"appsettings.%s{context.HostingEnvironment.EnvironmentName}.json", optional=true, reloadOnChange=true)
-          .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
-          .AddEnvironmentVariables()
-    |> ignore
-
-
 let app = application {
-    app_config configureApplication
-
-    host_config (fun host ->
-        host.ConfigureServices(configureServices)
-            .ConfigureAppConfiguration(configureAppConfiguration))
-
-    use_router routes
+    host_config (fun host -> host.ConfigureServices(configureServices))
 }
-
-
-run app

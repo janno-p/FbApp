@@ -5,11 +5,16 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Giraffe" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Endpoints.fs" />
+    <Compile Include="Models.fs" />
+    <Compile Include="Routes.fs" />
+    <Compile Include="Authentication.fs" />
     <Compile Include="Module.fs" />
   </ItemGroup>
 

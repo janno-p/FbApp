@@ -28,6 +28,29 @@ module UserAccessModule = FbApp.Modules.UserAccess.Module
 MongoDbSetup.init()
 
 
+type ApplicationModule = {
+    Name: string
+    ConfigureServices: WebApplicationBuilder -> unit
+    Endpoints: Endpoint list
+}
+
+
+let applicationModules: ApplicationModule list = [
+    {
+        Name = "UserAccess"
+        ConfigureServices = UserAccessModule.configureServices
+        Endpoints = UserAccessModule.endpoints
+    }
+]
+
+
+let getEnabledModules (configuration: IConfiguration) =
+    let modulesSection = configuration.GetRequiredSection("Modules")
+    modulesSection.GetChildren()
+    |> Seq.choose (fun section -> applicationModules |> List.tryFind (fun x -> x.Name = section.Key && section.GetValue("Enabled")))
+    |> Seq.toList
+
+
 let endpoints = [
     GET [
         route "/dapr/config" (text "")
@@ -58,7 +81,7 @@ let initializeMongoDb (sp: IServiceProvider) =
     client.GetDatabase("fbapp")
 
 
-let configureServices (builder: WebApplicationBuilder) =
+let configureServices (enabledModules: ApplicationModule list) (builder: WebApplicationBuilder) =
     let configuration = builder.Configuration
     let services = builder.Services
 
@@ -156,8 +179,12 @@ let configureServices (builder: WebApplicationBuilder) =
             ])
     |> ignore
 
+    services.AddAuthorization() |> ignore
     services.AddDistributedMemoryCache() |> ignore
     services.AddSession() |> ignore
+
+    enabledModules
+    |> List.iter (fun m -> m.ConfigureServices builder)
 
 
 let configureAppConfiguration (builder: WebApplicationBuilder) =
@@ -167,16 +194,14 @@ let configureAppConfiguration (builder: WebApplicationBuilder) =
     |> ignore
 
 
-let getEndpoints (configuration: IConfiguration) = [
+let getEndpoints (enabledModules: ApplicationModule list) = [
     yield! endpoints
-
-    if configuration.GetValue("Modules:UserAccess:Enabled") then
-        yield! UserAccessModule.endpoints
+    yield! enabledModules |> List.map _.Endpoints |> List.concat
 ]
 
 
-let configureApp (app: WebApplication) =
-    let forwardedHeaders = ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto
+let configureApp (enabledModules: ApplicationModule list) (app: WebApplication) =
+    let forwardedHeaders = ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto ||| ForwardedHeaders.XForwardedHost
 
     app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = forwardedHeaders)) |> ignore
     app.UseExceptionHandler() |> ignore
@@ -187,10 +212,11 @@ let configureApp (app: WebApplication) =
     app.UseRouting() |> ignore
     app.UseCloudEvents() |> ignore
     app.UseAuthentication() |> ignore
+    app.UseAuthorization() |> ignore
 
     app.MapDefaultEndpoints() |> ignore
     app.MapSubscribeHandler() |> ignore
-    app.MapGiraffeEndpoints(getEndpoints app.Configuration)
+    app.MapGiraffeEndpoints(getEndpoints enabledModules)
 
     let client = app.Services.GetService<EventStoreClient>()
 
@@ -241,11 +267,13 @@ let configureApp (app: WebApplication) =
 [<EntryPoint>]
 let main args =
     let builder = WebApplication.CreateBuilder(args)
+    let enabledModules = getEnabledModules builder.Configuration
+
     configureAppConfiguration builder
-    configureServices builder
+    configureServices enabledModules builder
 
     let app = builder.Build()
-    configureApp app
+    configureApp enabledModules app
 
     app.Run()
 
