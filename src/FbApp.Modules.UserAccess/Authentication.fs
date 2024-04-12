@@ -60,7 +60,7 @@ let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: H
 
 let googleLogin: HttpHandler =
     fun _ ctx -> task {
-        let logger = ctx.GetLogger<HttpHandler>()
+        let logger = ctx.GetLogger("FbApp.Modules.UserAccess.Authentication.googleLogin")
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
         let returnUrl =
             match ctx.Request.Query.TryGetValue("returnUrl") with
@@ -122,8 +122,14 @@ let googleResponse: HttpHandler =
 let logout: HttpHandler =
     fun _ ctx -> task {
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
+
+        let returnUrl =
+            match ctx.Request.Query.TryGetValue("returnUrl") with
+            | true, value -> value.ToString()
+            | _ -> "/"
+
         do! signInManager.SignOutAsync()
-        // do! ctx.SignOutAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(RedirectUri = "/"))
-        do! ctx.SignOutAsync()
+        do! ctx.SignOutAsync(AuthenticationProperties(RedirectUri = returnUrl))
+
         return Some ctx
     }

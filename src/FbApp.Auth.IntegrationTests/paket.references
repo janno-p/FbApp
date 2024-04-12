@@ -1,8 +1,0 @@
-coverlet.collector
-FSharp.Core
-FsUnit.xUnit
-Microsoft.AspNetCore.Mvc.Testing
-Microsoft.NET.Test.Sdk
-Testcontainers
-xunit
-xunit.runner.visualstudio

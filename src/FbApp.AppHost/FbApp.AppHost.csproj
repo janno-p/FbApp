@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FbApp.Api\FbApp.Api.fsproj" />
+    <ProjectReference Include="..\FbApp\FbApp.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

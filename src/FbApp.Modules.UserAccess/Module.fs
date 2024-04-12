@@ -20,19 +20,17 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services
         .AddIdentity<ApplicationUser, ApplicationRole>()
         .AddEntityFrameworkStores<UserAccessDbContext>()
-        // .AddDefaultTokenProviders()
+    |> ignore
+
+    builder.Services
+        .AddHostedService<UserAccessDbInitializer>()
     |> ignore
 
 
 let endpoints = [
     GET [
-        // route Routes.Authorize authorize
         route Routes.Google googleLogin
         route Routes.GoogleComplete googleResponse
         route Routes.Logout logout
-        // route Routes.Userinfo userInfo
-    ]
-    POST [
-        // route Routes.Token exchangeToken
     ]
 ]

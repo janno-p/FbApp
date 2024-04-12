@@ -5,12 +5,10 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .AddDatabase("fbapp");
 
-var apiService = builder.AddProject<Projects.FbApp_Api>("apiservice")
+var service = builder.AddProject<Projects.FbApp>("service")
     .WithHttpsEndpoint(8090, name: "https")
-    .WithReference(postgres);
-
-// builder.AddProject<Projects.Xyz_Web>("webfrontend")
-//     .WithReference(cache)
-//     .WithReference(apiService);
+    .WithReference(postgres)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithEnvironment("DOTNET_ENVIRONMENT", "Development");
 
 builder.Build().Run();
