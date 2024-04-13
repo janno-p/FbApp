@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".", ".", "{02A309F9-45F0-4B
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp", "FbApp\FbApp.fsproj", "{9640B5B4-5CE4-44BB-8EC7-D27D93538BF7}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Modules.WebApp", "FbApp.Modules.WebApp\FbApp.Modules.WebApp.fsproj", "{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{9640B5B4-5CE4-44BB-8EC7-D27D93538BF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9640B5B4-5CE4-44BB-8EC7-D27D93538BF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9640B5B4-5CE4-44BB-8EC7-D27D93538BF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

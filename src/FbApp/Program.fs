@@ -66,6 +66,10 @@ let useSession (app: WebApplication) =
     app.UseSession() |> ignore
 
 
+let useStaticFiles (app: WebApplication) =
+    app.UseStaticFiles() |> ignore
+
+
 let configureApp (enabledModules: ApplicationModule list) (app: WebApplication) =
     let moduleRequirements = enabledModules |> List.map _.Requirements |> List.concat
 
@@ -73,6 +77,7 @@ let configureApp (enabledModules: ApplicationModule list) (app: WebApplication) 
     app |> useExceptionHandler
     app |> useSession
     app |> useResponseCompression
+    app |> useStaticFiles
     app |> useRouting
     app |> useCloudEvents
     app |> useAuthentication

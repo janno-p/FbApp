@@ -7,9 +7,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FbApp.Modules.UserAccess\FbApp.Modules.UserAccess.fsproj" />
+    <ProjectReference Include="..\FbApp.Modules.WebApp\FbApp.Modules.WebApp.fsproj" />
     <ProjectReference Include="..\FbApp.ServiceDefaults\FbApp.ServiceDefaults.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Dapr.AspNetCore" />
     <PackageReference Include="FSharp.Core" />

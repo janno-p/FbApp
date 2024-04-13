@@ -7,6 +7,7 @@ open Microsoft.Extensions.Configuration
 
 
 module UserAccessModule = FbApp.Modules.UserAccess.Module
+module WebAppModule = FbApp.Modules.WebApp.Module
 
 
 type ModuleRequirement =
@@ -30,6 +31,12 @@ let private applicationModules: ApplicationModule list = [
         Requirements = [
             RequiresForwardedHeaders (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto)
         ]
+    }
+    {
+        Name = "WebApp"
+        ConfigureServices = WebAppModule.configureServices
+        Endpoints = WebAppModule.endpoints
+        Requirements = []
     }
 ]
 

@@ -32,6 +32,8 @@ type UserAccessDbContext(options: DbContextOptions<UserAccessDbContext>) =
 type UserAccessDbInitializer(serviceProvider: IServiceProvider) =
     interface IHostedService with
         member _.StartAsync _ = task {
+            do! Task.Delay(TimeSpan.FromSeconds 5.)
+
             use scope = serviceProvider.CreateScope()
 
             let context = scope.ServiceProvider.GetRequiredService<UserAccessDbContext>()

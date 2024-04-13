@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Giraffe" />
+    <PackageReference Include="Giraffe.ViewEngine" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Content Include="styles/**/*.*">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Routes.fs" />
+    <Compile Include="Views.fs" />
+    <Compile Include="Module.fs" />
+  </ItemGroup>
+
+</Project>

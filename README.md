@@ -24,6 +24,12 @@ $ dotnet workload update
 $ dotnet workload install aspire
 ```
 
+### Install TailwindCSS command line tool
+
+```sh
+$ scoop install tailwindcss
+```
+
 ### Run local application ###
 
 ```sh

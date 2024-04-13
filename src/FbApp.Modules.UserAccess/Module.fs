@@ -15,7 +15,7 @@ let configureServices (builder: WebApplicationBuilder) =
         .AddGoogle(configureGoogleOptions builder)
     |> ignore
 
-    builder.AddNpgsqlDbContext<UserAccessDbContext>("fbapp")
+    builder.AddNpgsqlDbContext<UserAccessDbContext>("fbapp-user-access")
 
     builder.Services
         .AddIdentity<ApplicationUser, ApplicationRole>()
