@@ -7,7 +7,7 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Logging
 
-open Views
+open Layout
 
 
 type HttpContext with
@@ -19,7 +19,7 @@ let configureServices (_: WebApplicationBuilder) =
     ()
 
 
-let withDefaultLayout (content: XmlNode list) : HttpHandler =
+let withDefaultLayout (view: {| Title: string; Content: XmlNode |}) : HttpHandler =
     fun next ctx ->
         let logger = ctx.GetModuleLogger("Module.withDefaultLayout")
 
@@ -36,15 +36,17 @@ let withDefaultLayout (content: XmlNode list) : HttpHandler =
 
         let page: PageModel = {
             CompetitionName = None
-            PageTitle = Some "Home"
+            Title = Some view.Title
             User = user
+            Content = [view.Content]
         }
 
-        htmlView (defaultLayout page content) next ctx
+        htmlView (Layout.``default`` page) next ctx
 
 
 let endpoints = [
     GET [
-        route Routes.Home (withDefaultLayout viewHome)
+        route Routes.Home (withDefaultLayout Home.view)
+        route Routes.Changelog (withDefaultLayout Changelog.view)
     ]
 ]

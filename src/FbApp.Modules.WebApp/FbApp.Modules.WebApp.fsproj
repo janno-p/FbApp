@@ -17,7 +17,9 @@
 
   <ItemGroup>
     <Compile Include="Routes.fs" />
-    <Compile Include="Views.fs" />
+    <Compile Include="Home.fs" />
+    <Compile Include="Changelog.fs" />
+    <Compile Include="Layout.fs" />
     <Compile Include="Module.fs" />
   </ItemGroup>
 
