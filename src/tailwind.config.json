@@ -1,0 +1,10 @@
+﻿{
+  "content": [
+    "./**/*.fs"
+  ],
+  "plugins": [
+    "@tailwindcss/forms",
+    "@tailwindcss/aspect-ratio",
+    "@tailwindcss/typography"
+  ]
+}

@@ -31,6 +31,12 @@ let configureGoogleOptions (builder: WebApplicationBuilder) (options: GoogleOpti
     options.Scope.Add("profile")
     options.ClaimActions.MapJsonKey(ClaimTypes.Picture, "picture")
     builder.Configuration.Bind("Modules:UserAccess:Google:Authentication", options)
+    options.Events.OnRedirectToAuthorizationEndpoint <- (fun context ->
+        context.RedirectUri <- $"%s{context.RedirectUri}&prompt=select_account"
+        context.Response.Redirect(context.RedirectUri)
+        System.Threading.Tasks.Task.CompletedTask
+        )
+
 
 
 let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
