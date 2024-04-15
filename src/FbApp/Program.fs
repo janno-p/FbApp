@@ -3,8 +3,7 @@ module FbApp.Program
 open System
 open System.Text.Json
 open System.Text.Json.Serialization
-open Giraffe
-open Giraffe.EndpointRouting
+open Oxpecker
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.ResponseCompression
@@ -87,7 +86,7 @@ let configureApp (enabledModules: ApplicationModule list) (app: WebApplication) 
     app.MapSubscribeHandler() |> ignore
 
     let endpoints = enabledModules |> List.map _.Endpoints |> List.concat
-    app.MapGiraffeEndpoints(endpoints)
+    app.MapOxpeckerEndpoints(endpoints)
 
 
 let configureAuthentication (builder: WebApplicationBuilder) =
@@ -100,13 +99,13 @@ let configureAuthentication (builder: WebApplicationBuilder) =
 
 
 let configureJsonSerializer (builder: WebApplicationBuilder) =
-    let createJsonSerializer (_: IServiceProvider) : Giraffe.Json.ISerializer =
+    let createJsonSerializer (_: IServiceProvider) : Serializers.IJsonSerializer =
         let options = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
         options.Converters.Add(JsonFSharpConverter())
         SystemTextJson.Serializer options
 
     builder.Services
-        .AddSingleton<Giraffe.Json.ISerializer>(createJsonSerializer)
+        .AddSingleton<Serializers.IJsonSerializer>(createJsonSerializer)
     |> ignore
 
 
@@ -135,7 +134,7 @@ let configureServices (enabledModules: ApplicationModule list) (builder: WebAppl
 
     builder.Services
         .AddDistributedMemoryCache()
-        .AddGiraffe()
+        .AddOxpecker()
         .AddProblemDetails()
         .AddRouting()
         .AddSession()

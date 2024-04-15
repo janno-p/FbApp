@@ -1,7 +1,7 @@
 ﻿module internal FbApp.Modules.UserAccess.Authentication
 
 open System.Security.Claims
-open Giraffe
+open Oxpecker
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Google
 open Microsoft.AspNetCore.Builder
@@ -64,8 +64,8 @@ let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: H
 }
 
 
-let googleLogin: HttpHandler =
-    fun _ ctx -> task {
+let googleLogin: EndpointHandler =
+    fun ctx -> task {
         let logger = ctx.GetLogger("FbApp.Modules.UserAccess.Authentication.googleLogin")
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
         let returnUrl =
@@ -87,8 +87,8 @@ let googleLogin: HttpHandler =
     }
 
 
-let googleResponse: HttpHandler =
-    fun next ctx -> task {
+let googleResponse: EndpointHandler =
+    fun ctx -> task {
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
         let userManager = ctx.GetService<UserManager<ApplicationUser>>()
 
@@ -99,7 +99,7 @@ let googleResponse: HttpHandler =
 
         match! signInManager.GetExternalLoginInfoAsync() with
         | null ->
-            return! googleLogin next ctx
+            return! googleLogin ctx
         | info ->
             let! result = signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false)
             if result.Succeeded then
@@ -121,12 +121,12 @@ let googleResponse: HttpHandler =
                         let! _ = signInManager.SignInAsync(user, false)
                         ()
 
-            return! redirectTo false returnUrl next ctx
+            return! redirectTo returnUrl false ctx
     }
 
 
-let logout: HttpHandler =
-    fun _ ctx -> task {
+let logout: EndpointHandler =
+    fun ctx -> task {
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
 
         let returnUrl =

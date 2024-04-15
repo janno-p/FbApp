@@ -1,6 +1,6 @@
 ﻿module FbApp.Modules.UserAccess.Module
 
-open Giraffe.EndpointRouting
+open Oxpecker
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting

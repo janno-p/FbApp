@@ -5,8 +5,8 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Giraffe" />
-    <PackageReference Include="Giraffe.ViewEngine" />
+    <PackageReference Include="Oxpecker" />
+    <PackageReference Include="Oxpecker.ViewEngine" />
   </ItemGroup>
   
   <ItemGroup>
@@ -19,7 +19,7 @@
     <Compile Include="Routes.fs" />
     <Compile Include="Home.fs" />
     <Compile Include="Changelog.fs" />
-    <Compile Include="Layout.fs" />
+    <Compile Include="Layouts.fs" />
     <Compile Include="Module.fs" />
   </ItemGroup>
 

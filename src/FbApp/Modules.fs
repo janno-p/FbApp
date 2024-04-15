@@ -1,6 +1,6 @@
 ﻿module FbApp.Modules
 
-open Giraffe.EndpointRouting
+open Oxpecker
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration

@@ -1,13 +1,12 @@
 ﻿module FbApp.Modules.WebApp.Module
 
-open Giraffe
-open Giraffe.EndpointRouting
-open Giraffe.ViewEngine
+open Oxpecker
+open Oxpecker.ViewEngine
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.Logging
 
-open Layout
+open Layouts
 
 
 type HttpContext with
@@ -19,8 +18,8 @@ let configureServices (_: WebApplicationBuilder) =
     ()
 
 
-let withDefaultLayout (view: {| Title: string; Content: XmlNode |}) : HttpHandler =
-    fun next ctx ->
+let withDefaultLayout (view: {| Title: string; Content: HtmlElement |}) : EndpointHandler =
+    fun ctx ->
         let logger = ctx.GetModuleLogger("Module.withDefaultLayout")
 
         let user =
@@ -38,10 +37,10 @@ let withDefaultLayout (view: {| Title: string; Content: XmlNode |}) : HttpHandle
             CompetitionName = None
             Title = Some view.Title
             User = user
-            Content = [view.Content]
+            Content = view.Content
         }
 
-        htmlView (Layout.``default`` page) next ctx
+        htmlView (defaultLayout page) ctx
 
 
 let endpoints = [
