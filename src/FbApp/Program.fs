@@ -53,6 +53,12 @@ let useForwardedHeaders (middlewareRequirements: ModuleRequirement list) (app: W
         )
 
 
+let useOxpecker (enabledModules: ApplicationModule list) (app: WebApplication) =
+    let endpoints = enabledModules |> List.map _.Endpoints |> List.concat
+    app.UseOxpecker(endpoints) |> ignore
+    app.Run(NotFound.notFoundHandler)
+
+
 let useResponseCompression (app: WebApplication) =
     app.UseResponseCompression() |> ignore
 
@@ -81,12 +87,10 @@ let configureApp (enabledModules: ApplicationModule list) (app: WebApplication) 
     app |> useCloudEvents
     app |> useAuthentication
     app |> useAuthorization moduleRequirements
+    app |> useOxpecker enabledModules
 
     app.MapDefaultEndpoints() |> ignore
     app.MapSubscribeHandler() |> ignore
-
-    let endpoints = enabledModules |> List.map _.Endpoints |> List.concat
-    app.MapOxpeckerEndpoints(endpoints)
 
 
 let configureAuthentication (builder: WebApplicationBuilder) =

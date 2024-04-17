@@ -15,9 +15,11 @@
     <PackageReference Include="Dapr.AspNetCore" />
     <PackageReference Include="FSharp.Core" />
     <PackageReference Include="FSharp.SystemTextJson" />
+    <PackageReference Include="Oxpecker.Htmx" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="NotFound.fs" />
     <Compile Include="Modules.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -6,9 +6,8 @@ Playground application for trying out new technologies, libraries, frameworks, p
 ## Primary Objectives ##
 
 * Local development environment using [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/).
-* Client application using [Elm](https://elm-lang.org/) and [Vite](https://vitejs.dev/).
-* Server API built with [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) and [F# Programming Language](https://fsharp.org).
-* Apply [CQRS](https://martinfowler.com/bliki/CQRS.html) and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) principles to [Microservices](https://microservices.io/) architecture.
+* Back-end built with [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) and [F# Programming Language](https://fsharp.org).
+* Front-end built using [HTMX](https://htmx.org).
 
 
 ## Prerequisites ##
@@ -30,14 +29,6 @@ $ dotnet workload install aspire
 $ scoop install tailwindcss
 ```
 
-### Run local application ###
-
-```sh
-$ dotnet run --project src/FbApp.AppHost/FbApp.AppHost.csproj
-```
-
-Open .NET Aspire [Dashboard](http://localhost:15090)
-
 
 ## Quick Start ##
 
@@ -53,54 +44,41 @@ by Google client application registration.
 
 ```json
 {
-  "Authentication": {
-    "Google": {
-      "ClientId": "<redacted>",
-      "ClientSecret": "<redacted>"
+  "Modules": {
+    "UserAccess": {
+      "Google": {
+        "ClientId": "<redacted>",
+        "ClientSecret": "<redacted>"
+      }
     }
   }
 }
-```
-
-### Configure kubernetes cluster
-
-Install dapr
-
-```
-helm repo add dapr https://dapr.github.io/helm-charts/
-
-helm repo update
-
-helm upgrade --install dapr dapr/dapr \
---namespace dapr-system \
---create-namespace \
---wait
-
-kubectl port-forward service/dapr-dashboard 8080:8080 --namespace dapr-system
-```
-
-Install ingress controller
-
-```
-helm repo add dapr https://kubernetes.github.io/ingress-nginx
-
-helm repo update
-
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
---namespace ingress-nginx \
---create-namespace \
---set controller.config.use-forwarded-headers=true
---set controller.service.ports.https=8090
---wait
 ```
 
 
 ### Run development environment
 
 ```sh
-$ tilt up
+$ dotnet run --project src/FbApp.AppHost/FbApp.AppHost.csproj
 ```
 
-Open [Tilt Dashboard](http://localhost:10350/) to monitor running components.
+Open .NET Aspire [Dashboard](http://localhost:15090)
 
-Open [Application](https://localhost:8090) for demo.
+
+## Project structure
+
+Project consists of single monolithic application which is divided into multiple
+independent modules. Each module is designed to work as separate service which could
+be deployed as individual microservice. By default, all modules run inside same application
+context. Each module may have its own architectural style.
+
+### Modules
+
+#### UserAccess module
+
+UserAccess module is responsible for authentication, authorization and other user
+management related functionalities.
+
+#### WebApp module
+
+Primary entry point of the front-end application.

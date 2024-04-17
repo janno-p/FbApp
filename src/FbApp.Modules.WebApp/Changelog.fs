@@ -1,4 +1,5 @@
-﻿module internal FbApp.Modules.WebApp.Changelog
+﻿[<RequireQualifiedAccess>]
+module internal FbApp.Modules.WebApp.Changelog
 
 open Oxpecker.ViewEngine
 

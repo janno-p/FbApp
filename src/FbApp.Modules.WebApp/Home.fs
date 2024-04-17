@@ -1,4 +1,5 @@
-﻿module internal FbApp.Modules.WebApp.Home
+﻿[<RequireQualifiedAccess>]
+module internal FbApp.Modules.WebApp.Home
 
 open Oxpecker.ViewEngine
 

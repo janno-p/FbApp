@@ -10,17 +10,22 @@ type UserModel = {
 }
 
 
+type Session =
+    | Authenticated of UserModel
+    | Guest
+
+
 type PageModel = {
     Title: string option
     CompetitionName: string option
-    User: UserModel option
     Content: HtmlElement
+    Session: Session
 }
 
 
-let private viewUser (user: UserModel option) : HtmlElement =
-    match user with
-    | Some(user) ->
+let private viewUser session : HtmlElement =
+    match session with
+    | Authenticated user ->
         __() {
             div(class' = "px-2 flex flex-row flex-nowrap items-center grow-0") {
                 img(alt = "Avatar", class' = "w-10 h-10 rounded-full", src = user.Picture)
@@ -28,23 +33,23 @@ let private viewUser (user: UserModel option) : HtmlElement =
             }
 
             if user.HasAdminRole then
-                a(href = Routes.Changelog, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap items-center justify-center") {
+                a(href = Routes.Dashboard, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap gap-1 items-center justify-center") {
                     span(class' = "material-symbols-outlined") { "manufacturing" }
                     span(class' = "whitespace-nowrap") { "Ava kontrollpaneel" }
                 }
 
-            a(href = Routes.Logout, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap items-center justify-center") {
+            a(href = Routes.Logout, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap gap-1 items-center justify-center") {
                 span(class' = "material-symbols-outlined") { "logout" }
                 span(class' = "whitespace-nowrap") { "Logi välja" }
             }
         }
-    | None ->
+    | Guest ->
         a(href = Routes.GoogleLogin, class' = "text-white grow-0 w-8 h-8 flex items-center justify-center", title = "Logi sisse Google kontoga") {
             span(class' = "material-symbols-outlined") { "login" }
         }
 
 
-let private viewSiteToolbar competitionName user =
+let private viewSiteToolbar competitionName session =
     nav(class' = "glossy bg-sky-600 flex flex-row flex-nowrap items-center text-white px-4 py-1.5 gap-2") {
         a(href = Routes.Home, class' = "text-white grow-0") {
             span(class' = "material-symbols-outlined !text-4xl") { "sports_and_outdoors" }
@@ -56,7 +61,7 @@ let private viewSiteToolbar competitionName user =
         a(href = Routes.Changelog, class' = "text-white grow-0 w-8 h-8 flex items-center justify-center", title = "Versioonide ajalugu") {
             span(class' = "material-symbols-outlined") { "checklist" }
         }
-        viewUser user
+        viewUser session
     }
 
 
@@ -76,7 +81,7 @@ let defaultLayout (page: PageModel) =
         }
         body() {
             noscript() { "This is your fallback content in case JavaScript fails to load." }
-            viewSiteToolbar page.CompetitionName page.User
+            viewSiteToolbar page.CompetitionName page.Session
             page.Content
             viewFooter
         }

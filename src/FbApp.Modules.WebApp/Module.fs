@@ -1,10 +1,10 @@
 ﻿module FbApp.Modules.WebApp.Module
 
+open System.Security.Claims
 open Oxpecker
 open Oxpecker.ViewEngine
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
-open Microsoft.Extensions.Logging
 
 open Layouts
 
@@ -20,23 +20,20 @@ let configureServices (_: WebApplicationBuilder) =
 
 let withDefaultLayout (view: {| Title: string; Content: HtmlElement |}) : EndpointHandler =
     fun ctx ->
-        let logger = ctx.GetModuleLogger("Module.withDefaultLayout")
-
-        let user =
+        let session =
             if ctx.User.Identity.IsAuthenticated then
-                ctx.User.Claims |> Seq.iter (fun c -> logger.LogWarning("User has claim: [{Type}] => {Value}", c.Type, c.Value))
                 let user: UserModel = {
-                    Name = "Test"
-                    Picture = "Test"
-                    HasAdminRole = false
+                    Name = ctx.User.FindFirstValue(ClaimTypes.Name)
+                    Picture = ctx.User.FindFirstValue("picture") |> Option.ofObj |> Option.defaultValue "smiley-cyrus.png"
+                    HasAdminRole = ctx.User.HasClaim(ClaimTypes.Role, "admin")
                 }
-                Some user
-            else None
+                Authenticated user
+            else Guest
 
         let page: PageModel = {
             CompetitionName = None
             Title = Some view.Title
-            User = user
+            Session = session
             Content = view.Content
         }
 
