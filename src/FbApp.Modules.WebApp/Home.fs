@@ -3,8 +3,10 @@ module internal FbApp.Modules.WebApp.Home
 
 open Oxpecker.ViewEngine
 
+open Types
 
-let view = {|
+
+let view: View = {
     Title = "Home"
     Content = h1() { "Home!" }
-|}
+}

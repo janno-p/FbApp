@@ -56,7 +56,7 @@ let useForwardedHeaders (middlewareRequirements: ModuleRequirement list) (app: W
 let useOxpecker (enabledModules: ApplicationModule list) (app: WebApplication) =
     let endpoints = enabledModules |> List.map _.Endpoints |> List.concat
     app.UseOxpecker(endpoints) |> ignore
-    app.Run(NotFound.notFoundHandler)
+    app.Run(WebApp.Module.fallbackHandler)
 
 
 let useResponseCompression (app: WebApplication) =

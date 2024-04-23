@@ -3,6 +3,8 @@ module internal FbApp.Modules.WebApp.Changelog
 
 open Oxpecker.ViewEngine
 
+open Types
+
 type private LogEntry = {
     Version: string
     Changes: HtmlElement list
@@ -17,6 +19,10 @@ let private log: LogEntry list = [
                 a(class' = "text-primary underline hover:no-underline", href = "https://github.com/giraffe-fsharp/Giraffe", target = "_blank") { "Giraffe" }
                 " asemel kasutusele võetud "
                 a(class' = "text-primary underline hover:no-underline", href = "https://github.com/Lanayx/Oxpecker", target = "_blank") { "Oxpecker" }
+            }
+            __() {
+                "Kasutusele võetud "
+                a(class' = "text-primary underline hover:no-underline", href = "https://htmx.org/", target = "_blank") { "HTMX" }
             }
         ]
     }
@@ -80,10 +86,10 @@ let private viewEntry entry =
             viewChange change
     }
 
-let view = {|
+let view: View = {
     Title = "Changelog"
     Content = div(class' = "p-8") {
         for entry in log do
             viewEntry entry
     }
-|}
+}

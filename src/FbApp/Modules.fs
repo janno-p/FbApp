@@ -5,9 +5,12 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration
 
+module UserAccessModule =
+    FbApp.Modules.UserAccess.Module
 
-module UserAccessModule = FbApp.Modules.UserAccess.Module
-module WebAppModule = FbApp.Modules.WebApp.Module
+
+module WebAppModule =
+    FbApp.Modules.WebApp.Module
 
 
 type ModuleRequirement =

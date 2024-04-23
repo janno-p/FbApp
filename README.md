@@ -37,7 +37,7 @@ $ scoop install tailwindcss
 Use Google Developer Console to register new application for Google authentication:
 
 * Authorized JavaScript Origins: `https://localhost:8090`
-* Authorized redirect URIs: `https://localhost:8090/connect/google/callback`
+* Authorized redirect URIs: `https://localhost:8090/user-access/google/callback`
 
 Add `src/FbApp.Auth/appsettings.user.json` configuration file with credentials provided
 by Google client application registration.

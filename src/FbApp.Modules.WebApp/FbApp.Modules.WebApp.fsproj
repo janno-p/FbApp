@@ -6,6 +6,7 @@
   
   <ItemGroup>
     <PackageReference Include="Oxpecker" />
+    <PackageReference Include="Oxpecker.Htmx" />
     <PackageReference Include="Oxpecker.ViewEngine" />
   </ItemGroup>
   
@@ -17,8 +18,10 @@
 
   <ItemGroup>
     <Compile Include="Routes.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="Home.fs" />
     <Compile Include="Changelog.fs" />
+    <Compile Include="NotFound.fs" />
     <Compile Include="Layouts.fs" />
     <Compile Include="Module.fs" />
   </ItemGroup>

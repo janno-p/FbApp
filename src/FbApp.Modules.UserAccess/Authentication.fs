@@ -38,7 +38,6 @@ let configureGoogleOptions (builder: WebApplicationBuilder) (options: GoogleOpti
         )
 
 
-
 let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
     user.Email <- principal.FindFirstValue(ClaimTypes.Email)
     user.EmailConfirmed <- true
@@ -74,7 +73,7 @@ let googleLogin: EndpointHandler =
             | _ -> None
         let redirectUrl =
             let uri =
-                UriBuilder(ctx.Request.Scheme, ctx.Request.Host.Host, Path = "/connect/google/complete")
+                UriBuilder(ctx.Request.Scheme, ctx.Request.Host.Host, Path = "/user-access/google/complete")
             if ctx.Request.Host.Port.HasValue then
                 uri.Port <- ctx.Request.Host.Port.Value
             returnUrl
