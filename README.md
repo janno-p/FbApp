@@ -62,6 +62,12 @@ by Google client application registration.
 $ dotnet run --project src/FbApp.AppHost/FbApp.AppHost.csproj
 ```
 
+or in "watch" mode
+
+```sh
+$ dotnet watch --project src/FbApp.AppHost/FbApp.AppHost.csproj
+```
+
 Open .NET Aspire [Dashboard](http://localhost:15090)
 
 
