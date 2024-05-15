@@ -9,7 +9,8 @@ builder.AddExecutable(
     "-i", Path.Combine("FbApp.Modules.WebApp", "styles", "app.tailwind.css"),
     "-o", Path.Combine("FbApp", "wwwroot", "css", "app.css"),
     "-c", "tailwind.config.json",
-    "--minify");
+    "--minify",
+    "--watch=always");
 
 var postgres = builder.AddPostgres("postgres")
     .AddDatabase("fbapp-user-access");
