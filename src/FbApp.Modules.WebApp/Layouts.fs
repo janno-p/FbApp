@@ -36,7 +36,7 @@ let private viewUser session : HtmlElement =
             }
 
             if user.HasAdminRole then
-                a(href = Routes.Dashboard, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap gap-1 items-center justify-center") {
+                a(href = Routes.Dashboard.root, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap gap-1 items-center justify-center") {
                     span(class' = "material-symbols-outlined") { "manufacturing" }
                     span(class' = "whitespace-nowrap") { "Ava kontrollpaneel" }
                 }
@@ -92,6 +92,7 @@ let defaultLayout (competitionName: string option) (session: Session) (view: Vie
             viewSiteToolbar competitionName session
             view.Content
             viewFooter
+            script (src = "//code.iconify.design/1/1.0.6/iconify.min.js")
         }
     }
 

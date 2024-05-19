@@ -7,6 +7,7 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
 
 open Layouts
+open Oxpecker.ViewEngine.Builder
 open Types
 
 
@@ -38,17 +39,31 @@ let private errorView (view: View) =
     htmlView (errorLayout view)
 
 
+let private htmxView (html: HtmlElement) : EndpointHandler =
+    fun ctx ->
+        match ctx.TryGetHeaderValue HxHeader.Request.Request with
+        | Some _ -> htmlView html ctx
+        | _ -> redirectTo "/not-found" false ctx
+
+
 let endpoints = [
     route Routes.Home (defaultView Home.view)
     route Routes.Changelog (defaultView Changelog.view)
     route Routes.NotFound (errorView NotFound.view)
+
+    route Routes.Dashboard.root (fun ctx ->
+        let page = ctx.TryGetQueryValue("page") |> Option.defaultValue "index"
+        defaultView (Dashboard.view page) ctx)
+
+    route Routes.Dashboard.index (htmxView Dashboard.viewIndex)
+    route Routes.Dashboard.competitions (htmxView Dashboard.viewCompetitions)
+    route "/dashboard/competitions/add" (htmxView Dashboard.viewAddCompetition)
 ]
 
 
 let fallbackHandler : EndpointHandler =
     fun ctx ->
-        match ctx.TryGetHeaderValue HxHeader.Request.Request with
-        | Some _ ->
-            ctx.Response.Headers.Add(HxHeader.Response.Location, "/not-found")
-            text "" ctx
-        | None -> redirectTo "/not-found" false ctx
+        match ctx.TryGetHeaderValue HxHeader.Request.Request, ctx.TryGetHeaderValue HxHeader.Request.Boosted with
+        | Some _, Some _ -> (setHttpHeader HxHeader.Response.Location "/not-found" >=> text "") ctx
+        | Some _, None -> (setStatusCode 404 >=> text "") ctx
+        | _ -> redirectTo "/not-found" false ctx
