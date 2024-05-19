@@ -3,12 +3,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.AddRedis("cache");
 
 builder.AddExecutable(
-    "tailwindcss",
+    "npx",
     "tailwindcss",
     Path.Combine(Environment.CurrentDirectory, ".."),
     "-i", Path.Combine("FbApp.Modules.WebApp", "styles", "app.tailwind.css"),
     "-o", Path.Combine("FbApp", "wwwroot", "css", "app.css"),
-    "-c", "tailwind.config.json",
+    "-c", "tailwind.config.cjs",
     "--minify",
     "--watch=always");
 

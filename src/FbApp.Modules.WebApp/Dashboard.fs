@@ -41,46 +41,75 @@ let viewCompetitions : HtmlElement =
 
 
 let viewAddCompetition =
-    div (class' = "flex flex-col") {
-        h6 () { "Adding a new competition" }
-        a (hxGet = "/dashboard/competitions", hxReplaceUrl = "/dashboard?page=competitions", hxTarget = "#dashboard-section") { "Back to competitions list" }
-
-        div () {
-            label (for' = "competition-name", class' = "flex") {
-                (span (class' = "iconify")).data("icon", "mdi-sign-text")
-                "Name:"
-            }
-            input (id = "competition-name")
-        }
-
-        div () {
-            label (for' = "competition-season", class' = "flex") {
-                (span (class' = "iconify")).data("icon", "mdi-calendar-text")
-                "Season:"
-            }
-            select (id = "competition-season") {
-                option () { "Test" }
+    div (class' = "flex flex-col prose gap-2") {
+        div (class' = "mb-4") {
+            h1 (class' = "mb-1.5") { "Adding a new competition" }
+            a (hxGet = "/dashboard/competitions", hxReplaceUrl = "/dashboard?page=competitions", hxTarget = "#dashboard-section", class' = "link link-hover link-primary") {
+                raw "&laquo; Back to competitions list"
             }
         }
 
-        div () {
-            label (for' = "competition-source", class' = "flex") {
-                (span (class' = "iconify")).data("icon", "mdi-import")
-                "Tulemuste sisendvoog:"
+        label (class' = "form-control w-full max-w-xs") {
+            div (class' = "label") {
+                span (class' = "label-text") { "What is the name of the competition?" }
             }
-            select (id = "competition-source") {
-                option () { "Test" }
+            div (class' = "input input-bordered flex items-center gap-2") {
+                span (class' = "icon-[mdi--sign-text]")
+                input (name = "name", type' = "text", class' = "grow", placeholder = "Competition name")
             }
         }
 
-        div () {
-            label (for' = "competition-start", class' = "flex") { "Start date:" }
-            input (id = "competition-start", type' = "datetime-local")
+        label (class' = "form-control w-full max-w-xs") {
+            div (class' = "label") {
+                span (class' = "label-text") { "What is the season (!?) of the competition?" }
+            }
+            div (class' = "input input-bordered flex items-center pr-0") {
+                span (class' = "icon-[mdi--calendar-text]")
+                select (name = "season", class' = "select bg-transparent focus:outline-none focus:border-none grow pl-2") {
+                    option (disabled = true, selected = true) {
+                        raw "Select season &hellip;"
+                    }
+                    option () { "Star Wars" }
+                    option () { "Harry Potter" }
+                    option () { "Lord of the Rings" }
+                    option () { "Planet of the Apes" }
+                    option () { "Star Trek" }
+                }
+            }
         }
 
-        div () {
-            button (class' = "flex") {
-                (span (class' = "iconify")).data("icon", "mdi-check-outline")
+        label (class' = "form-control w-full max-w-xs") {
+            div (class' = "label") {
+                span (class' = "label-text") { "What is the source of competition results?" }
+            }
+            div (class' = "input input-bordered flex items-center pr-0") {
+                span (class' = "icon-[mdi--database-import]")
+                select (name = "source", class' = "select bg-transparent focus:outline-none focus:border-none grow pl-2") {
+                    option (disabled = true, selected = true) {
+                        raw "Select results source &hellip;"
+                    }
+                    option () { "Star Wars" }
+                    option () { "Harry Potter" }
+                    option () { "Lord of the Rings" }
+                    option () { "Planet of the Apes" }
+                    option () { "Star Trek" }
+                }
+            }
+        }
+
+        label (class' = "form-control w-full max-w-xs") {
+            div (class' = "label") {
+                span (class' = "label-text") { "When does the competition start?" }
+            }
+            div (class' = "input input-bordered flex items-center gap-2") {
+                span (class' = "icon-[mdi--calendar]")
+                input (name = "start-date", type' = "datetime-local", class' = "grow", placeholder = "Competition start date")
+            }
+        }
+
+        div (class' = "mt-4") {
+            button (class' = "btn btn-primary") {
+                span (class' = "icon-[mdi--check-outline]")
                 "Add"
             }
         }

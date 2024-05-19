@@ -75,7 +75,7 @@ let private log: LogEntry list = [
 
 let private viewChange (change: HtmlElement) =
     div(class' = "flex flex-row space-x-2 items-center") {
-        span(class' = "material-symbols-outlined") { "check" }
+        span (class' = "icon-[mdi--check]")
         span() { change }
     }
 
