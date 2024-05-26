@@ -74,12 +74,12 @@ let private viewFooter =
 
 let private viewHtmlHead pageTitle =
     head() {
-        meta(charset = "UTF-8")
-        link(rel = "icon", type' = "image/svg+xml", href = "/favicon.svg")
-        link(rel = "stylesheet", href = "/css/app.css")
-        meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
-        script(src = "https://unpkg.com/htmx.org@1.9.12", integrity = "sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2", crossorigin = "anonymous")
-        title() { $"%s{pageTitle} - FbApp" }
+        meta (charset = "UTF-8")
+        link (rel = "icon", type' = "image/svg+xml", href = "/favicon.svg")
+        link (rel = "stylesheet", href = "/css/app.css")
+        meta (name = "viewport", content = "width=device-width, initial-scale=1.0")
+        script (src = "/js/htmx.min.js")
+        title () { $"%s{pageTitle} - FbApp" }
     }
 
 
