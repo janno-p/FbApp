@@ -1,6 +1,7 @@
 ﻿[<RequireQualifiedAccess>]
 module internal FbApp.Modules.WebApp.Dashboard
 
+open System
 open Oxpecker.Htmx
 open Oxpecker.ViewEngine
 
@@ -40,7 +41,13 @@ let viewCompetitions : HtmlElement =
      }
 
 
-let viewAddCompetition =
+let viewAddCompetition () =
+    let seasonOptions = [
+        let initial = DateTime.Today.Year
+        for year = initial downto initial - 5 do
+            yield year
+    ]
+
     div (class' = "flex flex-col prose gap-2") {
         div (class' = "mb-4") {
             h1 (class' = "mb-1.5") { "Adding a new competition" }
@@ -66,14 +73,8 @@ let viewAddCompetition =
             div (class' = "input input-bordered flex items-center pr-0") {
                 span (class' = "icon-[mdi--calendar-text]")
                 select (name = "season", class' = "select bg-transparent focus:outline-none focus:border-none grow pl-2") {
-                    option (disabled = true, selected = true) {
-                        raw "Select season &hellip;"
-                    }
-                    option () { "Star Wars" }
-                    option () { "Harry Potter" }
-                    option () { "Lord of the Rings" }
-                    option () { "Planet of the Apes" }
-                    option () { "Star Trek" }
+                    for season in seasonOptions do
+                        option (value = season.ToString(), selected = (season = seasonOptions[0])) { season.ToString() }
                 }
             }
         }
@@ -84,7 +85,7 @@ let viewAddCompetition =
             }
             div (class' = "input input-bordered flex items-center pr-0") {
                 span (class' = "icon-[mdi--database-import]")
-                select (name = "source", class' = "select bg-transparent focus:outline-none focus:border-none grow pl-2") {
+                select (name = "source", class' = "select bg-transparent focus:outline-none focus:border-none grow pl-2", hxGet = $"/competitions/%d{seasonOptions[0]}/sources", hxTrigger = "load") {
                     option (disabled = true, selected = true) {
                         raw "Select results source &hellip;"
                     }

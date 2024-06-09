@@ -12,13 +12,17 @@ builder.AddExecutable(
     "--minify",
     "--watch=always");
 
-var postgres = builder.AddPostgres("postgres")
-    .AddDatabase("fbapp-user-access");
+var database = builder.AddPostgres("postgres")
+    .WithPgAdmin()
+    .AddDatabase("database");
 
 builder.AddProject<Projects.FbApp>("service")
     .WithHttpsEndpoint(8090, name: "https")
-    .WithReference(postgres)
+    .WithReference(database)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithEnvironment("DOTNET_ENVIRONMENT", "Development");
+
+builder.AddProject<Projects.FbApp_DbManager>("dbmanager")
+    .WithReference(database);
 
 builder.Build().Run();

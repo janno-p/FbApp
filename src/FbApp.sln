@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FbApp.ServiceDefaults", "Fb
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Modules.UserAccess", "FbApp.Modules.UserAccess\FbApp.Modules.UserAccess.fsproj", "{39B0AFBC-E4F3-4741-B685-76A0C9A3973F}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".", ".", "{02A309F9-45F0-4B83-B663-B28FDB1E8B20}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{02A309F9-45F0-4B83-B663-B28FDB1E8B20}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Packages.props = Directory.Packages.props
 		..\README.md = ..\README.md
@@ -21,6 +21,10 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp", "FbApp\FbApp.fsproj", "{9640B5B4-5CE4-44BB-8EC7-D27D93538BF7}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Modules.WebApp", "FbApp.Modules.WebApp\FbApp.Modules.WebApp.fsproj", "{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Modules.Competitions", "FbApp.Modules.Competitions\FbApp.Modules.Competitions.fsproj", "{1F264B2C-9601-43E7-8BCA-EB29E1257D6C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.DbManager", "FbApp.DbManager\FbApp.DbManager.fsproj", "{68D79F8C-AC60-48FD-AF89-522BD40DD136}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,5 +55,13 @@ Global
 		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2393228-9AE4-4BA9-9D73-3F26B092CDAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F264B2C-9601-43E7-8BCA-EB29E1257D6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F264B2C-9601-43E7-8BCA-EB29E1257D6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F264B2C-9601-43E7-8BCA-EB29E1257D6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F264B2C-9601-43E7-8BCA-EB29E1257D6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68D79F8C-AC60-48FD-AF89-522BD40DD136}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68D79F8C-AC60-48FD-AF89-522BD40DD136}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68D79F8C-AC60-48FD-AF89-522BD40DD136}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68D79F8C-AC60-48FD-AF89-522BD40DD136}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

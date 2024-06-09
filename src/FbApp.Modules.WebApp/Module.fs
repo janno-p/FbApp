@@ -57,7 +57,7 @@ let endpoints = [
 
     route Routes.Dashboard.index (htmxView Dashboard.viewIndex)
     route Routes.Dashboard.competitions (htmxView Dashboard.viewCompetitions)
-    route "/dashboard/competitions/add" (htmxView Dashboard.viewAddCompetition)
+    route "/dashboard/competitions/add" (htmxView (Dashboard.viewAddCompetition ()))
 ]
 
 

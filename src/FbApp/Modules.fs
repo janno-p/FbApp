@@ -5,12 +5,16 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.HttpOverrides
 open Microsoft.Extensions.Configuration
 
+module CompetitionsModule =
+    Modules.Competitions.Module
+
+
 module UserAccessModule =
-    FbApp.Modules.UserAccess.Module
+    Modules.UserAccess.Module
 
 
 module WebAppModule =
-    FbApp.Modules.WebApp.Module
+    Modules.WebApp.Module
 
 
 type ModuleRequirement =
@@ -27,6 +31,12 @@ type ApplicationModule = {
 
 
 let private applicationModules: ApplicationModule list = [
+    {
+        Name = "Competitions"
+        ConfigureServices = ignore
+        Endpoints = CompetitionsModule.endpoints
+        Requirements = []
+    }
     {
         Name = "UserAccess"
         ConfigureServices = UserAccessModule.configureServices

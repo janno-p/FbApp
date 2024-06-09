@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FbApp.Modules.Competitions\FbApp.Modules.Competitions.fsproj" />
     <ProjectReference Include="..\FbApp.Modules.UserAccess\FbApp.Modules.UserAccess.fsproj" />
     <ProjectReference Include="..\FbApp.Modules.WebApp\FbApp.Modules.WebApp.fsproj" />
     <ProjectReference Include="..\FbApp.ServiceDefaults\FbApp.ServiceDefaults.csproj" />

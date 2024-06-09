@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Oxpecker" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Database.fs" />
+    <Compile Include="Module.fs" />
+  </ItemGroup>
+
+</Project>
