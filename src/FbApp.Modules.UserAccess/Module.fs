@@ -1,17 +1,15 @@
 module FbApp.Modules.UserAccess.Module
 
-open Oxpecker
+open FbApp.Modules.UserAccess
+open FbApp.Modules.UserAccess.Persistence
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
-open Authentication
-open Models
-
 let configureServices (builder: WebApplicationBuilder) =
     builder.Services
         .AddAuthentication()
-        .AddGoogle(configureGoogleOptions builder)
+        .AddGoogle(GoogleLogin.configureGoogleOptions builder)
     |> ignore
 
     builder.AddNpgsqlDbContext<UserAccessDbContext>("database")
@@ -22,9 +20,6 @@ let configureServices (builder: WebApplicationBuilder) =
     |> ignore
 
 let endpoints = [
-    GET [
-        route Routes.Google googleLogin
-        route Routes.GoogleComplete googleResponse
-        route Routes.Logout logout
-    ]
+    yield! GoogleLogin.endpoints
+    yield! Logout.endpoints
 ]

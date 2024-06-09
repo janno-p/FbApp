@@ -1,4 +1,4 @@
-module internal FbApp.Modules.UserAccess.Models
+module internal FbApp.Modules.UserAccess.Persistence
 
 open System
 open Microsoft.AspNetCore.Identity

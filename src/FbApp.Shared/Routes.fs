@@ -5,11 +5,13 @@ module Site =
     let [<Literal>] Home = "/"
     let [<Literal>] Changelog = "/changelog"
     let [<Literal>] NotFound = "/not-found"
-
-    let [<Literal>] GoogleLogin = "/user-access/google"
-    let [<Literal>] Logout = "/user-access/logout"
-
     let [<Literal>] Dashboard = "/dashboard"
+
+module UserAccess =
+    let [<Literal>] GoogleLogin = "/user-access/google"
+    let [<Literal>] GoogleCallback = "/user-access/google/callback"
+    let [<Literal>] GoogleComplete = "/user-access/google/complete"
+    let [<Literal>] Logout = "/user-access/logout"
 
 module Dashboard =
     module Competitions =

@@ -74,13 +74,13 @@ module Layouts =
                         span(class' = "whitespace-nowrap") { "Ava kontrollpaneel" }
                     }
 
-                a(href = Routes.Site.Logout, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap gap-1 items-center justify-center", hxBoost = false) {
+                a(href = Routes.UserAccess.Logout, class' = "text-white grow-0 h-8 flex flex-row flex-nowrap gap-1 items-center justify-center", hxBoost = false) {
                     span (class' = "icon-[mdi--logout] text-2xl")
                     span(class' = "whitespace-nowrap") { "Logi välja" }
                 }
             }
         | Guest ->
-            a(href = Routes.Site.GoogleLogin, class' = "text-white grow-0 w-8 h-8 flex items-center justify-center", title = "Logi sisse Google kontoga", hxBoost = false) {
+            a(href = Routes.UserAccess.GoogleLogin, class' = "text-white grow-0 w-8 h-8 flex items-center justify-center", title = "Logi sisse Google kontoga", hxBoost = false) {
                 span (class' = "icon-[mdi--login] text-2xl")
             }
 

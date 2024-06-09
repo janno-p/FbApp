@@ -13,9 +13,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Models.fs" />
-    <Compile Include="Routes.fs" />
-    <Compile Include="Authentication.fs" />
+    <ProjectReference Include="..\FbApp.Shared\FbApp.Shared.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Common.fs" />
+    <Compile Include="Persistence.fs" />
+    <Compile Include="GoogleLogin.fs" />
+    <Compile Include="Logout.fs" />
     <Compile Include="Module.fs" />
   </ItemGroup>
 

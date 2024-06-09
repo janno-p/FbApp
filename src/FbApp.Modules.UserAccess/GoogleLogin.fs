@@ -1,7 +1,8 @@
-﻿module internal FbApp.Modules.UserAccess.Authentication
+module FbApp.Modules.UserAccess.GoogleLogin
 
-open System.Security.Claims
-open Oxpecker
+open FbApp.Modules.UserAccess.Common
+open FbApp.Modules.UserAccess.Persistence
+open FbApp.Shared
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Google
 open Microsoft.AspNetCore.Builder
@@ -9,24 +10,12 @@ open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Identity
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Logging
+open Oxpecker
 open System
-
-open Models
-
-
-[<RequireQualifiedAccess>]
-module ClaimTypes =
-    let [<Literal>] Picture = "picture"
-
-
-type GoogleAuthenticationOptions = {
-    ClientId: string
-    ClientSecret: string
-}
-
+open System.Security.Claims
 
 let configureGoogleOptions (builder: WebApplicationBuilder) (options: GoogleOptions) =
-    options.CallbackPath <- PathString Routes.GoogleCallback
+    options.CallbackPath <- PathString Routes.UserAccess.GoogleCallback
     options.SignInScheme <- IdentityConstants.ExternalScheme
     options.Scope.Add("profile")
     options.ClaimActions.MapJsonKey(ClaimTypes.Picture, "picture")
@@ -37,8 +26,7 @@ let configureGoogleOptions (builder: WebApplicationBuilder) (options: GoogleOpti
         System.Threading.Tasks.Task.CompletedTask
         )
 
-
-let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
+let private updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
     user.Email <- principal.FindFirstValue(ClaimTypes.Email)
     user.EmailConfirmed <- true
     user.FullName <- principal.FindFirstValue(ClaimTypes.Name)
@@ -49,8 +37,7 @@ let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
     user.Surname <- principal.FindFirstValue(ClaimTypes.Surname)
     user.UserName <- principal.FindFirstValue(ClaimTypes.Email)
 
-
-let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: HttpContext) = task {
+let private updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: HttpContext) = task {
     let configuration = ctx.GetService<IConfiguration>()
     let userManager = ctx.GetService<UserManager<ApplicationUser>>()
     let userEmail = principal.FindFirstValue(ClaimTypes.Email)
@@ -62,8 +49,7 @@ let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: H
         ()
 }
 
-
-let googleLogin: EndpointHandler =
+let beginLogin: EndpointHandler =
     fun ctx -> task {
         let logger = ctx.GetLogger("FbApp.Modules.UserAccess.Authentication.googleLogin")
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
@@ -73,7 +59,7 @@ let googleLogin: EndpointHandler =
             | _ -> None
         let redirectUrl =
             let uri =
-                UriBuilder(ctx.Request.Scheme, ctx.Request.Host.Host, Path = "/user-access/google/complete")
+                UriBuilder(ctx.Request.Scheme, ctx.Request.Host.Host, Path = Routes.UserAccess.GoogleComplete)
             if ctx.Request.Host.Port.HasValue then
                 uri.Port <- ctx.Request.Host.Port.Value
             returnUrl
@@ -85,8 +71,7 @@ let googleLogin: EndpointHandler =
         return Some ctx
     }
 
-
-let googleResponse: EndpointHandler =
+let completeCallback: EndpointHandler =
     fun ctx -> task {
         let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
         let userManager = ctx.GetService<UserManager<ApplicationUser>>()
@@ -98,7 +83,7 @@ let googleResponse: EndpointHandler =
 
         match! signInManager.GetExternalLoginInfoAsync() with
         | null ->
-            return! googleLogin ctx
+            return! beginLogin ctx
         | info ->
             let! result = signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false)
             if result.Succeeded then
@@ -123,18 +108,9 @@ let googleResponse: EndpointHandler =
             return! redirectTo returnUrl false ctx
     }
 
-
-let logout: EndpointHandler =
-    fun ctx -> task {
-        let signInManager = ctx.GetService<SignInManager<ApplicationUser>>()
-
-        let returnUrl =
-            match ctx.Request.Query.TryGetValue("returnUrl") with
-            | true, value -> value.ToString()
-            | _ -> "/"
-
-        do! signInManager.SignOutAsync()
-        do! ctx.SignOutAsync(AuthenticationProperties(RedirectUri = returnUrl))
-
-        return Some ctx
-    }
+let endpoints: Endpoint list = [
+    GET [
+        route Routes.UserAccess.GoogleLogin beginLogin
+        route Routes.UserAccess.GoogleComplete completeCallback
+    ]
+]
