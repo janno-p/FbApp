@@ -1,9 +1,9 @@
 ﻿[<RequireQualifiedAccess>]
 module internal FbApp.Modules.WebApp.Changelog
 
+open FbApp.Shared
+open Oxpecker
 open Oxpecker.ViewEngine
-
-open Types
 
 type private LogEntry = {
     Version: string
@@ -86,10 +86,16 @@ let private viewEntry entry =
             viewChange change
     }
 
-let view: View = {
-    Title = "Changelog"
-    Content = div(class' = "p-8") {
-        for entry in log do
-            viewEntry entry
+let page: EndpointHandler =
+    pageView {
+        Layout = Default
+        Title = "Changelog"
+        Content = div(class' = "p-8") {
+            for entry in log do
+                viewEntry entry
+        }
     }
-}
+
+let endpoints: Endpoint list = [
+    GET [ route Routes.Site.Changelog page ]
+]

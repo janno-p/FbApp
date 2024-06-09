@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Oxpecker" />
+    <PackageReference Include="Oxpecker.Htmx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Routes.fs" />
+    <Compile Include="Library.fs" />
+  </ItemGroup>
+
+</Project>

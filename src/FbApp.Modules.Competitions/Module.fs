@@ -1,6 +1,6 @@
 ﻿module FbApp.Modules.Competitions.Module
 
-open Oxpecker
-
-
-let endpoints: Endpoint list = []
+let endpoints = [
+    yield! AddCompetition.endpoints
+    yield! ListCompetitions.endpoints
+]

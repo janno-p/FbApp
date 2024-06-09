@@ -44,10 +44,14 @@ type DbInitializer(serviceProvider: IServiceProvider, logger: ILogger<DbInitiali
             use connection = new NpgsqlConnection(data.ConnectionString)
             do! connection.OpenAsync(cancellationToken)
 
-            use command = new NpgsqlCommand($"CREATE DATABASE %s{database}", connection)
-            let! _ = command.ExecuteNonQueryAsync(cancellationToken)
+            use checkCommand = new NpgsqlCommand($"SELECT COUNT(1) FROM pg_database WHERE datname = '%s{database}'", connection)
+            let! numRows = checkCommand.ExecuteScalarAsync(cancellationToken)
+            let numRows = unbox<int64> numRows
 
-            ()
+            if numRows < 1L then
+                use command = new NpgsqlCommand($"CREATE DATABASE %s{database}", connection)
+                let! _ = command.ExecuteNonQueryAsync(cancellationToken)
+                ()
         }
 
     let migrateAndSeed (configuration: IConfiguration) cancellationToken =

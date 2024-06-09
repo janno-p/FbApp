@@ -6,12 +6,16 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="FSharp.Core" />
-    <PackageReference Include="Oxpecker" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FbApp.Shared\FbApp.Shared.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Database.fs" />
+    <Compile Include="AddCompetition.fs" />
+    <Compile Include="ListCompetitions.fs" />
     <Compile Include="Module.fs" />
   </ItemGroup>
 
