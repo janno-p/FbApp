@@ -4,6 +4,7 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /build
+COPY Directory.Packages.props .
 COPY ["src/FbApp.Proxy/FbApp.Proxy.fsproj", "src/FbApp.Proxy/FbApp.Proxy.fsproj"]
 RUN dotnet restore "src/FbApp.Proxy/FbApp.Proxy.fsproj"
 COPY ["src/FbApp.Proxy", "src/FbApp.Proxy"]
