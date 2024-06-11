@@ -252,7 +252,7 @@ view model =
             Page.view competitionName user Page.Other NotFound.view
 
         Home home ->
-            viewPage Page.Home GotHomeMsg (Home.view home)
+            viewPage Page.Home GotHomeMsg (Home.view model.session home)
 
         LoggingOut ->
             Page.view competitionName user Page.Other LoggingOut.view
@@ -261,7 +261,7 @@ view model =
             Page.view competitionName user Page.Other Changelog.view
 
         Prediction prediction ->
-            viewPage Page.Prediction GotPredictionMsg (Prediction.view prediction)
+            viewPage Page.Prediction GotPredictionMsg (Prediction.view model.session prediction)
 
         Fixture fixture ->
             viewPage Page.Fixture GotFixtureMsg (Fixture.view fixture)
@@ -419,7 +419,7 @@ update msg model =
             )
 
         ( GotFixtureMsg subMsg, Fixture fixture ) ->
-            Fixture.update subMsg fixture
+            Fixture.update model.session subMsg fixture
                 |> updateWith Fixture GotFixtureMsg model
 
         ( GotFixtureMsg _, _ ) ->

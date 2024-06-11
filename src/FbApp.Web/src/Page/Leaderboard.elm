@@ -12,8 +12,7 @@ import Session exposing (Session)
 
 
 type alias Model =
-    { session : Session
-    , predictionResults : Maybe (List PredictionResult)
+    { predictionResults : Maybe (List PredictionResult)
     }
 
 
@@ -36,11 +35,10 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     let
         model =
-            { session = session
-            , predictionResults = Nothing
+            { predictionResults = Nothing
             }
     in
-    ( model, loadLeaderboard model )
+    ( model, loadLeaderboard session )
 
 
 view : Model -> { title : String, content : Html Msg }
@@ -155,12 +153,12 @@ update msg model =
             ( model, Cmd.none )
 
 
-loadLeaderboard : Model -> Cmd Msg
-loadLeaderboard model =
+loadLeaderboard : Session -> Cmd Msg
+loadLeaderboard session =
     Endpoint.request
         Endpoint.leaderboard
         (Http.expectJson LeaderboardLoaded leaderboardDecoder)
-        { defaultEndpointConfig | headers = Endpoint.useToken model.session }
+        { defaultEndpointConfig | headers = Endpoint.useToken session }
 
 
 leaderboardDecoder : Json.Decoder (List PredictionResult)

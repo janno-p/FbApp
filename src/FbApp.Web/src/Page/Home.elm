@@ -1,4 +1,4 @@
-module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, view)
+module Page.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser.Navigation as Nav
 import Competition exposing (Competition, CompetitionStatus(..))
@@ -18,8 +18,7 @@ import Url.Builder exposing (absolute, string)
 
 
 type alias Model =
-    { session : Session
-    , competition : Competition
+    { competition : Competition
     , currentTime : Maybe Posix
     }
 
@@ -38,8 +37,7 @@ init session competition =
                 NotActive ->
                     Cmd.none
     in
-    ( { session = session
-      , competition = competition
+    ( { competition = competition
       , currentTime = Nothing
       }
     , cmd
@@ -50,19 +48,19 @@ init session competition =
 -- VIEW
 
 
-view : Model -> { title : String, content : Html Msg }
-view model =
+view : Session -> Model -> { title : String, content : Html Msg }
+view session model =
     { title = "Home"
-    , content = viewContent model
+    , content = viewContent session model
     }
 
 
-viewContent : Model -> Html Msg
-viewContent model =
+viewContent : Session -> Model -> Html Msg
+viewContent session model =
     div []
         (case model.competition.status of
             Competition.AcceptPredictions ->
-                viewAcceptPredictions model
+                viewAcceptPredictions session model
 
             Competition.InProgress ->
                 [ p [] [ text "Vaata tulemusi!" ] ]
@@ -87,8 +85,8 @@ days =
     24 * 60 * 60 * 1000
 
 
-viewAcceptPredictions : Model -> List (Html Msg)
-viewAcceptPredictions model =
+viewAcceptPredictions : Session -> Model -> List (Html Msg)
+viewAcceptPredictions session model =
     let
         millis =
             model.currentTime
@@ -106,7 +104,7 @@ viewAcceptPredictions model =
     in
     case remainingTime of
         Just time ->
-            viewCountdown time :: viewChallenge model.session
+            viewCountdown time :: viewChallenge session
 
         Nothing ->
             []
@@ -175,19 +173,13 @@ viewCountdown remainingTime =
 
 
 type Msg
-    = GotSession Session
-    | UpdateCounter Posix
+    = UpdateCounter Posix
     | LoginToPrediction
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotSession session ->
-            ( { model | session = session }
-            , Cmd.none
-            )
-
         UpdateCounter currentTime ->
             ( { model | currentTime = Just currentTime }
             , Cmd.none
@@ -212,12 +204,3 @@ subscriptions model =
 
         NotActive ->
             Sub.none
-
-
-
--- EXPORT
-
-
-toSession : Model -> Session
-toSession model =
-    model.session

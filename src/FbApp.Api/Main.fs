@@ -26,6 +26,7 @@ open MongoDB.Bson
 open MongoDB.Driver
 open Quartz
 open System
+open Microsoft.IdentityModel.JsonWebTokens
 
 
 MongoDbSetup.init()
@@ -69,14 +70,24 @@ let configureJsonSerializer () =
     SystemTextJson.Serializer options
 
 
+let configureJwtAuthentication (options: JwtBearerOptions) =
+    options.MapInboundClaims <- false
+    options.TokenValidationParameters <- TokenValidationParameters(
+        SignatureValidator = (fun token _ -> JsonWebToken(token)),
+        ValidateAudience = false,
+        ValidateIssuer = false,
+        ValidateIssuerSigningKey = false
+    )
+
+
 let configureServices (builder: WebApplicationBuilder) =
     builder.Services.AddRouting() |> ignore
 
     builder.Services.AddAuthorization() |> ignore
-    builder.Services.AddAuthentication(fun options ->
-        options.DefaultScheme <- JwtBearerDefaults.AuthenticationScheme
-        options.DefaultChallengeScheme <- JwtBearerDefaults.AuthenticationScheme
-        ) |> ignore
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, configureJwtAuthentication)
+    |> ignore
 
     builder.Services.AddSingleton<Json.ISerializer>(configureJsonSerializer()) |> ignore
 
@@ -218,16 +229,6 @@ let configureApp (app: WebApplication) =
     }
 
     initCompetition.Wait()
-
-
-let configureJwtAuthentication (options: JwtBearerOptions) =
-    options.MapInboundClaims <- false
-    options.TokenValidationParameters <- TokenValidationParameters(
-        SignatureValidator = (fun token _ -> JwtSecurityToken(token)),
-        ValidateAudience = false,
-        ValidateIssuer = false,
-        ValidateIssuerSigningKey = false
-    )
 
 
 [<EntryPoint>]

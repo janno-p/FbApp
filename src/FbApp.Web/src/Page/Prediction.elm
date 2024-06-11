@@ -1,4 +1,4 @@
-module Page.Prediction exposing (Model, Msg, init, subscriptions, toSession, update, view)
+module Page.Prediction exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api.Endpoint as Endpoint exposing (competitionInfo, defaultEndpointConfig)
 import Html exposing (Html, button, div, h1, h2, img, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
@@ -16,8 +16,7 @@ import Session exposing (Session)
 
 
 type alias Model =
-    { session : Session
-    , competitionInfo : Maybe CompetitionInfo
+    { competitionInfo : Maybe CompetitionInfo
     , stage : PredictionStage
     , fixturePredictions : List FixturePrediction
     , groupPredictions : List GroupPrediction
@@ -114,8 +113,7 @@ type alias PlayerPrediction =
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    ( { session = session
-      , competitionInfo = Nothing
+    ( { competitionInfo = Nothing
       , stage = Initial
       , fixturePredictions = []
       , groupPredictions = []
@@ -138,8 +136,8 @@ init session =
 -- VIEW
 
 
-view : Model -> { title : String, content : Html Msg }
-view model =
+view : Session -> Model -> { title : String, content : Html Msg }
+view session model =
     let
         content =
             case model.stage of
@@ -200,26 +198,26 @@ view model =
                         SetTopScorersStage
 
                 TopScorersStage ->
-                    viewTopScorersStage model
+                    viewTopScorersStage session model
 
                 Done ->
                     viewDone
 
                 FailedToSave reason ->
-                    viewFailure reason
+                    viewFailure session reason
     in
     { title = "Ennustamine"
     , content = div [ class "p-8" ] content
     }
 
 
-viewFailure : String -> List (Html Msg)
-viewFailure reason =
+viewFailure : Session -> String -> List (Html Msg)
+viewFailure session reason =
     [ div []
         [ p [] [ text "Viga salvestamisel! Ennustuse edastamine ei õnnestunud." ]
         , pre [] [ text reason ]
         , div [ class "flex flex-row-reverse" ]
-            [ viewButton SavePrediction "Proovi uuesti salvestada" "mdi-replay" False ]
+            [ viewButton (SavePrediction session) "Proovi uuesti salvestada" "mdi-replay" False ]
         ]
     ]
 
@@ -359,8 +357,8 @@ viewPlayOffStage model selection title subTitle btnText count msg =
     ]
 
 
-viewTopScorersStage : Model -> List (Html Msg)
-viewTopScorersStage model =
+viewTopScorersStage : Session -> Model -> List (Html Msg)
+viewTopScorersStage session model =
     [ h1 [] [ text "Suurim väravakütt" ]
     , p [] [ text "Vali kolm kandidaati resultatiivseima väravalööja tiitlile?" ]
     ]
@@ -368,7 +366,7 @@ viewTopScorersStage model =
                 |> List.map (\x -> p [] [ text x.name ])
            )
         ++ [ div [ class "flex flex-row-reverse" ]
-                [ viewButton SavePrediction "Registreeri oma ennustus" "mdi-chevron-double-right" (List.length model.topScorers /= 3) ]
+                [ viewButton (SavePrediction session) "Registreeri oma ennustus" "mdi-chevron-double-right" (List.length model.topScorers /= 3) ]
            , viewPlayerTable model
            ]
 
@@ -565,8 +563,7 @@ viewPlayOffSelection maxSelection model =
 
 
 type Msg
-    = SessionUpdated Session
-    | SetGroupStage
+    = SetGroupStage
     | GotCompetitionInfo (Result Http.Error CompetitionInfo)
     | SetRoundOf32Stage
     | SetRoundOf16Stage
@@ -578,7 +575,7 @@ type Msg
     | ToggleQualifier Int
     | ToggleScorer PlayerPrediction
     | SetPlayerNameFilter String
-    | SavePrediction
+    | SavePrediction Session
     | PredictionSaved (Result ErrorDetailed ( Http.Metadata, String ))
     | TogglePositionFilter String
     | ToggleCountryFilter Int
@@ -588,9 +585,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SessionUpdated session ->
-            ( { model | session = session }, Cmd.none )
-
         CheckedExisting (Ok (Just _)) ->
             ( { model | stage = Done }, Cmd.none )
 
@@ -659,8 +653,8 @@ update msg model =
             , Cmd.none
             )
 
-        SavePrediction ->
-            ( model, savePrediction model )
+        SavePrediction session ->
+            ( model, savePrediction session model )
 
         PredictionSaved (Err (BadStatus _ body)) ->
             ( { model | stage = FailedToSave body }, Cmd.none )
@@ -721,8 +715,8 @@ convertResponseString httpResponse =
             Ok ( metadata, body )
 
 
-savePrediction : Model -> Cmd Msg
-savePrediction model =
+savePrediction : Session -> Model -> Cmd Msg
+savePrediction session model =
     let
         config =
             Endpoint.defaultEndpointConfig
@@ -733,7 +727,7 @@ savePrediction model =
         { config
             | body = Http.jsonBody (predictionEncoder model)
             , method = "POST"
-            , headers = Endpoint.useToken model.session
+            , headers = Endpoint.useToken session
         }
 
 
@@ -971,12 +965,3 @@ fixtureResultEncoder fixture =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.none
-
-
-
--- EXPORT
-
-
-toSession : Model -> Session
-toSession model =
-    model.session

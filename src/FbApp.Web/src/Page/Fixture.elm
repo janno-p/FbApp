@@ -19,7 +19,6 @@ import Url exposing (Protocol(..))
 
 type alias Model =
     { fixtureId : Maybe String
-    , session : Session
     , fixture : Maybe Fixture
     , timeZone : Zone
     }
@@ -92,14 +91,13 @@ init session fixtureId =
     let
         model =
             { fixtureId = fixtureId
-            , session = session
             , fixture = Nothing
             , timeZone = utc
             }
     in
     ( model
     , Cmd.batch
-        [ loadFixture model
+        [ loadFixture session model
         , Task.attempt SetZone Time.here
         ]
     )
@@ -315,8 +313,8 @@ type Msg
     | LoadFixture String
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg )
+update session msg model =
     case msg of
         FixtureLoaded (Ok fixture) ->
             ( { model | fixture = Just fixture }, Cmd.none )
@@ -332,11 +330,11 @@ update msg model =
                 updated =
                     { model | fixtureId = Just fixtureId, fixture = Nothing }
             in
-            ( updated, Route.replaceUrl (Session.navKey model.session) (Route.Fixture (Just fixtureId)) )
+            ( updated, Route.replaceUrl (Session.navKey session) (Route.Fixture (Just fixtureId)) )
 
 
-loadFixture : Model -> Cmd Msg
-loadFixture model =
+loadFixture : Session -> Model -> Cmd Msg
+loadFixture session model =
     let
         endpoint =
             model.fixtureId
@@ -346,7 +344,7 @@ loadFixture model =
     Endpoint.request
         endpoint
         (Http.expectJson FixtureLoaded fixtureDecoder)
-        { defaultEndpointConfig | headers = Endpoint.useToken model.session }
+        { defaultEndpointConfig | headers = Endpoint.useToken session }
 
 
 scoreDecoder : Json.Decoder (Maybe ( Int, Int ))
