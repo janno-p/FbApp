@@ -16,11 +16,8 @@
     "strings": "on"
   },
   "files.exclude": {
-    ".fake": true,
     ".idea": true,
-    ".paket": true,
     ".vs": true,
-    "paket-files": true,
     "src/FbApp.Web/elm-stuff": true,
     "src/FbApp.Web/node_modules": true
   },

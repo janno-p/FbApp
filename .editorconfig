@@ -23,5 +23,5 @@ trim_trailing_whitespace = false
 [*.sh]
 end_of_line = lf
 
-[*.{fsproj,yml,yaml}]
+[*.{fsproj,props,yml,yaml}]
 indent_size = 2

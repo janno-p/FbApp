@@ -55,7 +55,7 @@ type Worker(serviceProvider: IServiceProvider, configuration: IConfiguration) =
                     ClientId = "fbapp-ui-client",
                     ConsentType = ConsentTypes.Implicit,
                     DisplayName = "FbApp UI Application",
-                    Type = ClientTypes.Public
+                    ClientType = ClientTypes.Public
                 )
 
             redirectUris

@@ -38,11 +38,8 @@ module Hash =
 
 [<DisallowConcurrentExecution>]
 type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpdateJob>) =
-    let [<Literal>] CompetitionApiId =
-        2000L
-
     let competitionId =
-        CompetitionId.create CompetitionApiId
+        CompetitionId.create FootballData.ActiveCompetition
 
     let standingsKey competitionId group =
         $"standings-%d{competitionId}-%s{group}"
@@ -106,7 +103,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
     }
 
     let updateFixtures isFullUpdate _ = task {
-        match! FootballData.getCompetitionFixtures authOptions.Value.FootballDataToken CompetitionApiId (getRequestFilters isFullUpdate)  with
+        match! FootballData.getCompetitionFixtures authOptions.Value.FootballDataToken FootballData.ActiveCompetition (getRequestFilters isFullUpdate)  with
         | Ok matches ->
             logger.LogInformation("Loaded data of {count} fixtures.", matches.Fixtures.Length)
 
@@ -136,7 +133,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
 
                 let newFixture: FixtureDto = {
                     FixtureId = fixture.Id
-                    CompetitionId = CompetitionApiId
+                    CompetitionId = FootballData.ActiveCompetition
                     HomeTeamId = fixture.HomeTeam |> Option.bind (fun x -> x.Id)
                     AwayTeamId = fixture.AwayTeam |> Option.bind (fun x -> x.Id)
                     UtcDate = fixture.Date
@@ -171,7 +168,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
     }
 
     let updateGroupTable _ (standings: FootballData.CompetitionLeagueTableStandings) = task {
-        let key = standingsKey CompetitionApiId standings.Group
+        let key = standingsKey FootballData.ActiveCompetition standings.Group
 
         let previousHashCode =
             match InMemoryCache.Standings.TryGetValue(key) with
@@ -202,7 +199,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
 
             let command = Competitions.Command.UpdateStandings (standings.Group, rows)
 
-            let competitionId = Competitions.createId 2000L
+            let competitionId = Competitions.createId FootballData.ActiveCompetition
             match! CommandHandlers.competitionsHandler (competitionId, Aggregate.Any) command with
             | Ok _ ->
                 ()
@@ -213,7 +210,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
     }
 
     let updateStandings cancellationToken = task {
-        match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken CompetitionApiId with
+        match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken FootballData.ActiveCompetition with
         | Ok competition ->
             for group in competition.Standings |> Array.filter (fun x -> x.Stage = "GROUP_STAGE") do
                 do! updateGroupTable cancellationToken group
@@ -235,7 +232,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                     |> List.map (fun x -> { PlayerId = x.Player.Id; TeamId = x.Team.Id; Goals = x.Goals })
                 )
 
-        let competitionId = Competitions.createId 2000L
+        let competitionId = Competitions.createId FootballData.ActiveCompetition
         match! CommandHandlers.competitionsHandler (competitionId, Aggregate.Any) command with
         | Ok _ ->
             ()
@@ -246,7 +243,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
     }
 
     let updateScorers cancellationToken = task {
-        match! FootballData.getScorers authOptions.Value.FootballDataToken CompetitionApiId with
+        match! FootballData.getScorers authOptions.Value.FootballDataToken FootballData.ActiveCompetition with
         | Ok competition ->
             do! updateCompetitionScorers competition.Scorers cancellationToken
         | Error (errorCode, reason, error) ->

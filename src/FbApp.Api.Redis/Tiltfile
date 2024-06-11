@@ -11,9 +11,11 @@ helm_remote('redis',
 )
 
 k8s_resource(new_name='fbapp-api-redis-resources', labels=['fbapp-api'], objects=[
-    'fbapp-api-redis:serviceaccount',
+    'fbapp-api-redis:networkpolicy',
     'fbapp-api-redis-configuration:configmap',
     'fbapp-api-redis-health:configmap',
+    'fbapp-api-redis-master:poddisruptionbudget',
+    'fbapp-api-redis-master:serviceaccount',
     'fbapp-api-redis-scripts:configmap',
     'fbapp-state:component'
 ])

@@ -7,12 +7,12 @@ open MongoDB.Bson
 open MongoDB.Driver
 
 
-type GetUserPrediction = IMongoDatabase -> string -> Task<Guid option>
+type GetUserPrediction = int64 -> IMongoDatabase -> string -> Task<Guid option>
 
 
-let getUserPrediction: GetUserPrediction =
-    fun db email  -> task {
-        let competitionId = Competitions.createId 2000L
+let getUserPrediction : GetUserPrediction =
+    fun competitionId db email -> task {
+        let competitionId = Competitions.createId competitionId
         let predictionId = Predictions.createId (competitionId, Predictions.Email email)
 
         let! predictionsCount =

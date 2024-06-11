@@ -3,12 +3,10 @@
 open System
 open System.Collections.Generic
 open System.Net.Http
-open DotNet.Testcontainers.Builders
-open DotNet.Testcontainers.Configurations
-open DotNet.Testcontainers.Containers
 open FbApp.Auth
 open Microsoft.AspNetCore.Mvc.Testing
 open Microsoft.Extensions.Configuration
+open Testcontainers.PostgreSql
 open Xunit
 
 type AuthApiFactory (configuration: IDictionary<_,_>) =
@@ -25,13 +23,10 @@ type AuthApiFactory (configuration: IDictionary<_,_>) =
 
 type AuthApiFixture () =
     let dbContainer =
-        let configuration = new PostgreSqlTestcontainerConfiguration(
-            Database = "fbapp-auth",
-            Username = "postgres",
-            Password = "password"
-        )
-        TestcontainersBuilder<PostgreSqlTestcontainer>()
-            .WithDatabase(configuration)
+        PostgreSqlBuilder()
+            .WithDatabase("fbapp-auth")
+            .WithUsername("postgres")
+            .WithPassword("password")
             .Build()
 
     let mutable factory = Unchecked.defaultof<AuthApiFactory>
@@ -42,7 +37,7 @@ type AuthApiFixture () =
         member _.InitializeAsync() = task {
             do! dbContainer.StartAsync()
             let configuration = dict [
-                "ConnectionStrings:postgres", dbContainer.ConnectionString
+                "ConnectionStrings:postgres", dbContainer.GetConnectionString()
                 "Google:Authentication:ClientId", "**id**"
                 "Google:Authentication:ClientSecret", "**secret**"
             ]

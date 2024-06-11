@@ -3,6 +3,7 @@ module FbApp.Auth.Program
 
 open FSharp.Control
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Google
@@ -18,7 +19,6 @@ open Microsoft.Extensions.Logging
 open OpenIddict.Abstractions
 open OpenIddict.Server.AspNetCore
 open Quartz
-open Saturn
 open System
 open System.Collections.Generic
 open System.Security.Claims
@@ -350,59 +350,63 @@ module Routes =
     let [<Literal>] Userinfo = "/connect/userinfo"
 
 
-let routes = router {
-    get Routes.Authorize authorize
-    get Routes.Google googleLogin
-    get Routes.GoogleComplete googleResponse
-    get Routes.Logout logout
-    post Routes.Token exchangeToken
-    get Routes.Userinfo userinfo
-}
+let routes = [
+    GET [
+        route Routes.Authorize authorize
+        route Routes.Google googleLogin
+        route Routes.GoogleComplete googleResponse
+        route Routes.Logout logout
+        route Routes.Userinfo userinfo
+    ]
+    POST [
+        route Routes.Token exchangeToken
+    ]
+]
 
 
-let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
-    services.AddAuthorization() |> ignore
+let configureServices (builder: WebApplicationBuilder) =
+    builder.Services.AddAuthorization() |> ignore
 
-    services.AddDbContext<ApplicationDbContext>(fun options ->
-        let connectionString = context.Configuration.GetConnectionString("postgres")
+    builder.Services.AddGiraffe() |> ignore
+
+    builder.Services.AddDbContext<ApplicationDbContext>(fun options ->
+        let connectionString = builder.Configuration.GetConnectionString("postgres")
         options.UseNpgsql(connectionString) |> ignore
         options.UseOpenIddict<Guid>() |> ignore
     ) |> ignore
 
-    services.AddAuthentication()
+    builder.Services.AddAuthentication()
         .AddGoogle(fun options ->
-            let googleSection = context.Configuration.GetSection("Google:Authentication")
+            let googleSection = builder.Configuration.GetSection("Google:Authentication")
             options.ClientId <- googleSection["ClientId"]
             options.ClientSecret <- googleSection["ClientSecret"]
             options.CallbackPath <- PathString "/connect/google/callback"
             options.SignInScheme <- IdentityConstants.ExternalScheme
             options.Scope.Add("profile")
-            options.AuthorizationEndpoint <- $"%s{options.AuthorizationEndpoint}?prompt=select_account"
             options.ClaimActions.MapJsonKey(OpenIddictConstants.Claims.Picture, "picture"))
     |> ignore
 
-    services.AddIdentity<ApplicationUser, ApplicationRole>()
+    builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders()
     |> ignore
 
-    services.Configure<IdentityOptions>(fun (options: IdentityOptions) ->
+    builder.Services.Configure<IdentityOptions>(fun (options: IdentityOptions) ->
         options.ClaimsIdentity.UserNameClaimType <- OpenIddictConstants.Claims.Name
         options.ClaimsIdentity.UserIdClaimType <- OpenIddictConstants.Claims.Subject
         options.ClaimsIdentity.RoleClaimType <- OpenIddictConstants.Claims.Role
     ) |> ignore
 
-    services.AddQuartz(fun options ->
-        options.UseMicrosoftDependencyInjectionJobFactory()
+    builder.Services.AddQuartz(fun options ->
         options.UseSimpleTypeLoader()
         options.UseInMemoryStore()
     ) |> ignore
 
-    services.AddQuartzHostedService(fun options ->
+    builder.Services.AddQuartzHostedService(fun options ->
         options.WaitForJobsToComplete <- true
     ) |> ignore
 
-    services.AddOpenIddict()
+    builder.Services.AddOpenIddict()
         .AddCore(fun options ->
             options.UseEntityFrameworkCore()
                 .UseDbContext<ApplicationDbContext>()
@@ -438,35 +442,38 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
             options.UseAspNetCore() |> ignore)
     |> ignore
 
-    services.AddHttpClient() |> ignore
+    builder.Services.AddHttpClient() |> ignore
 
-    services.AddHostedService<Worker>() |> ignore
+    builder.Services.AddHostedService<Worker>() |> ignore
 
 
-let configureApplication (app: IApplicationBuilder) =
+let configureApplication (app: WebApplication) =
     app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
+    app.UseRouting() |> ignore
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
-    app
+    app.UseGiraffe(routes) |> ignore
 
 
-let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
-    config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
-          .AddJsonFile($"appsettings.%s{context.HostingEnvironment.EnvironmentName}.json", optional=true, reloadOnChange=true)
-          .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
-          .AddEnvironmentVariables()
+let configureAppConfiguration (builder: WebApplicationBuilder) =
+    builder
+        .Configuration
+        .AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
+        .AddJsonFile($"appsettings.%s{builder.Environment.EnvironmentName}.json", optional=true, reloadOnChange=true)
+        .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
+        .AddEnvironmentVariables()
     |> ignore
 
 
-let app = application {
-    app_config configureApplication
+[<EntryPoint>]
+let main args =
+    let builder = WebApplication.CreateBuilder(args)
+    configureAppConfiguration builder
+    configureServices builder
 
-    host_config (fun host ->
-        host.ConfigureServices(configureServices)
-            .ConfigureAppConfiguration(configureAppConfiguration))
+    let app = builder.Build()
+    configureApplication app
 
-    use_router routes
-}
+    app.Run()
 
-
-run app
+    0

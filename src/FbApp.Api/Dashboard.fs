@@ -4,10 +4,10 @@ open FbApp.Api
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
 open MongoDB.Driver
-open Saturn.Endpoint
 
 type CompetitionItem =
     {
@@ -53,8 +53,12 @@ let getCompetitions: HttpHandler =
             return! Successful.OK competitions next context
         })
 
-let dashboardScope = router {
-    get "/competitions" getCompetitions
-    getf "/competition_sources/%i" getCompetitionSources
-    post "/competition/add" addCompetition
-}
+let dashboardScope: Endpoint list = [
+    GET [
+        route "/competitions" getCompetitions
+        routef "/competition_sources/%i" getCompetitionSources
+    ]
+    POST [
+        route "/competition/add" addCompetition
+    ]
+]

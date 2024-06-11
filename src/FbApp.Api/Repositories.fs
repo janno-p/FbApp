@@ -186,7 +186,7 @@ module Competitions =
         Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
 
     let tryGetActive db = task {
-        let f = Builders.Filter.Eq((fun x -> x.ExternalId), 2000L)
+        let f = Builders.Filter.Eq((fun x -> x.ExternalId), FootballData.ActiveCompetition)
         return! (getCollection db).Find(f).Limit(Nullable(1)) |> FindFluent.trySingleAsync
     }
 

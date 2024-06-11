@@ -3,8 +3,6 @@
     "bradlc.vscode-tailwindcss",
     "editorconfig.editorconfig",
     "elmtooling.elm-ls-vscode",
-    "ionide.ionide-fake",
-    "ionide.ionide-fsharp",
-    "ionide.ionide-paket"
+    "ionide.ionide-fsharp"
   ]
 }

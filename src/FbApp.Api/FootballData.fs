@@ -7,6 +7,15 @@ open Newtonsoft.Json.Serialization
 open System
 open System.Net.Http
 
+[<Literal>]
+let EuropeanChampionship = 2018L
+
+[<Literal>]
+let WorldCup = 2000L
+
+[<Literal>]
+let ActiveCompetition = EuropeanChampionship
+
 [<CLIMutable>]
 type Error =
     {
@@ -397,7 +406,7 @@ let private apiCall<'T> authToken (uri: string) = task {
 
 /// List all available competitions.
 let getCompetitions authToken = task {
-    let uri = $"competitions/{2000L}"
+    let uri = $"competitions/%d{ActiveCompetition}"
     let! comp = apiCall<Competition> authToken uri
     return comp |> Result.map (fun x -> [| x |])
 }

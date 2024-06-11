@@ -14,10 +14,12 @@ helm_remote('mongodb',
 )
 
 k8s_resource(new_name='fbapp-api-database-resources', labels=['fbapp-api'], objects=[
-    'fbapp-api-database-mongodb:serviceaccount',
+    'fbapp-api-database-mongodb:networkpolicy',
     'fbapp-api-database-mongodb:persistentvolumeclaim',
-    'fbapp-api-database-mongodb-common-scripts:configmap',
-    'fbapp-api-database-mongodb:secret'
+    'fbapp-api-database-mongodb:poddisruptionbudget',
+    'fbapp-api-database-mongodb:secret',
+    'fbapp-api-database-mongodb:serviceaccount',
+    'fbapp-api-database-mongodb-common-scripts:configmap'
 ])
 
 k8s_resource('fbapp-api-database-mongodb', labels=['fbapp-api'], port_forwards='27017:27017', resource_deps=[

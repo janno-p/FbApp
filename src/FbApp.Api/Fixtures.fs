@@ -2,9 +2,9 @@ module FbApp.Api.Fixtures
 
 open FbApp.Api.Repositories
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
-open Saturn.Endpoint
 open System
 
 
@@ -15,6 +15,8 @@ let getFixtureStatus (id: Guid) : HttpHandler =
     })
 
 
-let scope = router {
-    getf "/%O/status" getFixtureStatus
-}
+let scope: Endpoint list = [
+    GET [
+        routef "/%O/status" getFixtureStatus
+    ]
+]

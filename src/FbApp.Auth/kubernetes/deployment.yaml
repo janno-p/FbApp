@@ -16,7 +16,7 @@ spec:
       - name: fbapp-auth
         image: fbapp-auth-image
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         env:
         - name: ConnectionStrings__postgres
           value: Host=fbapp-auth-database-postgresql;Port=5432;Database=fbapp_auth;Username=user;Password=password

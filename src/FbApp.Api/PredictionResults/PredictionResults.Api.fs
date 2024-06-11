@@ -7,9 +7,9 @@ open Giraffe
 open Microsoft.Extensions.Logging
 
 
-let getLeaderboard : HttpHandler =
+let getLeaderboard (competitionId: int64) : HttpHandler =
     fun next ctx -> task {
-        let competitionId = CompetitionId.create 2000L
+        let competitionId = CompetitionId.create competitionId
         ctx.GetLogger(nameof getPredictionResults).LogInformation("Loading leaderboard of competition {CompetitionId}", CompetitionId.value competitionId)
         let dto =
             getPredictionResults ()

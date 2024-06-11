@@ -13,7 +13,10 @@ helm_remote('postgresql',
 )
 
 k8s_resource(new_name='fbapp-auth-database-resources', labels=['fbapp-auth'], objects=[
-    'fbapp-auth-database-postgresql:secret'
+    'fbapp-auth-database-postgresql:networkpolicy',
+    'fbapp-auth-database-postgresql:poddisruptionbudget',
+    'fbapp-auth-database-postgresql:secret',
+    'fbapp-auth-database-postgresql:serviceaccount'
 ])
 
 k8s_resource('fbapp-auth-database-postgresql', labels=['fbapp-auth'], port_forwards='5432:5432', resource_deps=[

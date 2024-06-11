@@ -3,6 +3,7 @@ module FbApp.Proxy.Program
 
 open System.Net.Mime
 open Giraffe
+open Giraffe.EndpointRouting
 open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
@@ -12,7 +13,6 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
-open Saturn
 open System
 open System.Collections.Generic
 open System.Threading.Tasks
@@ -118,55 +118,58 @@ let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBear
     options.Validate()
 
 
-let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
-    let configuration = context.Configuration
+let configureServices (builder: WebApplicationBuilder) =
+    let configuration = builder.Configuration
 
-    services.AddAuthorization()
+    builder.Services.AddAuthorization()
     |> ignore
 
-    services.AddReverseProxy()
+    builder.Services.AddGiraffe()
+    |> ignore
+
+    builder.Services.AddReverseProxy()
         .LoadFromConfig(configuration.GetSection("ReverseProxy"))
         .AddConfigFilter<DaprConfigFilter>()
     |> ignore
 
-    services.AddAuthentication(fun cfg ->
+    builder.Services.AddAuthentication(fun cfg ->
         cfg.DefaultScheme <- JwtBearerDefaults.AuthenticationScheme
         cfg.DefaultChallengeScheme <- JwtBearerDefaults.AuthenticationScheme)
        .AddJwtBearer(configureJwtAuthentication configuration)
     |> ignore
 
 
-let routes = router {
-    get "/dapr/config" (obj() |> Successful.OK)
-}
+let routes = [
+    GET [
+        route "/dapr/config" (obj() |> Successful.OK)
+    ]
+]
 
 
-let configureApplication (app: IApplicationBuilder) =
-    let env = Environment.getWebHostEnvironment app
-
+let configureApplication (app: WebApplication) =
     app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
 
-    if env.IsDevelopment() then
+    if app.Environment.IsDevelopment() then
         app.UseDeveloperExceptionPage() |> ignore
 
     app.UseRouting() |> ignore
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
 
-    app.UseGiraffe(routes)
+    app.UseGiraffe(routes) |> ignore
 
     app.UseEndpoints(fun endpoints ->
         endpoints.MapReverseProxy() |> ignore
     ) |> ignore
 
-    app
+[<EntryPoint>]
+let main args =
+    let builder = WebApplication.CreateBuilder(args)
+    configureServices builder
 
+    let app = builder.Build()
+    configureApplication app
 
-let app = application {
-    no_router
-    app_config configureApplication
-    host_config (fun host -> host.ConfigureServices(configureServices))
-}
+    app.Run()
 
-
-run app
+    0

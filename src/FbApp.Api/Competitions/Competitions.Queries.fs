@@ -14,14 +14,14 @@ type Competition = {
 }
 
 
-type GetActiveCompetition = IMongoDatabase -> Task<Competition option>
+type GetActiveCompetition = int64 -> IMongoDatabase -> Task<Competition option>
 
 
 let getActiveCompetition: GetActiveCompetition =
-    fun db -> task {
+    fun competitionId db -> task {
         let! competition =
             db.GetCollection<Competition>("competitions")
-                .Find(Builders<Competition>.Filter.Eq((fun x -> x.ExternalId), 2000L))
+                .Find(Builders<Competition>.Filter.Eq((fun x -> x.ExternalId), competitionId))
                 .Limit(Nullable(1))
                 .SingleOrDefaultAsync()
         return (if competition |> box |> isNull then None else Some competition)

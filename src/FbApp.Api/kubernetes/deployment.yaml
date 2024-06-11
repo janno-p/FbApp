@@ -12,7 +12,7 @@ spec:
       annotations:
         dapr.io/enabled: "true"
         dapr.io/app-id: "fbapp-api"
-        dapr.io/app-port: "80"
+        dapr.io/app-port: "8080"
         dapr.io/log-level: "debug"
       labels:
         app: fbapp-api
@@ -21,7 +21,7 @@ spec:
       - name: fbapp-api
         image: fbapp-api-image
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         env:
         - name: CONNECTIONSTRINGS__MONGODB
           value: mongodb://user:password@fbapp-api-database-mongodb:27017/fbapp

@@ -15,6 +15,7 @@ open Giraffe.EndpointRouting
 open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.HttpOverrides
+open Microsoft.AspNetCore.ResponseCompression
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
@@ -24,35 +25,33 @@ open Microsoft.IdentityModel.Tokens
 open MongoDB.Bson
 open MongoDB.Driver
 open Quartz
-open Saturn
-open Saturn.Endpoint
 open System
 
 
 MongoDbSetup.init()
 
 
-let mainRouter = router {
-    get "/dapr/config" (obj() |> Successful.OK)
+let mainRouter = [
+    GET [
+        route "/dapr/config" (obj() |> Successful.OK)
+        route "/api/competition/status" FbApp.Competitions.Api.getCompetitionStatus
+        route "/api/fixtures" FbApp.Fixtures.Api.getDefaultFixture
+        routef "/api/fixtures/%O" FbApp.Fixtures.Api.getFixture
+        route "/api/prediction" (Auth.mustBeLoggedIn >=> (Auth.withUser FbApp.Predictions.Api.getUserPrediction))
+        route "/api/prediction/board" (FbApp.PredictionResults.Api.getLeaderboard FootballData.ActiveCompetition)
+    ]
 
-    get "/api/competition/status" FbApp.Competitions.Api.getCompetitionStatus
-    get "/api/fixtures" FbApp.Fixtures.Api.getDefaultFixture
-    getf "/api/fixtures/%O" FbApp.Fixtures.Api.getFixture
-    get "/api/prediction" (Auth.mustBeLoggedIn >=> (Auth.withUser FbApp.Predictions.Api.getUserPrediction))
-    get "/api/prediction/board" FbApp.PredictionResults.Api.getLeaderboard
+    subRoute "/api/predict" Predict.predictScope
+    subRoute "/api/fixtures" Fixtures.scope
+    subRoute "/api/predictions" Predictions.scope
+    subRoute "/api/leagues" Leagues.scope
 
-    forward "/api/predict" Predict.predictScope
-    forward "/api/fixtures" Fixtures.scope
-    forward "/api/predictions" Predictions.scope
-    forward "/api/leagues" Leagues.scope
-
-    forward "/api" (router {
-        pipe_through Auth.mustBeLoggedIn
-        pipe_through Auth.mustBeAdmin
-
-        forward "/dashboard" Dashboard.dashboardScope
-    })
-}
+    subRoute "/api" [
+        subRoute "/dashboard" Dashboard.dashboardScope
+    ]
+    |> applyBefore Auth.mustBeLoggedIn
+    |> applyBefore Auth.mustBeAdmin
+]
 
 
 let initializeMongoDb (sp: IServiceProvider) =
@@ -64,28 +63,55 @@ let initializeMongoDb (sp: IServiceProvider) =
     client.GetDatabase("fbapp")
 
 
-let configureServices (context: HostBuilderContext) (services: IServiceCollection) =
-    services.AddRouting() |> ignore
+let configureJsonSerializer () =
+    let options = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
+    options.Converters.Add(JsonFSharpConverter())
+    SystemTextJson.Serializer options
 
-    services.Configure<AuthOptions>(context.Configuration.GetSection("Authentication")) |> ignore
-    services.Configure<SubscriptionsSettings>(context.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
+
+let configureServices (builder: WebApplicationBuilder) =
+    builder.Services.AddRouting() |> ignore
+
+    builder.Services.AddAuthorization() |> ignore
+    builder.Services.AddAuthentication(fun options ->
+        options.DefaultScheme <- JwtBearerDefaults.AuthenticationScheme
+        options.DefaultChallengeScheme <- JwtBearerDefaults.AuthenticationScheme
+        ) |> ignore
+
+    builder.Services.AddSingleton<Json.ISerializer>(configureJsonSerializer()) |> ignore
+
+    builder.Services
+        .Configure(fun (opts: GzipCompressionProviderOptions) -> opts.Level <- System.IO.Compression.CompressionLevel.Optimal)
+        .AddResponseCompression(fun opts ->
+            opts.MimeTypes <- Seq.append ResponseCompressionDefaults.MimeTypes [
+                "application/x-yaml";
+                "image/svg+xml";
+                "application/octet-stream";
+                "application/x-font-ttf";
+                "application/x-font-opentype";
+                "application/x-javascript";
+                "text/javascript";
+            ])
+    |> ignore
+
+    builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Authentication")) |> ignore
+    builder.Services.Configure<SubscriptionsSettings>(builder.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
 
     let eventStoreConnection =
-        context.Configuration.GetConnectionString("eventstore")
+        builder.Configuration.GetConnectionString("eventstore")
         |> Option.ofObj
-        |> Option.defaultValue (context.Configuration.GetValue("EventStore:Uri"))
+        |> Option.defaultValue (builder.Configuration.GetValue("EventStore:Uri"))
 
     let setConnectionName (settings: EventStoreClientSettings) =
         settings.ConnectionName <- "fbapp"
 
-    services.AddEventStoreClient(eventStoreConnection, setConnectionName) |> ignore
-    services.AddEventStoreProjectionManagementClient(eventStoreConnection, setConnectionName) |> ignore
-    services.AddEventStorePersistentSubscriptionsClient(eventStoreConnection, setConnectionName) |> ignore
+    builder.Services.AddEventStoreClient(eventStoreConnection, setConnectionName) |> ignore
+    builder.Services.AddEventStoreProjectionManagementClient(eventStoreConnection, setConnectionName) |> ignore
+    builder.Services.AddEventStorePersistentSubscriptionsClient(eventStoreConnection, setConnectionName) |> ignore
 
-    services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
+    builder.Services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
 
-    services.AddQuartz(fun quartz ->
-        quartz.UseMicrosoftDependencyInjectionJobFactory()
+    builder.Services.AddQuartz(fun quartz ->
         quartz.UseSimpleTypeLoader()
         quartz.UseInMemoryStore()
 
@@ -112,34 +138,43 @@ let configureServices (context: HostBuilderContext) (services: IServiceCollectio
         ) |> ignore
     ) |> ignore
 
-    services.AddQuartzHostedService(fun options ->
+    builder.Services.AddQuartzHostedService(fun options ->
         options.WaitForJobsToComplete <- true
     ) |> ignore
 
-    services.AddDaprClient()
+    builder.Services.AddDaprClient()
+    builder.Services.AddDistributedMemoryCache().AddProblemDetails().AddSession().AddGiraffe() |> ignore
 
 
-let configureAppConfiguration (context: HostBuilderContext) (config: IConfigurationBuilder) =
-    config.AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
-          .AddJsonFile($"appsettings.%s{context.HostingEnvironment.EnvironmentName}.json", optional=true, reloadOnChange=true)
-          .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
-          .AddEnvironmentVariables()
+let configureAppConfiguration (builder: WebApplicationBuilder) =
+    builder
+        .Configuration
+        .AddJsonFile("appsettings.json", optional=true, reloadOnChange=true)
+        .AddJsonFile($"appsettings.%s{builder.Environment.EnvironmentName}.json", optional=true, reloadOnChange=true)
+        .AddJsonFile("appsettings.user.json", optional=true, reloadOnChange=true)
+        .AddEnvironmentVariables()
     |> ignore
 
 
-let configureApp (app: IApplicationBuilder) =
+let configureApp (app: WebApplication) =
     let forwardedHeaders = ForwardedHeaders.XForwardedFor ||| ForwardedHeaders.XForwardedProto
 
     app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = forwardedHeaders))
+        .UseExceptionHandler()
+        .UseSession()
+        .UseResponseCompression()
+        .UseStaticFiles()
         .UseRouting()
         .UseCloudEvents()
+        .UseAuthentication()
+        .UseAuthorization()
         .UseEndpoints(fun endpoints ->
             endpoints.MapSubscribeHandler() |> ignore
             endpoints.MapGiraffeEndpoints(mainRouter)
         )
     |> ignore
 
-    let client = app.ApplicationServices.GetService<EventStoreClient>()
+    let client = app.Services.GetService<EventStoreClient>()
 
     CommandHandlers.competitionsHandler <-
         makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository client Competitions.AggregateName)
@@ -154,48 +189,35 @@ let configureApp (app: IApplicationBuilder) =
         makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository client Leagues.AggregateName)
 
     let processManagerInitTask =
-        ProcessManager.connectSubscription app.ApplicationServices
+        ProcessManager.connectSubscription app.Services
 
     processManagerInitTask.Wait()
 
     FbApp.PredictionResults.ReadModel.registerPredictionResultHandlers
-        (app.ApplicationServices.GetRequiredService<ILoggerFactory>().CreateLogger("PredictionResults.ReadModel"))
-        (app.ApplicationServices.GetRequiredService<EventStoreClient>())
-        (app.ApplicationServices.GetRequiredService<IOptions<SubscriptionsSettings>>().Value)
+        (app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("PredictionResults.ReadModel"))
+        (app.Services.GetRequiredService<EventStoreClient>())
+        (app.Services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value)
 
     let initCompetition = task {
-        use scope = app.ApplicationServices.CreateScope()
+        use scope = app.Services.CreateScope()
         let db = scope.ServiceProvider.GetRequiredService<IMongoDatabase>()
 
         let! count =
             db.GetCollection<BsonDocument>("competitions")
-                .CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("ExternalId", 2000L))
+                .CountDocumentsAsync(Builders<BsonDocument>.Filter.Eq("ExternalId", FootballData.ActiveCompetition))
 
         if count = 0 then
             let input: Competitions.CreateInput =
                 {
-                    Description = "2022. aasta jalgpalli maailmameistrivõistlused"
-                    ExternalId = 2000L
-                    Date = DateTimeOffset(2022, 11, 20, 16, 0, 0, TimeSpan.Zero)
+                    Description = "EURO 2024"
+                    ExternalId = FootballData.ActiveCompetition
+                    Date = DateTimeOffset(2024, 6, 14, 19, 0, 0, TimeSpan.Zero)
                 }
             let! _ = Dashboard.addCompetitionDom input
             ()
     }
 
     initCompetition.Wait()
-
-    app
-
-
-let configureHost (host: IHostBuilder) =
-    host.ConfigureAppConfiguration(configureAppConfiguration)
-        .ConfigureServices(configureServices)
-
-
-let configureJsonSerializer () =
-    let options = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
-    options.Converters.Add(JsonFSharpConverter())
-    SystemTextJson.Serializer options
 
 
 let configureJwtAuthentication (options: JwtBearerOptions) =
@@ -208,15 +230,15 @@ let configureJwtAuthentication (options: JwtBearerOptions) =
     )
 
 
-let app = application {
-    no_router
-    memory_cache
-    use_gzip
-    app_config configureApp
-    host_config configureHost
-    use_json_serializer (configureJsonSerializer())
-    use_jwt_authentication_with_config configureJwtAuthentication
-}
+[<EntryPoint>]
+let main args =
+    let build = WebApplication.CreateBuilder(args)
+    configureAppConfiguration build
+    configureServices build
 
+    let app = build.Build()
+    configureApp app
 
-run app
+    app.Run()
+
+    0
