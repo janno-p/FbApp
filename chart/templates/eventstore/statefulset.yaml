@@ -1,0 +1,79 @@
+{{- $fullName := include "fbapp.fullname" . -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-%s" $fullName "eventstore" }}
+  labels:
+    {{- include "fbapp.labels" . | nindent 4 }}
+    app: {{ printf "%s-%s" $fullName "eventstore" }}
+spec:
+  {{- if not .Values.eventstore.autoscaling.enabled }}
+  replicas: {{ .Values.eventstore.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fbapp.selectorLabels" . | nindent 6 }}
+      app: {{ printf "%s-%s" $fullName "eventstore" }}
+  serviceName: {{ printf "%s-%s" $fullName "eventstore" }}
+  template:
+    metadata:
+      {{- with .Values.eventstore.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "fbapp.selectorLabels" . | nindent 8 }}
+        {{- with .Values.eventstore.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        app: {{ printf "%s-%s" $fullName "eventstore" }}
+    spec:
+      {{- with .Values.eventstore.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "fbapp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.eventstore.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ printf "%s-%s" $fullName "eventstore" }}
+          securityContext:
+            {{- toYaml .Values.eventstore.securityContext | nindent 12 }}
+          image: "{{ .Values.eventstore.image.repository }}:{{ .Values.eventstore.image.tag }}"
+          imagePullPolicy: {{ .Values.eventstore.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.eventstore.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.eventstore.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.eventstore.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.eventstore.resources | nindent 12 }}
+          {{- with .Values.eventstore.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.eventstore.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.eventstore.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.eventstore.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.eventstore.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.eventstore.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+

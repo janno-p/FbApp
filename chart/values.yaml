@@ -1,0 +1,160 @@
+api:
+  autoscaling:
+    enabled: false
+  env:
+    - name: CONNECTIONSTRINGS__MONGODB
+      value: mongodb://user:password@fbapp-api-database-mongodb:27017/fbapp
+    - name: EVENTSTORE__URI
+      value: esdb://fbapp-eventstore:2113?tls=false
+  image:
+    pullPolicy: Always
+    repository: localhost:32000/fbapp-api
+    tag: 'latest'
+  podAnnotations:
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "fbapp-api"
+    dapr.io/app-port: "8080"
+  service:
+    port: 8080
+
+api-database-mongodb:
+  architecture: standalone
+  auth:
+    usernames:
+      - user
+    passwords:
+      - password
+    databases:
+      - fbapp
+    rootPassword: root
+  useStatefulSet: true
+
+api-valkey:
+  architecture: standalone
+  auth:
+    enabled: false
+
+auth:
+  autoscaling:
+    enabled: false
+  env:
+    - name: ConnectionStrings__postgres
+      value: Host=fbapp-auth-database-postgresql;Port=5432;Database=fbapp_auth;Username=user;Password=password
+  image:
+    pullPolicy: Always
+    repository: localhost:32000/fbapp-auth
+    tag: 'latest'
+  service:
+    port: 8080
+    type: ClusterIP
+
+auth-database-postgresql:
+  auth:
+    database: fbapp_auth
+    password: password
+    postgresPassword: postgres
+    username: user
+
+eventstore:
+  autoscaling:
+    enabled: false
+  env:
+    - name: EVENTSTORE_CLUSTER_SIZE
+      value: '1'
+    - name: EVENTSTORE_RUN_PROJECTIONS
+      value: 'All'
+    - name: EVENTSTORE_START_STANDARD_PROJECTIONS
+      value: 'true'
+    - name: EVENTSTORE_HTTP_PORT
+      value: '2113'
+    - name: EVENTSTORE_INSECURE
+      value: 'true'
+    - name: EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP
+      value: 'true'
+  image:
+    repository: eventstore/eventstore
+    tag: '24.2'
+  service:
+    port: 2113
+    type: ClusterIP
+  volumeMounts:
+    - mountPath: /var/lib/eventstore
+      name: eventstore
+      subPath: data
+    - mountPath: /var/log/eventstore
+      name: eventstore
+      subPath: logs
+  volumes:
+    - name: eventstore
+      persistentVolumeClaim:
+        claimName: fbapp-eventstore
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  host: ''
+  paths:
+    - path: /api/
+      pathType: Prefix
+      port: 8080
+      service: proxy
+    - path: /connect/
+      pathType: Prefix
+      port: 8080
+      service: proxy
+    - path: /.well-known/
+      pathType: Prefix
+      port: 8080
+      service: proxy
+    - path: /
+      pathType: Prefix
+      port: 80
+      service: web
+  tls: []
+
+proxy:
+  autoscaling:
+    enabled: false
+  env:
+    - name: CONNECTIONSTRINGS__AUTHCLUSTER
+      value: http://fbapp-auth:8080
+  image:
+    pullPolicy: Always
+    repository: localhost:32000/fbapp-proxy
+    tag: 'latest'
+  podAnnotations:
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "fbapp-proxy"
+    dapr.io/app-port: "8080"
+  service:
+    port: 8080
+    type: ClusterIP
+
+web:
+  autoscaling:
+    enabled: false
+  env: {}
+  image:
+    pullPolicy: Always
+    repository: localhost:32000/fbapp-web
+    tag: 'latest'
+  service:
+    port: 80
+    type: ClusterIP
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80

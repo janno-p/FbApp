@@ -1,0 +1,19 @@
+apiVersion: v2
+name: fbapp
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: mongodb
+    alias: api-database-mongodb
+    version: 15.6.6
+    repository: https://charts.bitnami.com/bitnami
+  - name: postgresql
+    alias: auth-database-postgresql
+    version: 15.5.5
+    repository: https://charts.bitnami.com/bitnami
+  - name: valkey
+    alias: api-valkey
+    version: 0.3.5
+    repository: https://charts.bitnami.com/bitnami

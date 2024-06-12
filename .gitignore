@@ -26,3 +26,5 @@ elm-stuff
 dist
 dist-ssr
 *.local
+
+values.user.yaml

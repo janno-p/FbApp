@@ -1,0 +1,12 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: fbapp-api-dapr-state
+spec:
+  type: state.redis
+  version: v1
+  metadata:
+  - name: redisHost
+    value: fbapp-api-valkey-master:6379
+  - name: redisPassword
+    value: ""
