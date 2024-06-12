@@ -134,7 +134,7 @@ let configureServices (builder: WebApplicationBuilder) =
             trigger.WithIdentity("partial update")
                 .ForJob(jobKey)
                 .UsingJobData("fullUpdate", false)
-                .StartAt(DateTimeOffset.UtcNow.AddMinutes(1))
+                .StartAt(DateTimeOffset.UtcNow.AddMinutes(2))
                 .WithSimpleSchedule(fun schedule -> schedule.WithIntervalInMinutes(1).RepeatForever() |> ignore)
             |> ignore
         ) |> ignore
@@ -143,7 +143,7 @@ let configureServices (builder: WebApplicationBuilder) =
             trigger.WithIdentity("full update")
                 .ForJob(jobKey)
                 .UsingJobData("fullUpdate", true)
-                .StartNow()
+                .StartAt(DateTimeOffset.UtcNow.AddMinutes(1))
                 .WithSimpleSchedule(fun schedule -> schedule.WithIntervalInHours(1).RepeatForever() |> ignore)
             |> ignore
         ) |> ignore
