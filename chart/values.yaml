@@ -134,7 +134,7 @@ proxy:
 web:
   autoscaling:
     enabled: false
-  env: {}
+  env: []
   image:
     pullPolicy: Always
     repository: localhost:32000/fbapp-web

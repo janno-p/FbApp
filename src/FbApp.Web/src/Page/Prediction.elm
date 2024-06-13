@@ -239,7 +239,7 @@ viewNote =
 
         deadline =
             """
-            Oma eelistusi saad valida ja muuta kuni avamänguni 14. juuni kell 21:00. Pärast seda on
+            Oma eelistusi saad valida ja muuta kuni avamänguni 14. juuni kell 22:00. Pärast seda on
             võimalik sama veebilehe vahendusel jälgida, kuidas tegelikud tulemused kujunevad ning kui täpselt
             need Sinu või teiste ennustustega kokku langevad.
             """

@@ -222,7 +222,7 @@ let configureApp (app: WebApplication) =
                 {
                     Description = "EURO 2024"
                     ExternalId = FootballData.ActiveCompetition
-                    Date = DateTimeOffset(2024, 6, 14, 19, 0, 0, TimeSpan.Zero)
+                    Date = DateTimeOffset(2024, 6, 14, 20, 0, 0, TimeSpan.Zero)
                 }
             let! _ = Dashboard.addCompetitionDom input
             ()
