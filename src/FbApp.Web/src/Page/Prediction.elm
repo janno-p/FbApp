@@ -232,14 +232,14 @@ viewNote =
     let
         introduction =
             """
-            Ajavahemikus 20. novembrist 18. detsembrini toimuvad Kataris 2022. aasta jalgpalli
-            maailmameistrivõistlused. Lisaks rahvusmeeskondade mõõduvõtmistele pakub antud veebileht
+            Ajavahemikus 14. juunist kuni 14. juulini toimuvad Saksamaal 2024. aasta Euroopa
+            meistrivõistlused jalgpallis. Lisaks rahvusmeeskondade mõõduvõtmistele pakub antud veebileht
             omavahelist võistlusmomenti ka tugitoolisportlastele tulemuste ennustamise näol.
             """
 
         deadline =
             """
-            Oma eelistusi saad valida ja muuta kuni avamänguni 20. novembril kell 18:00. Pärast seda on
+            Oma eelistusi saad valida ja muuta kuni avamänguni 14. juuni kell 21:00. Pärast seda on
             võimalik sama veebilehe vahendusel jälgida, kuidas tegelikud tulemused kujunevad ning kui täpselt
             need Sinu või teiste ennustustega kokku langevad.
             """
