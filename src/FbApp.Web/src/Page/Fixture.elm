@@ -399,13 +399,12 @@ fixtureResultDecoder =
     Json.string
         |> Json.map
             (\value ->
-                -- TODO : Check why are predicted result values in reverse
                 case value of
                     "HomeWin" ->
-                        AwayWin
+                        HomeWin
 
                     "AwayWin" ->
-                        HomeWin
+                        AwayWin
 
                     _ ->
                         Tie
