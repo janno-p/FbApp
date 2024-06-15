@@ -212,6 +212,14 @@ let updateQualifiedTeams (rows: Competitions.StandingRow list) =
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add(x) |> ignore)
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.winner).Add(x) |> ignore)
 
+let getDropoutTeams () = [
+    yield! snd InMemoryStore.winner
+    yield! snd InMemoryStore.finalTeams
+    yield! snd InMemoryStore.semiFinalTeams
+    yield! snd InMemoryStore.quarterFinalTeams
+    yield! snd InMemoryStore.qualifiedTeams
+]
+
 let processCompetitions _ _ = function
     | Competitions.Event.StandingsUpdated (_, rows) ->
         updateQualifiedTeams rows
@@ -222,14 +230,25 @@ let processCompetitions _ _ = function
                 scoresheet.UpdateQualifers(qualified, unqualified)
             )
     | Competitions.Event.ScorersUpdated scorers ->
+        let isFinal = (fst InMemoryStore.winner |> Seq.length) > 0
+        let dropoutTeams = getDropoutTeams ()
         let maxGoals = if scorers |> List.isEmpty then None else Some (scorers |> List.map (fun x -> x.Goals) |> List.max)
         let competitionScorers: Map<PlayerId, CompetitionScorer> =
             scorers
             |> List.map (fun x ->
                 let data = {
-                    CompetitionScorer.PlayerId = PlayerId.create(x.PlayerId)
+                    CompetitionScorer.PlayerId = PlayerId.create x.PlayerId
                     GoalCount = x.Goals
-                    IsTopScorer = Final(Some x.Goals = maxGoals)
+                    IsTopScorer =
+                        if isFinal then
+                            Final(Some x.Goals = maxGoals)
+                        else if dropoutTeams |> List.contains (TeamId.create x.TeamId) then
+                            if Some x.Goals <> maxGoals then
+                                Final(false)
+                            else
+                                Pending(Some x.Goals = maxGoals)
+                        else
+                            Pending(Some x.Goals = maxGoals)
                 }
                 (data.PlayerId, data))
             |> Map.ofList

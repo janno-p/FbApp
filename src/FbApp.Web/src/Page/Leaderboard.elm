@@ -29,6 +29,7 @@ type alias PredictionResult =
     , total : Int
     , ratio : Float
     , rank : Int
+    , scorerFixed : Bool
     }
 
 
@@ -109,7 +110,18 @@ viewPredictionResult ratioRange predictionResult =
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.finals) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.winner) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.topScorerGoals) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.topScorerHit) ]
+        , div [ class "text-center hidden sm:block" ]
+            (if predictionResult.scorerFixed || predictionResult.topScorerHit == 0 then
+                [ text (String.fromInt predictionResult.topScorerHit) ]
+
+             else
+                [ span [ class "text-stone-500" ]
+                    [ text "("
+                    , text (String.fromInt predictionResult.topScorerHit)
+                    , text ")"
+                    ]
+                ]
+            )
         , div [ class "tabular-nums text-center border-l border-gray-200 space-x-1" ]
             [ span [] [ text (String.fromInt predictionResult.total) ]
             , viewRatio predictionResult.ratio ratioRange
@@ -169,8 +181,8 @@ leaderboardDecoder =
     Json.list predictionResultDecoder
 
 
-mapPredictionResult : String -> List Int -> Int -> Float -> Int -> PredictionResult
-mapPredictionResult name points total ratio rank =
+mapPredictionResult : String -> List Int -> Bool -> Int -> Float -> Int -> PredictionResult
+mapPredictionResult name points scorerFixed total ratio rank =
     { name = name
     , matches =
         case points of
@@ -231,6 +243,7 @@ mapPredictionResult name points total ratio rank =
     , total = total
     , ratio = ratio
     , rank = rank
+    , scorerFixed = scorerFixed
     }
 
 
@@ -239,6 +252,7 @@ predictionResultDecoder =
     Json.succeed mapPredictionResult
         |> required "name" Json.string
         |> required "points" (Json.list Json.int)
+        |> required "scorerFixed" Json.bool
         |> required "total" Json.int
         |> required "ratio" Json.float
         |> required "rank" Json.int
