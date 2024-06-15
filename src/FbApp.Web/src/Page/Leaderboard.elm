@@ -101,7 +101,7 @@ viewLeaderboardTable predictionResults =
 
 viewPredictionResult : ( Float, Float ) -> PredictionResult -> Html Msg
 viewPredictionResult ratioRange predictionResult =
-    div [ class "grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_2.5rem_1rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
+    div [ class "grid grid-cols-[2rem_1fr_2.5rem_1rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_2.5rem_1rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
         [ div [ class "text-center pr-2" ]
             [ if predictionResult.rank == 1 then
                 text "🥇"
