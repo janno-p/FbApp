@@ -214,14 +214,14 @@ mapPredictionResult name points total ratio rank =
 
             _ ->
                 0
-    , topScorerGoals =
+    , topScorerHit =
         case points of
             _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , topScorerHit =
+    , topScorerGoals =
         case points of
             _ :: _ :: _ :: _ :: _ :: _ :: _ :: y :: _ ->
                 y
