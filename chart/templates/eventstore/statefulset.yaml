@@ -53,10 +53,13 @@ spec:
             chown -R 1000:1000 /var/lib/eventstore
         securityContext:
           runAsUser: 0
-        {{- with .Values.eventstore.volumeMounts }}
         volumeMounts:
-          {{- toYaml . | nindent 10 }}
-        {{- end }}
+          - mountPath: /var/lib/eventstore
+            name: datadir
+            subPath: data
+          - mountPath: /var/log/eventstore
+            name: datadir
+            subPath: logs
       {{- end }}
       containers:
         - name: {{ printf "%s-%s" $fullName "eventstore" }}
@@ -74,18 +77,17 @@ spec:
             {{- toYaml .Values.eventstore.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.eventstore.resources | nindent 12 }}
-          {{- with .Values.eventstore.volumeMounts }}
           volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            - mountPath: /var/lib/eventstore
+              name: datadir
+              subPath: data
+            - mountPath: /var/log/eventstore
+              name: datadir
+              subPath: logs
           {{- with .Values.eventstore.env }}
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.eventstore.volumes }}
-      volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       {{- with .Values.eventstore.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -98,5 +100,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-
-
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: datadir
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

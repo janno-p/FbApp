@@ -78,17 +78,6 @@ eventstore:
   service:
     port: 2113
     type: ClusterIP
-  volumeMounts:
-    - mountPath: /var/lib/eventstore
-      name: eventstore
-      subPath: data
-    - mountPath: /var/log/eventstore
-      name: eventstore
-      subPath: logs
-  volumes:
-    - name: eventstore
-      persistentVolumeClaim:
-        claimName: fbapp-eventstore
 
 ingress:
   enabled: true

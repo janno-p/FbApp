@@ -153,8 +153,7 @@ k8s_resource(new_name='fbapp-api-resources', labels=['fbapp-api'], objects=[
     'fbapp-api-valkey-health:configmap',
     'fbapp-api-valkey-master:serviceaccount',
     'fbapp-api-valkey-scripts:configmap',
-    'fbapp-api-dapr-state:component',
-    'fbapp-eventstore:persistentvolumeclaim'
+    'fbapp-api-dapr-state:component'
 ])
 
 k8s_resource('fbapp-api', labels=['fbapp-api'], resource_deps=[
