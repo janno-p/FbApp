@@ -89,3 +89,15 @@ $ tilt up
 Open [Tilt Dashboard](http://localhost:10350/) to monitor running components.
 
 Open [Application](https://localhost:8090) for demo.
+
+
+## Misc.
+
+```
+docker context ls
+docker context user default
+```
+
+`\\wsl$\docker-desktop-data\data\k8s-pvs`
+
+`kubectl exec --stdin --tty fbapp-api-database-mongodb-0 -n fbapp -- /bin/bash`

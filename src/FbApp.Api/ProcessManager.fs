@@ -461,6 +461,8 @@ let initProjections (services: IServiceProvider) = task {
 
     try
         logger.LogInformation($"Trying to create '%s{subscriptionsSettings.GroupName}' subscription group ...")
+        if subscriptionsSettings.Reset then
+            do! subscriptionsClient.DeleteToStreamAsync(subscriptionsSettings.StreamName, subscriptionsSettings.GroupName)
         do! subscriptionsClient.CreateToStreamAsync(subscriptionsSettings.StreamName, subscriptionsSettings.GroupName, settings)
     with
     | AlreadyExists ->

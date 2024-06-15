@@ -23,7 +23,8 @@ module PredictionResultDto =
             4 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
             5 * (scoresheet.Final.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
             6 * (match snd scoresheet.Winner with Some true -> 1 | _ -> 0)
-            5 * (if scoresheet.Scorer.Values |> Seq.exists ((=) (Some true)) then 1 else 0)
+            5 * (if scoresheet.Scorer |> List.exists (fun x -> x.IsTopScorer = Final(true)) then 1 else 0)
+            1 * (scoresheet.Scorer |> List.map _.GoalCount |> List.sum)
         ]
         let lostPoints = [
             1 * (scoresheet.GroupStage.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
@@ -32,7 +33,8 @@ module PredictionResultDto =
             4 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
             5 * (scoresheet.Final.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
             6 * (match snd scoresheet.Winner with Some false -> 1 | _ -> 0)
-            5 * (if scoresheet.Scorer.Values |> Seq.exists ((=) (Some false)) then 1 else 0)
+            5 * (if scoresheet.Scorer |> Seq.forall (fun x -> x.IsTopScorer = Final(false)) then 1 else 0)
+            0
         ]
         {
             Name = Helpers.excludeLastName scoresheet.Name

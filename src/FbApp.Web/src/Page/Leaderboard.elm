@@ -24,7 +24,8 @@ type alias PredictionResult =
     , semiFinals : Int
     , finals : Int
     , winner : Int
-    , topScorer : Int
+    , topScorerGoals : Int
+    , topScorerHit : Int
     , total : Int
     , ratio : Float
     , rank : Int
@@ -79,7 +80,7 @@ viewLeaderboardTable predictionResults =
             ( minRatio, maxRatio )
     in
     div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg py-4" ]
-        (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(7,2rem)_3.5rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
+        (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_3.5rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
             [ div [] []
             , div [] []
             , div [ title "Alagrupimängude tulemused", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-format-list-group" ] [] ]
@@ -88,7 +89,8 @@ viewLeaderboardTable predictionResults =
             , div [ title "Poolfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-quarter" ] [] ]
             , div [ title "Finalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-half" ] [] ]
             , div [ title "Võitja", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-whole" ] [] ]
-            , div [ title "Väravakütt", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-shoe-cleat" ] [] ]
+            , div [ title "Väravaküttide poolt löödud väravad", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-shoe-cleat" ] [] ]
+            , div [ title "Väravakütt", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-medal" ] [] ]
             , div [ title "Punkte kokku", class "text-center" ] [ span [ class "mdi mdi-sigma" ] [] ]
             ]
             :: List.map (viewPredictionResult ratioRange) predictionResults
@@ -97,7 +99,7 @@ viewLeaderboardTable predictionResults =
 
 viewPredictionResult : ( Float, Float ) -> PredictionResult -> Html Msg
 viewPredictionResult ratioRange predictionResult =
-    div [ class "grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(7,2rem)_3.5rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
+    div [ class "grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_3.5rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
         [ div [ class "text-right pr-2" ] [ text (String.fromInt predictionResult.rank ++ ".") ]
         , div [ class "capitalize" ] [ text predictionResult.name ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.matches) ]
@@ -106,7 +108,8 @@ viewPredictionResult ratioRange predictionResult =
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.semiFinals) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.finals) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.winner) ]
-        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.topScorer) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.topScorerGoals) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.topScorerHit) ]
         , div [ class "tabular-nums text-center border-l border-gray-200 space-x-1" ]
             [ span [] [ text (String.fromInt predictionResult.total) ]
             , viewRatio predictionResult.ratio ratioRange
@@ -211,10 +214,17 @@ mapPredictionResult name points total ratio rank =
 
             _ ->
                 0
-    , topScorer =
+    , topScorerGoals =
         case points of
             _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
+
+            _ ->
+                0
+    , topScorerHit =
+        case points of
+            _ :: _ :: _ :: _ :: _ :: _ :: _ :: y :: _ ->
+                y
 
             _ ->
                 0

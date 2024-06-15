@@ -74,6 +74,7 @@ eventstore:
   image:
     repository: eventstore/eventstore
     tag: '24.2'
+  runRestore: false
   service:
     port: 2113
     type: ClusterIP

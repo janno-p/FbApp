@@ -35,6 +35,29 @@ spec:
       serviceAccountName: {{ include "fbapp.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.eventstore.podSecurityContext | nindent 8 }}
+      {{- if .Values.eventstore.runRestore }}
+      initContainers:
+      - name: restore-from-backup
+        image: eventstore-restore-image
+        imagePullPolicy: Always
+        command:
+          - /bin/bash
+          - -ec
+          - |
+            rm -rf /var/lib/eventstore/*
+            unzip /opt/files/backup.zip -d /tmp
+            mv /tmp/backup/* /var/lib/eventstore/.
+            rmdir /tmp/backup
+            rm /var/lib/eventstore/truncate.chk
+            cp /var/lib/eventstore/chaser.chk /var/lib/eventstore/truncate.chk
+            chown -R 1000:1000 /var/lib/eventstore
+        securityContext:
+          runAsUser: 0
+        {{- with .Values.eventstore.volumeMounts }}
+        volumeMounts:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
       containers:
         - name: {{ printf "%s-%s" $fullName "eventstore" }}
           securityContext:

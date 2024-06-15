@@ -2,6 +2,7 @@ module FbApp.Api.Repositories
 
 open MongoDB.Bson
 open MongoDB.Driver
+open MongoDB.Driver.Linq
 open System
 open System.Collections.Generic
 open System.Linq
@@ -440,7 +441,7 @@ module Predictions =
         let! _ =
             (getCollection db).UpdateManyAsync(
                 (fun x -> x.CompetitionId = competitionId && x.Fixtures.Any(fun y -> y.FixtureId = fixtureId)),
-                Builders.Update.Set((fun x -> x.Fixtures.ElementAt(-1).ActualResult), actualResult)
+                Builders.Update.Set((fun x -> x.Fixtures.FirstMatchingElement().ActualResult), actualResult)
             )
         ()
     }

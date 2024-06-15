@@ -10,4 +10,5 @@ type AuthOptions = {
 type SubscriptionsSettings = {
     StreamName: string
     GroupName: string
+    Reset: bool
     }

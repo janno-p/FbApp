@@ -49,12 +49,20 @@ module Dict =
         | true, value -> values[key] <- getNewValue(value)
         | _ -> ()
 
+type PredictionStatus =
+    | Final of bool
+    | Pending of bool
+    | Unavailable
+
+type CompetitionScorer = {
+    PlayerId: PlayerId
+    GoalCount: int
+    IsTopScorer: PredictionStatus
+}
+
 type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictions) =
-    member val Scorer =
-        predictions.TopScorers
-            |> Seq.map (fun id -> KeyValuePair<_, bool option>(id, None))
-            |> Dictionary<_,_>
-        with get
+    let mutable scorers: CompetitionScorer list  = []
+    member _.Scorer with get() = scorers
     member val GroupStage =
         predictions.Matches
             |> Seq.map (fun kvp -> KeyValuePair<_, bool option>(kvp.Key, None))
@@ -110,9 +118,10 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
                     |> Dict.tryGet fixtureId
                     |> Option.map (fun predictedResult -> Some (predictedResult = fixtureResult))
                     |> Option.defaultValue (Some false))
-    member this.UpdateScorers(scorers: PlayerId list) =
-        this.Scorer
-            |> Seq.iter (fun kvp -> this.Scorer[kvp.Key] <- (if scorers |> List.contains kvp.Key then Some true else None))
+    member this.UpdateScorers(competitionScorers: Map<PlayerId, CompetitionScorer>) =
+        scorers <-
+            predictions.TopScorers
+            |> List.choose (fun id -> competitionScorers |> Map.tryFind id)
 
 // TODO : Concurrent collections !?
 module InMemoryStore =
@@ -214,9 +223,18 @@ let processCompetitions _ _ = function
             )
     | Competitions.Event.ScorersUpdated scorers ->
         let maxGoals = if scorers |> List.isEmpty then None else Some (scorers |> List.map (fun x -> x.Goals) |> List.max)
-        let topScorers = scorers |> List.filter (fun x -> Some x.Goals = maxGoals) |> List.map (fun x -> PlayerId.create x.PlayerId)
+        let competitionScorers: Map<PlayerId, CompetitionScorer> =
+            scorers
+            |> List.map (fun x ->
+                let data = {
+                    CompetitionScorer.PlayerId = PlayerId.create(x.PlayerId)
+                    GoalCount = x.Goals
+                    IsTopScorer = Final(Some x.Goals = maxGoals)
+                }
+                (data.PlayerId, data))
+            |> Map.ofList
         InMemoryStore.scoresheets.Values
-            |> Seq.iter (fun scoresheet -> scoresheet.UpdateScorers(topScorers))
+            |> Seq.iter (fun scoreSheet -> scoreSheet.UpdateScorers(competitionScorers))
     | Competitions.Event.Created _
     | Competitions.Event.FixturesAssigned _
     | Competitions.Event.GroupsAssigned _
@@ -346,18 +364,11 @@ let processPredictions _ _ = function
     | Predictions.Registered args ->
         let competitionId = CompetitionId.fromGuid args.CompetitionId
         let predictionId = PredictionId.create competitionId (Predictions.Email args.Email)
-        let fixResult = function
-            | Predictions.FixtureResult.AwayWin ->
-                Predictions.FixtureResult.HomeWin
-            | Predictions.FixtureResult.HomeWin ->
-                Predictions.FixtureResult.AwayWin
-            | Predictions.FixtureResult.Tie ->
-                Predictions.FixtureResult.Tie
         let predictions =
             {
                 Predictions.Matches =
                     args.Fixtures
-                        |> List.map (fun x -> (FixtureId.create competitionId x.Id, fixResult x.Result))
+                        |> List.map (fun x -> (FixtureId.create competitionId x.Id, x.Result))
                         |> dict
                 Qualifiers = args.Qualifiers.RoundOf16 |> List.map TeamId.create
                 QuarterFinals = args.Qualifiers.RoundOf8 |> List.map TeamId.create

@@ -256,3 +256,24 @@ k8s_yaml(replace_deployment_image('fbapp-web', 'fbapp-web-image'))
 k8s_resource('fbapp-web', labels=['fbapp-web'])
 
 k8s_yaml(use_vite_devserver_port())
+
+
+# ==============================================================================
+# Restores eventstore db from backup
+# ------------------------------------------------------------------------------
+# Expects existing backup archive at path <projectRoot>/restore/store.zip
+# Enable restoration in <projectRoot>/values.user.yaml file
+#
+# ```yaml
+# eventstore:
+#   runRestore: true
+# ```
+# ==============================================================================
+
+update_settings(suppress_unused_image_warnings=["eventstore-restore-image"])
+
+docker_build(
+    'eventstore-restore-image',
+    './restore',
+    dockerfile='./restore/Dockerfile'
+)
