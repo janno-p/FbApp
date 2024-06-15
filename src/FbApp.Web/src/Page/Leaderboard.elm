@@ -1,7 +1,7 @@
 module Page.Leaderboard exposing (Model, Msg, init, update, view)
 
 import Api.Endpoint as Endpoint exposing (defaultEndpointConfig)
-import Html exposing (Html, div, span, text)
+import Html exposing (Html, div, span, sup, text)
 import Html.Attributes exposing (class, title)
 import Http
 import Json.Decode as Json
@@ -81,7 +81,7 @@ viewLeaderboardTable predictionResults =
             ( minRatio, maxRatio )
     in
     div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg py-4" ]
-        (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_3.5rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
+        (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_2.5rem_1rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
             [ div [] []
             , div [] []
             , div [ title "Alagrupimängude tulemused", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-format-list-group" ] [] ]
@@ -93,6 +93,7 @@ viewLeaderboardTable predictionResults =
             , div [ title "Väravaküttide poolt löödud väravad", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-shoe-cleat" ] [] ]
             , div [ title "Väravakütt", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-medal" ] [] ]
             , div [ title "Punkte kokku", class "text-center" ] [ span [ class "mdi mdi-sigma" ] [] ]
+            , div [ title "Trend", class "text-center" ] [ span [ class "mdi mdi-trending-up" ] [] ]
             ]
             :: List.map (viewPredictionResult ratioRange) predictionResults
         )
@@ -100,7 +101,7 @@ viewLeaderboardTable predictionResults =
 
 viewPredictionResult : ( Float, Float ) -> PredictionResult -> Html Msg
 viewPredictionResult ratioRange predictionResult =
-    div [ class "grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_3.5rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
+    div [ class "grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_2.5rem_1rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
         [ div [ class "text-center pr-2" ]
             [ if predictionResult.rank == 1 then
                 text "🥇"
@@ -127,17 +128,24 @@ viewPredictionResult ratioRange predictionResult =
                 [ text (String.fromInt predictionResult.topScorerHit) ]
 
              else
-                [ span [ class "text-stone-500" ]
-                    [ text "("
+                [ span [ class "text-stone-500 text-xs" ]
+                    [ text "+"
                     , text (String.fromInt predictionResult.topScorerHit)
-                    , text ")"
                     ]
                 ]
             )
         , div [ class "tabular-nums text-center border-l border-gray-200 space-x-1" ]
-            [ span [] [ text (String.fromInt predictionResult.total) ]
-            , viewRatio predictionResult.ratio ratioRange
+            [ span []
+                (if predictionResult.topScorerHit /= 0 && predictionResult.scorerFixed == False then
+                    [ text (String.fromInt predictionResult.total)
+                    , text "*"
+                    ]
+
+                 else
+                    [ text (String.fromInt predictionResult.total) ]
+                )
             ]
+        , div [ class "text-left" ] [ viewRatio predictionResult.ratio ratioRange ]
         ]
 
 
