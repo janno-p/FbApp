@@ -2,13 +2,11 @@
 
 Playground application for trying out new technologies, libraries, frameworks, patterns, tools etc.
 
-
 ## Primary Objectives ##
 
 * Client application using [Elm](https://elm-lang.org/) and [Vite](https://vitejs.dev/).
 * Server API built with [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) and [F# Programming Language](https://fsharp.org).
 * Apply [CQRS](https://martinfowler.com/bliki/CQRS.html) and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) principles to [Microservices](https://microservices.io/) architecture.
-
 
 ## Prerequisites ##
 
@@ -23,10 +21,9 @@ Playground application for trying out new technologies, libraries, frameworks, p
 * [Node.js](https://nodejs.org/en/)
 * [Yarn](https://yarnpkg.com/en/)
 
-
 ## Quick Start ##
 
-### Configure Google OAuth authentication
+### Configure Google OAuth authentication ###
 
 Use Google Developer Console to register new application for Google authentication:
 
@@ -47,11 +44,11 @@ by Google client application registration.
 }
 ```
 
-### Configure kubernetes cluster
+### Configure kubernetes cluster ###
 
 Install dapr
 
-```
+```sh
 helm repo add dapr https://dapr.github.io/helm-charts/
 
 helm repo update
@@ -66,7 +63,7 @@ kubectl port-forward service/dapr-dashboard 8080:8080 --namespace dapr-system
 
 Install ingress controller
 
-```
+```sh
 helm repo add dapr https://kubernetes.github.io/ingress-nginx
 
 helm repo update
@@ -79,8 +76,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 --wait
 ```
 
-
-### Run development environment
+### Run development environment ###
 
 ```sh
 $ tilt up
@@ -90,10 +86,9 @@ Open [Tilt Dashboard](http://localhost:10350/) to monitor running components.
 
 Open [Application](https://localhost:8090) for demo.
 
+## Misc. ##
 
-## Misc.
-
-```
+```sh
 docker context ls
 docker context user default
 ```

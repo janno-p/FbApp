@@ -16,8 +16,8 @@
     "strings": "on"
   },
   "files.exclude": {
-    ".idea": true,
-    ".vs": true,
+    "src/.idea": true,
+    "src/.vs": true,
     "src/FbApp.Web/elm-stuff": true,
     "src/FbApp.Web/node_modules": true
   },
