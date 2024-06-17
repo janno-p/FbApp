@@ -3,25 +3,21 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31321.278
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{68F75DAC-3BD4-47F2-B680-63F72464AE9C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{68F75DAC-3BD4-47F2-B680-63F72464AE9C}"
 	ProjectSection(SolutionItems) = preProject
-		.gitignore = .gitignore
-		global.json = global.json
-		README.md = README.md
+		README.md = ..\README.md
 		Directory.Packages.props = Directory.Packages.props
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{286082D2-3609-4138-8BFC-8F1AAFFD7E90}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Api", "FbApp.Api\FbApp.Api.fsproj", "{8FCB9B84-B4EE-4D10-8163-B9BA46376E6C}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Api", "src\FbApp.Api\FbApp.Api.fsproj", "{8FCB9B84-B4EE-4D10-8163-B9BA46376E6C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Auth", "FbApp.Auth\FbApp.Auth.fsproj", "{EE753F07-26F1-44CA-A553-566CFC5F2DDC}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Auth", "src\FbApp.Auth\FbApp.Auth.fsproj", "{EE753F07-26F1-44CA-A553-566CFC5F2DDC}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Auth.IntegrationTests", "FbApp.Auth.IntegrationTests\FbApp.Auth.IntegrationTests.fsproj", "{92CCB424-8E34-4493-9C8D-939978E7AC76}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Auth.IntegrationTests", "src\FbApp.Auth.IntegrationTests\FbApp.Auth.IntegrationTests.fsproj", "{92CCB424-8E34-4493-9C8D-939978E7AC76}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Proxy", "FbApp.Proxy\FbApp.Proxy.fsproj", "{D7B6E5A7-E154-4931-8C0B-E0136050AA4D}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Proxy", "src\FbApp.Proxy\FbApp.Proxy.fsproj", "{D7B6E5A7-E154-4931-8C0B-E0136050AA4D}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Api.IntegrationTests", "src\FbApp.Api.IntegrationTests\FbApp.Api.IntegrationTests.fsproj", "{92723BE7-B05E-485B-9E86-39D839D9A775}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FbApp.Api.IntegrationTests", "FbApp.Api.IntegrationTests\FbApp.Api.IntegrationTests.fsproj", "{92723BE7-B05E-485B-9E86-39D839D9A775}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,12 +95,5 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F4A266FE-FE14-41ED-B39A-8893E98C414F}
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{8FCB9B84-B4EE-4D10-8163-B9BA46376E6C} = {286082D2-3609-4138-8BFC-8F1AAFFD7E90}
-		{EE753F07-26F1-44CA-A553-566CFC5F2DDC} = {286082D2-3609-4138-8BFC-8F1AAFFD7E90}
-		{92CCB424-8E34-4493-9C8D-939978E7AC76} = {286082D2-3609-4138-8BFC-8F1AAFFD7E90}
-		{D7B6E5A7-E154-4931-8C0B-E0136050AA4D} = {286082D2-3609-4138-8BFC-8F1AAFFD7E90}
-		{92723BE7-B05E-485B-9E86-39D839D9A775} = {286082D2-3609-4138-8BFC-8F1AAFFD7E90}
 	EndGlobalSection
 EndGlobal

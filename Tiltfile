@@ -39,8 +39,8 @@ cmd_button(
 # ==============================================================================
 
 chart_values = []
-if os.path.exists('./values.user.yaml'):
-    chart_values.append('./values.user.yaml')
+if os.path.exists('./development/values.user.yaml'):
+    chart_values.append('./development/values.user.yaml')
 
 chart_yaml = helm(
     './chart',
@@ -260,7 +260,7 @@ k8s_yaml(use_vite_devserver_port())
 # ==============================================================================
 # Restores eventstore db from backup
 # ------------------------------------------------------------------------------
-# Expects existing backup archive at path <projectRoot>/restore/store.zip
+# Expects existing backup archive at path <projectRoot>/development/store.zip
 # Enable restoration in <projectRoot>/values.user.yaml file
 #
 # ```yaml
@@ -273,6 +273,6 @@ update_settings(suppress_unused_image_warnings=["eventstore-restore-image"])
 
 docker_build(
     'eventstore-restore-image',
-    './restore',
-    dockerfile='./restore/Dockerfile'
+    './development',
+    dockerfile='./development/Dockerfile'
 )

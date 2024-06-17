@@ -1,0 +1,3 @@
+web:
+  service:
+    port: 5173
