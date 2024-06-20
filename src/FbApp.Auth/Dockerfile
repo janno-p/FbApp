@@ -4,7 +4,7 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /build
-COPY Directory.Packages.props .
+COPY src/Directory.Packages.props src/Directory.Packages.props
 COPY ["src/FbApp.Auth/FbApp.Auth.fsproj", "src/FbApp.Auth/FbApp.Auth.fsproj"]
 RUN dotnet restore "src/FbApp.Auth/FbApp.Auth.fsproj"
 COPY ["src/FbApp.Auth", "src/FbApp.Auth"]
