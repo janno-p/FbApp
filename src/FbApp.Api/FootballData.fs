@@ -442,6 +442,6 @@ type CompetitionScorers = {
 }
 
 let getScorers authToken (competitionId: Id) = task {
-    let uri = $"/v4/competitions/%d{competitionId}/scorers"
+    let uri = $"/v4/competitions/%d{competitionId}/scorers/?limit=500"
     return! apiCall<CompetitionScorers> authToken uri
 }
