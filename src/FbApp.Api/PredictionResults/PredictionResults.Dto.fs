@@ -50,11 +50,12 @@ module PredictionResultDto =
             5 * (if not topScorer && topScorerIsFinal then 1 else 0)
             0
         ]
+        let maxTotalPoints = MaxTotalPoints + topScorerGoalPoints
         {
             Name = Helpers.excludeLastName scoresheet.Name
             Points = gainedPoints |> Array.ofList
             ScorerFixed = topScorerIsFinal
             Total = gainedPoints |> List.sum
-            Ratio = double (MaxTotalPoints - (List.sum lostPoints)) / double MaxTotalPoints * 100.0
+            Ratio = double (maxTotalPoints - (List.sum lostPoints)) / double maxTotalPoints * 100.0
             Rank = 0
         }
