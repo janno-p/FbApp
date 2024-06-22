@@ -171,10 +171,15 @@ let isQualified (group: Competitions.StandingRow list) (team: Competitions.Stand
     |> List.length
     |> ((>) 2)
 
-let isUnqualified (group: Competitions.StandingRow list) (team: Competitions.StandingRow) =
+let isUnqualified thirdMayAdvance (group: Competitions.StandingRow list) (team: Competitions.StandingRow) =
     let pts (t: Competitions.StandingRow) =
         3 * t.Won + t.Draw + 3 * (3 - t.PlayedGames)
     let teamPoints = pts team
+    let decider =
+        if thirdMayAdvance then
+            ((<) 3)
+        else
+            ((<) 2)
     group
     |> List.filter ((<>) team)
     |> List.filter (fun x ->
@@ -182,7 +187,7 @@ let isUnqualified (group: Competitions.StandingRow list) (team: Competitions.Sta
         maxPoints > teamPoints
     )
     |> List.length
-    |> ((<) 2)
+    |> decider
 
 let selectCorrect (correct: HashSet<TeamId>, _) (teams: TeamId seq) =
     correct
@@ -196,14 +201,14 @@ let selectWrong (_, wrong: HashSet<TeamId>) (teams: TeamId seq) =
         |> Set.intersect (Set.ofSeq teams)
         |> Set.toSeq
 
-let updateQualifiedTeams (rows: Competitions.StandingRow list) =
+let updateQualifiedTeams thirdMayAdvance (rows: Competitions.StandingRow list) =
     let correct, wrong = InMemoryStore.qualifiedTeams
     rows
         |> List.map (fun x -> TeamId.create x.TeamId)
         |> List.iter (fun x -> correct.Remove(x) |> ignore; wrong.Remove(x) |> ignore)
     if rows |> List.exists (fun x -> x.PlayedGames < 3) then
         rows |> List.filter (isQualified rows) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter (correct.Add >> ignore)
-        rows |> List.filter (isUnqualified rows) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
+        rows |> List.filter (isUnqualified thirdMayAdvance rows) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
     else
         rows |> List.filter (fun x -> x.Position < 3) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter (correct.Add >> ignore)
         rows |> List.filter (fun x -> x.Position > 2) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
@@ -222,7 +227,7 @@ let getDropoutTeams () = [
 
 let processCompetitions _ _ = function
     | Competitions.Event.StandingsUpdated (_, rows) ->
-        updateQualifiedTeams rows
+        updateQualifiedTeams (FootballData.ActiveCompetition = FootballData.EuropeanChampionship) rows
         InMemoryStore.scoresheets.Values
             |> Seq.iter (fun scoresheet ->
                 let qualified = fst InMemoryStore.qualifiedTeams |> Seq.toList

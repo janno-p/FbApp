@@ -212,7 +212,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
     let updateStandings cancellationToken = task {
         match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken FootballData.ActiveCompetition with
         | Ok competition ->
-            for group in competition.Standings |> Array.filter (fun x -> x.Stage = "GROUP_STAGE") do
+            for group in competition.Standings do
                 do! updateGroupTable cancellationToken group
         | Error (errorCode, reason, error) ->
             logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)

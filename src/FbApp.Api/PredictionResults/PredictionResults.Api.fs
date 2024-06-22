@@ -14,7 +14,7 @@ let getLeaderboard (competitionId: int64) : HttpHandler =
         let dto =
             getPredictionResults ()
             |> List.map PredictionResultDto.fromScoresheet
-            |> List.groupBy (fun x -> (x.Total, x.Ratio))
+            |> List.groupBy _.Total
             |> List.sortByDescending fst
             |> List.fold
                    (fun (arr: ResizeArray<_>) (_, items) ->
@@ -23,6 +23,9 @@ let getLeaderboard (competitionId: int64) : HttpHandler =
                         arr
                    )
                    (ResizeArray<PredictionResultDto>())
+            |> Seq.sortBy _.Name
+            |> Seq.sortByDescending _.Ratio
+            |> Seq.sortBy _.Rank
             |> Seq.toArray
         return! Successful.OK dto next ctx
     }
