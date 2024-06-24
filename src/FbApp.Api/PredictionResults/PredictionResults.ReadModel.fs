@@ -211,7 +211,8 @@ let updateQualifiedTeams thirdMayAdvance (rows: Competitions.StandingRow list) =
         rows |> List.filter (isUnqualified thirdMayAdvance rows) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
     else
         rows |> List.filter (fun x -> x.Position < 3) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter (correct.Add >> ignore)
-        rows |> List.filter (fun x -> x.Position > 2) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
+        let decider = if thirdMayAdvance then (>) 3 else (>) 2
+        rows |> List.filter (fun x -> decider x.Position) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add(x) |> ignore)
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add(x) |> ignore)
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add(x) |> ignore)
