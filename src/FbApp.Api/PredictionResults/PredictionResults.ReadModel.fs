@@ -93,6 +93,7 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
     member val PredictionId = predictionId with get
     member val Name = name with get
     member this.UpdateQualifers(qualified: TeamId list, unqualified: TeamId list) =
+        this.Qualifiers.Keys |> Seq.iter (fun k -> this.Qualifiers[k] <- None)
         qualified |> List.iter (fun teamId -> if this.Qualifiers.ContainsKey(teamId) then this.Qualifiers[teamId] <- Some true else ())
         unqualified |> List.iter (fun teamId -> if this.Qualifiers.ContainsKey(teamId) then this.Qualifiers[teamId] <- Some false else ())
         this.UpdateQuarters([], unqualified)
