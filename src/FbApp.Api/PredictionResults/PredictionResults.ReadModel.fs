@@ -128,11 +128,13 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
 module InMemoryStore =
     let fixtures = Dictionary<FixtureId, Fixture>()
     let qualifiedTeams = (HashSet<TeamId>(), HashSet<TeamId>())
+    let confirmedQualifiedTeams = (HashSet<TeamId>(), HashSet<TeamId>())
     let quarterFinalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
     let semiFinalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
     let finalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
     let winner = (HashSet<TeamId>(), HashSet<TeamId>())
     let scoresheets = Dictionary<PredictionId, Scoresheet>()
+    let teams = HashSet<TeamId>()
 
 let getMetadata (e: ResolvedEvent) : Metadata option =
     e.Event
@@ -202,18 +204,42 @@ let selectWrong (_, wrong: HashSet<TeamId>) (teams: TeamId seq) =
         |> Set.intersect (Set.ofSeq teams)
         |> Set.toSeq
 
+let updateConfirmedTeams () =
+    let confirmedCorrect, confirmedWrong = InMemoryStore.confirmedQualifiedTeams
+    let correct, wrong = InMemoryStore.qualifiedTeams
+    confirmedCorrect |> Seq.iter (fun teamId -> ignore (correct.Add(teamId), wrong.Remove(teamId)))
+    confirmedWrong |> Seq.iter (fun teamId -> ignore (correct.Remove(teamId), wrong.Add(teamId)))
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add(x) |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add(x) |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add(x) |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.winner).Add(x) |> ignore)
+
 let updateQualifiedTeams thirdMayAdvance (rows: Competitions.StandingRow list) =
     let correct, wrong = InMemoryStore.qualifiedTeams
-    rows
-        |> List.map (fun x -> TeamId.create x.TeamId)
-        |> List.iter (fun x -> correct.Remove(x) |> ignore; wrong.Remove(x) |> ignore)
+    let confirmedCorrect, confirmedWrong = InMemoryStore.confirmedQualifiedTeams
+    let teams =
+        rows |> List.map (_.TeamId >> TeamId.create)
+    let resetTeam teamId =
+        correct.Remove(teamId) |> ignore
+        if confirmedCorrect.Contains teamId then
+            correct.Add(teamId) |> ignore
+        wrong.Remove(teamId) |> ignore
+        if confirmedWrong.Contains teamId then
+            wrong.Add(teamId) |> ignore
+    teams |> List.iter resetTeam
+    let addCorrect teamId =
+        if not (correct.Contains teamId) && not (wrong.Contains teamId) then
+            correct.Add(teamId) |> ignore
+    let addWrong teamId =
+        if not (correct.Contains teamId) && not (wrong.Contains teamId) then
+            wrong.Add(teamId) |> ignore
     if rows |> List.exists (fun x -> x.PlayedGames < 3) then
-        rows |> List.filter (isQualified rows) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter (correct.Add >> ignore)
-        rows |> List.filter (isUnqualified thirdMayAdvance rows) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
+        rows |> List.filter (isQualified rows) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter addCorrect
+        rows |> List.filter (isUnqualified thirdMayAdvance rows) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter addWrong
     else
-        rows |> List.filter (fun x -> x.Position < 3) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter (correct.Add >> ignore)
+        rows |> List.filter (fun x -> x.Position < 3) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter addCorrect
         let decider: Competitions.StandingRow -> bool = if thirdMayAdvance then (fun x -> x.Position > 3) else (fun x -> x.Position > 2)
-        rows |> List.filter decider |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter (wrong.Add >> ignore)
+        rows |> List.filter decider |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter addWrong
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add(x) |> ignore)
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add(x) |> ignore)
     wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add(x) |> ignore)
@@ -264,28 +290,37 @@ let processCompetitions _ _ = function
     | Competitions.Event.Created _
     | Competitions.Event.FixturesAssigned _
     | Competitions.Event.GroupsAssigned _
-    | Competitions.Event.PlayersAssigned _
-    | Competitions.Event.TeamsAssigned _ ->
+    | Competitions.Event.PlayersAssigned _ ->
         ()
-
-let removeTeamsFrom (arr: ResizeArray<TeamId>) (tms: TeamId list) =
-    tms |> List.iter (arr.Remove >> ignore)
+    | Competitions.Event.TeamsAssigned teams ->
+        InMemoryStore.teams.Clear()
+        teams |> List.iter (_.ExternalId >> TeamId.create >> InMemoryStore.teams.Add >> ignore)
 
 let processFixtures (aggregateId: Guid) _ (version: int64) = function
     | Fixtures.Added args ->
         let competitionId = CompetitionId.fromGuid args.CompetitionId
-        Fixtures.FixtureStage.tryFromString args.Stage
-            |> Option.map (fun fixtureStage ->
+        match Fixtures.FixtureStage.tryFromString args.Stage with
+        | Some fixtureStage ->
+            let homeTeamId = TeamId.create args.HomeTeamId
+            let awayTeamId = TeamId.create args.AwayTeamId
+            let fixture =
                 Fixture(
                     FixtureId.create competitionId args.ExternalId,
-                    TeamId.create args.HomeTeamId,
-                    TeamId.create args.AwayTeamId,
+                    homeTeamId,
+                    awayTeamId,
                     Fixtures.FixtureStatus.FromString args.Status,
                     fixtureStage,
                     version
                 )
-            )
-            |> Option.iter (fun fixture -> InMemoryStore.fixtures.Add(fixture.FixtureId, fixture))
+            InMemoryStore.fixtures.Add(fixture.FixtureId, fixture)
+            if fixtureStage <> Fixtures.FixtureStage.Last16 then () else
+            let confirmedCorrect, confirmedWrong = InMemoryStore.confirmedQualifiedTeams
+            confirmedCorrect.Add(homeTeamId) |> ignore
+            confirmedCorrect.Add(awayTeamId) |> ignore
+            if confirmedCorrect.Count = 16 then
+                InMemoryStore.teams |> Seq.except confirmedCorrect |> Seq.iter (confirmedWrong.Add >> ignore)
+            updateConfirmedTeams ()
+        | None -> ()
     | Fixtures.ScoreChanged2 args ->
         let fixtureId = FixtureId.fromGuid aggregateId
         let fixtureResult = fixtureResultFromScore args
