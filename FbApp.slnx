@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/FbApp.Api.IntegrationTests/FbApp.Api.IntegrationTests.fsproj" />
+  <Project Path="src/FbApp.Api/FbApp.Api.fsproj" />
+  <Project Path="src/FbApp.Auth.IntegrationTests/FbApp.Auth.IntegrationTests.fsproj" />
+  <Project Path="src/FbApp.Auth/FbApp.Auth.fsproj" />
+  <Project Path="src/FbApp.Proxy/FbApp.Proxy.fsproj" />
+</Solution>

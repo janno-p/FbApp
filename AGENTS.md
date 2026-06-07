@@ -2,15 +2,15 @@
 
 ## Repo Shape
 
-- The real .NET workspace is `src/FbApp.slnx`, not the repo root. It contains F# `net8.0` services `FbApp.Api`, `FbApp.Auth`, `FbApp.Proxy`, plus `FbApp.Api.IntegrationTests` and `FbApp.Auth.IntegrationTests`.
+- The real .NET workspace is `FbApp.slnx` at the repo root. It contains F# `net8.0` services `FbApp.Api`, `FbApp.Auth`, `FbApp.Proxy`, plus `FbApp.Api.IntegrationTests` and `FbApp.Auth.IntegrationTests`.
 - The web client is separate under `src/FbApp.Web`; the repo root has no `package.json`. Run web package commands from `src/FbApp.Web`.
-- `src/Directory.Packages.props` centrally owns NuGet package versions. Do not add package versions to individual `.fsproj` files unless central package management is being changed.
+- `Directory.Packages.props` centrally owns NuGet package versions. Do not add package versions to individual `.fsproj` files unless central package management is being changed.
 - F# file order in each `.fsproj` is compile order. When adding or moving F# files, update the relevant `<Compile Include=...>` sequence intentionally.
 
 ## Commands
 
-- Restore/build backend: `dotnet restore src/FbApp.slnx` then `dotnet build src/FbApp.slnx`.
-- Run all backend tests: `dotnet test src/FbApp.slnx`.
+- Restore/build backend: `dotnet restore FbApp.slnx` then `dotnet build FbApp.slnx`.
+- Run all backend tests: `dotnet test FbApp.slnx`.
 - Run one backend test project: `dotnet test src/FbApp.Auth.IntegrationTests/FbApp.Auth.IntegrationTests.fsproj`.
 - Web install/build/dev: from `src/FbApp.Web`, use `yarn install --immutable`, `yarn build`, and `yarn dev`. This package pins Yarn 4.3.0 via `.yarnrc.yml` and uses `node_modules`, not Plug'n'Play.
 - There are no repo-level lint, formatter, typecheck, or web test scripts in the checked configs.
