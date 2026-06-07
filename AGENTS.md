@@ -1,0 +1,36 @@
+# AGENTS.md
+
+## Repo Shape
+
+- The real .NET workspace is `src/FbApp.sln`, not the repo root. It contains F# `net8.0` services `FbApp.Api`, `FbApp.Auth`, `FbApp.Proxy`, plus `FbApp.Api.IntegrationTests` and `FbApp.Auth.IntegrationTests`.
+- The web client is separate under `src/FbApp.Web`; the repo root has no `package.json`. Run web package commands from `src/FbApp.Web`.
+- `src/Directory.Packages.props` centrally owns NuGet package versions. Do not add package versions to individual `.fsproj` files unless central package management is being changed.
+- F# file order in each `.fsproj` is compile order. When adding or moving F# files, update the relevant `<Compile Include=...>` sequence intentionally.
+
+## Commands
+
+- Restore/build backend: `dotnet restore src/FbApp.sln` then `dotnet build src/FbApp.sln`.
+- Run all backend tests: `dotnet test src/FbApp.sln`.
+- Run one backend test project: `dotnet test src/FbApp.Auth.IntegrationTests/FbApp.Auth.IntegrationTests.fsproj`.
+- Web install/build/dev: from `src/FbApp.Web`, use `yarn install --immutable`, `yarn build`, and `yarn dev`. This package pins Yarn 4.3.0 via `.yarnrc.yml` and uses `node_modules`, not Plug'n'Play.
+- There are no repo-level lint, formatter, typecheck, or web test scripts in the checked configs.
+
+## Local Runtime
+
+- Full local app startup is Kubernetes/Tilt based: install Dapr and ingress-nginx as described in `README.md`, then run `tilt up` from the repo root.
+- Tilt builds .NET services via `dotnet publish --output out` inside each service directory, then live-updates Docker images from those `out` directories.
+- Tilt expects optional overrides in `development/values.user.yaml`; the checked example only changes the web service port to `5173`.
+- Google OAuth local setup uses `src/FbApp.Auth/appsettings.user.json`; keep secrets out of git.
+
+## Architecture Notes
+
+- `FbApp.Proxy` is the front door for `/api/*`, `/connect/*`, and `/.well-known/*`. Its YARP config rewrites `dapr:` destinations using `DAPR_HTTP_PORT` unless a connection string override exists.
+- `FbApp.Api` is a Giraffe app using MongoDB, EventStoreDB, Dapr, and Quartz; main routes and startup wiring live in `src/FbApp.Api/Main.fs`.
+- `FbApp.Auth` hosts OpenIddict/Google auth backed by PostgreSQL; startup and routes live in `src/FbApp.Auth/Program.fs`, and client/role seeding is in `Worker.fs`.
+- The Elm app entrypoint is `src/FbApp.Web/app/main.ts`, which initializes `src/Main.elm` and bridges random-byte ports through `localStorage` for the OAuth PKCE flow.
+
+## Testing Gotchas
+
+- `FbApp.Auth.IntegrationTests` starts a PostgreSQL Testcontainer, so Docker must be available for that suite.
+- `FbApp.Api.IntegrationTests` currently contains only a placeholder passing test; do not treat it as meaningful API coverage.
+- Backend apps load config in this order where implemented: `appsettings.json`, environment-specific appsettings, `appsettings.user.json`, then environment variables.
