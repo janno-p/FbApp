@@ -6,3 +6,5 @@ obj/
 out/
 
 appsettings.user.json
+
+src/FbApp.Web.old

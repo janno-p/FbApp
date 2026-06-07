@@ -1,8 +1,0 @@
-{
-  "recommendations": [
-    "bradlc.vscode-tailwindcss",
-    "editorconfig.editorconfig",
-    "elmtooling.elm-ls-vscode",
-    "ionide.ionide-fsharp"
-  ]
-}

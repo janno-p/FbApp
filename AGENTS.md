@@ -12,7 +12,7 @@
 - Restore/build backend: `dotnet restore FbApp.slnx` then `dotnet build FbApp.slnx`.
 - Run all backend tests: `dotnet test FbApp.slnx`.
 - Run one backend test project: `dotnet test src/FbApp.Auth.IntegrationTests/FbApp.Auth.IntegrationTests.fsproj`.
-- Web install/build/dev: from `src/FbApp.Web`, use `yarn install --immutable`, `yarn build`, and `yarn dev`. This package pins Yarn 4.3.0 via `.yarnrc.yml` and uses `node_modules`, not Plug'n'Play.
+- Web install/build/dev: from `src/FbApp.Web`, use `bun install`, `bun run build`, and `bun run dev`. The web package is Bun-managed and keeps `bun.lock` in sync with dependency changes.
 - There are no repo-level lint, formatter, typecheck, or web test scripts in the checked configs.
 
 ## Local Runtime

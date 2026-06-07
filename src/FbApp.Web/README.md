@@ -5,23 +5,23 @@ An Elm app
 ## Install the dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 ### Build the app for production
 
 ```bash
-npm run build
+bun run build
 ```
 
 ### Preview the production app
 
 ```bash
-npm run serve
+bun run preview
 ```

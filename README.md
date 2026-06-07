@@ -18,8 +18,7 @@ Playground application for trying out new technologies, libraries, frameworks, p
 ### Development environment ###
 
 * [.NET Core SDK](https://www.microsoft.com/net/download)
-* [Node.js](https://nodejs.org/en/)
-* [Yarn](https://yarnpkg.com/en/)
+* [Bun](https://bun.sh/)
 
 ## Quick Start ##
 

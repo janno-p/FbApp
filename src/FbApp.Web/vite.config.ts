@@ -1,11 +1,12 @@
-﻿import { defineConfig } from 'vite'
-import Elm from 'vite-plugin-elm'
+import { defineConfig } from 'vite'
+import elmPlugin from 'vite-plugin-elm'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
     plugins: [
-        Elm()
+        elmPlugin(),
+        tailwindcss()
     ],
-
     server: {
         hmr: {
             clientPort: 8090,

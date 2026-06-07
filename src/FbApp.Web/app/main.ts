@@ -1,6 +1,6 @@
 import { Elm } from '../src/Main.elm'
 
-import '@mdi/font/css/materialdesignicons.min.css'
+// import '@mdi/font/css/materialdesignicons.min.css'
 import '../styles/main.css'
 
 function rememberedBytes() {
@@ -13,7 +13,7 @@ function rememberedPath() {
 }
 
 const app = Elm.Main.init({
-    node: document.getElementById('app'),
+    node: document.getElementById('app')!,
     flags: [rememberedBytes(), rememberedPath()]
 })
 

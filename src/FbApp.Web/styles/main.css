@@ -1,3 +1,20 @@
-﻿@tailwind base;
-@tailwind components;
-@tailwind utilities;
+﻿@import "tailwindcss";
+
+@plugin "@iconify/tailwind4";
+
+@source "src/**/*.elm";
+
+@theme {
+    --color-primary: #1976D2; /* #027be3 */
+    --color-secondary: #26A69A;
+    --color-tertiary: #555555;
+
+    --color-accent: #9C27B0;
+    --color-dark: #1D1D1D;
+
+    --color-neutral: #E0E1E2;
+    --color-positive: #21BA45;
+    --color-negative: #C10015; /* #DB2828 */
+    --color-info: #31CCEC;
+    --color-warning: #F2C037;
+}
