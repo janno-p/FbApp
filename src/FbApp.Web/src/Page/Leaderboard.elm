@@ -1,7 +1,7 @@
 module Page.Leaderboard exposing (Model, Msg, init, update, view)
 
 import Api.Endpoint as Endpoint exposing (defaultEndpointConfig)
-import Html exposing (Html, div, span, sup, text)
+import Html exposing (Html, div, span, text)
 import Html.Attributes exposing (class, title)
 import Http
 import Json.Decode as Json
