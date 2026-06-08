@@ -9,6 +9,7 @@ open FbApp.Api.Domain
 open FbApp.Api.EventStore
 open FbApp.Common.SimpleTypes
 open Microsoft.Extensions.Logging
+open KurrentDB.Client
 
 let MaxTotalPoints
     = 8 * 6 * 1 // Group matches
@@ -136,13 +137,13 @@ module InMemoryStore =
     let scoresheets = Dictionary<PredictionId, Scoresheet>()
     let teams = HashSet<TeamId>()
 
-let getMetadata (e: ResolvedEvent) : Metadata option =
+let getMetadata jsonOptions (e: ResolvedEvent) : Metadata option =
     e.Event
     |> Option.ofObj
     |> Option.bind (fun x ->
         match x.Metadata with
         | v when v.IsEmpty -> None
-        | arr -> Some(Serialization.deserializeType arr)
+        | arr -> Some(Serialization.deserializeType jsonOptions arr)
     )
 
 let fixtureResultFromScore (args: Fixtures.ScoreChangedArgs) =
@@ -443,16 +444,16 @@ let processPredictions _ _ = function
     | Predictions.Declined ->
         ()
 
-let registerPredictionResultHandlers (logger: ILogger) (client: EventStoreClient) (subscriptionSettings: SubscriptionsSettings) =
+let registerPredictionResultHandlers (logger: ILogger) (client: KurrentDBClient) (subscriptionSettings: SubscriptionsSettings) jsonOptions =
     let mutable checkpoint = StreamPosition.Start
 
     let processEvents (e: ResolvedEvent) (handler: ILogger -> int64 -> 'Event -> unit) =
-        let event = Serialization.deserializeOf<'Event> (e.Event.EventType, e.Event.Data)
+        let event = Serialization.deserializeOf<'Event> jsonOptions (e.Event.EventType, e.Event.Data)
         handler logger (e.OriginalEventNumber.ToInt64()) event
 
     let eventAppeared (e: ResolvedEvent) = task {
         try
-            match getMetadata e with
+            match getMetadata jsonOptions e with
             | Some(md) when md.AggregateName = Competitions.AggregateName ->
                 processEvents e processCompetitions
             | Some(md) when md.AggregateName = Fixtures.AggregateName ->

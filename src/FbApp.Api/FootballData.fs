@@ -1,11 +1,11 @@
 [<RequireQualifiedAccess>]
 module FbApp.Api.FootballData
 
-open FbApp.Api.Serialization.Converters
-open Newtonsoft.Json
-open Newtonsoft.Json.Serialization
 open System
 open System.Net.Http
+open System.Text.Json
+open System.Text.Json.Serialization
+open System.Threading
 
 [<Literal>]
 let EuropeanChampionship = 2018L
@@ -180,11 +180,11 @@ type CompetitionTeam =
     {
         Id: int64
         Name: string
-        [<JsonProperty("tla")>] Code: string
+        [<JsonPropertyName("tla")>] Code: string
         ShortName: string
         // SquadMarketValue: string
         Crest: string
-        [<JsonProperty("squad")>] Players: CompetitionPlayer array
+        [<JsonPropertyName("squad")>] Players: CompetitionPlayer array
     }
 
 [<CLIMutable>]
@@ -234,12 +234,12 @@ type CompetitionFixtureTeam = {
 type CompetitionFixture =
     {
         Id: int64
-        [<JsonProperty("utcDate")>] Date: DateTimeOffset
+        [<JsonPropertyName("utcDate")>] Date: DateTimeOffset
         Status: string
         Matchday: int option
         HomeTeam: CompetitionFixtureTeam option
         AwayTeam: CompetitionFixtureTeam option
-        [<JsonProperty("score")>] Result: FixtureResult option
+        [<JsonPropertyName("score")>] Result: FixtureResult option
         Stage: string
         LastUpdated: DateTimeOffset
         //Odds
@@ -255,7 +255,7 @@ type CompetitionFixturesResultSet =
 type CompetitionFixtures =
     {
         ResultSet: CompetitionFixturesResultSet
-        [<JsonProperty("matches")>] Fixtures: CompetitionFixture array
+        [<JsonPropertyName("matches")>] Fixtures: CompetitionFixture array
     }
 
 [<CLIMutable>]
@@ -287,7 +287,7 @@ type HeadToHead =
 type Fixture =
     {
         Fixture: CompetitionFixture
-        [<JsonProperty("head2head")>] HeadToHead: HeadToHead
+        [<JsonPropertyName("head2head")>] HeadToHead: HeadToHead
     }
 
 [<CLIMutable>]
@@ -371,14 +371,6 @@ with
         | TimeFrame tf -> $"timeFrame=%s{tf.ToString()}"
         | Venue v -> $"venue=%s{v.ToString()}"
 
-let serializer = JsonSerializer()
-serializer.Converters.Add(OptionConverter())
-serializer.ContractResolver <- CamelCasePropertyNamesContractResolver()
-
-let deserialize<'T> (stream: IO.Stream) =
-    use reader = new JsonTextReader(new IO.StreamReader(stream))
-    serializer.Deserialize(reader, typeof<'T>) |> unbox<'T>
-
 let private toQuery lst =
     match lst with
     | [] -> ""
@@ -393,40 +385,42 @@ let private createClient (authToken: string) =
     client.DefaultRequestHeaders.Add("X-Auth-Token", authToken)
     client
 
-let private apiCall<'T> authToken (uri: string) = task {
+let private apiCall<'T> (jsonOptions: JsonSerializerOptions) authToken (uri: string) (ct: CancellationToken) = task {
     use client = createClient authToken
     let! response = client.GetAsync(uri)
     if response.IsSuccessStatusCode then
         let! jsonStream = response.Content.ReadAsStreamAsync()
-        return Ok(deserialize<'T> jsonStream)
+        let! result = JsonSerializer.DeserializeAsync<'T>(jsonStream, jsonOptions, ct)
+        return Ok result
     else
         let! jsonStream = response.Content.ReadAsStreamAsync()
-        return Error(response.StatusCode, response.ReasonPhrase, deserialize<Error> jsonStream)
+        let! error = JsonSerializer.DeserializeAsync<Error>(jsonStream, jsonOptions, ct)
+        return Error(response.StatusCode, response.ReasonPhrase, error)
 }
 
 /// List all available competitions.
-let getCompetitions authToken = task {
+let getCompetitions (jsonOptions: JsonSerializerOptions) authToken (ct: CancellationToken) = task {
     let uri = $"competitions/%d{ActiveCompetition}"
-    let! comp = apiCall<Competition> authToken uri
+    let! comp = apiCall<Competition> jsonOptions authToken uri ct
     return comp |> Result.map (fun x -> [| x |])
 }
 
 /// List all teams for a certain competition.
-let getCompetitionTeams authToken (competitionId: Id) = task {
+let getCompetitionTeams (jsonOptions: JsonSerializerOptions) authToken (competitionId: Id) (ct: CancellationToken) = task {
     let uri = $"/v4/competitions/%d{competitionId}/teams"
-    return! apiCall<CompetitionTeams> authToken uri
+    return! apiCall<CompetitionTeams> jsonOptions authToken uri ct
 }
 
 /// List all fixtures for a certain competition.
-let getCompetitionFixtures authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) = task {
+let getCompetitionFixtures (jsonOptions: JsonSerializerOptions) authToken (competitionId: Id) (filters: CompetitionFixtureFilter list) (ct: CancellationToken) = task {
     let uri = $"/v4/competitions/%d{competitionId}/matches%s{filters |> toQuery}"
-    return! apiCall<CompetitionFixtures> authToken uri
+    return! apiCall<CompetitionFixtures> jsonOptions authToken uri ct
 }
 
 /// Show league table / current standing.
-let getCompetitionLeagueTable authToken (competitionId: Id) = task {
+let getCompetitionLeagueTable (jsonOptions: JsonSerializerOptions) authToken (competitionId: Id) (ct: CancellationToken) = task {
     let uri = $"/v4/competitions/%d{competitionId}/standings"
-    return! apiCall<CompetitionLeagueTable> authToken uri
+    return! apiCall<CompetitionLeagueTable> jsonOptions authToken uri ct
 }
 
 [<CLIMutable>]
@@ -441,7 +435,7 @@ type CompetitionScorers = {
     Scorers: CompetitionScorer array
 }
 
-let getScorers authToken (competitionId: Id) = task {
+let getScorers (jsonOptions: JsonSerializerOptions) authToken (competitionId: Id) (ct: CancellationToken) = task {
     let uri = $"/v4/competitions/%d{competitionId}/scorers/?limit=500"
-    return! apiCall<CompetitionScorers> authToken uri
+    return! apiCall<CompetitionScorers> jsonOptions authToken uri ct
 }

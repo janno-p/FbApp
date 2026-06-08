@@ -5,33 +5,43 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="Be.Vlaanderen.Basisregisters.Generators.Guid.Deterministic" Version="4.0.0" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
-    <PackageVersion Include="Dapr.AspNetCore" Version="1.13.1" />
-    <PackageVersion Include="EventStore.Client.Grpc.PersistentSubscriptions" Version="23.3.3" />
-    <PackageVersion Include="EventStore.Client.Grpc.ProjectionManagement" Version="23.3.3" />
-    <PackageVersion Include="EventStore.Client.Grpc.Streams" Version="23.3.3" />
-    <PackageVersion Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
-    <PackageVersion Include="FSharp.Core" Version="8.0.300" />
-    <PackageVersion Include="FSharp.SystemTextJson" Version="1.3.13" />
-    <PackageVersion Include="FsUnit.xUnit" Version="6.0.0" />
-    <PackageVersion Include="Giraffe" Version="6.4.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.6" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.6" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.6" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.6" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
-    <PackageVersion Include="MongoDB.Driver" Version="2.26.0" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
-    <PackageVersion Include="OpenIddict.AspNetCore" Version="5.6.0" />
-    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="5.6.0" />
-    <PackageVersion Include="OpenIddict.Quartz" Version="5.6.0" />
-    <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.9.0" />
-    <PackageVersion Include="Testcontainers" Version="3.9.0" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="3.9.0" />
-    <PackageVersion Include="xunit" Version="2.8.1" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.1" />
-    <PackageVersion Include="Yarp.ReverseProxy" Version="2.1.0" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Hosting.Yarp" Version="13.4.2" />
+    <PackageVersion Include="Be.Vlaanderen.Basisregisters.Generators.Guid.Deterministic" Version="5.1.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.KurrentDB" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.KurrentDB" Version="13.4.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="Dapr.AspNetCore" Version="1.17.9" />
+    <PackageVersion Include="FSharp.Control.AsyncSeq" Version="4.15.0" />
+    <PackageVersion Include="FSharp.Core" Version="10.1.300" />
+    <PackageVersion Include="FSharp.SystemTextJson" Version="1.4.36" />
+    <PackageVersion Include="FsUnit.xUnit" Version="7.1.1" />
+    <PackageVersion Include="Giraffe" Version="8.2.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageVersion Include="MongoDB.Driver" Version="3.9.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="OpenIddict.AspNetCore" Version="7.5.0" />
+    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.5.0" />
+    <PackageVersion Include="OpenIddict.Quartz" Version="7.5.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.18.1" />
+    <PackageVersion Include="Testcontainers" Version="4.12.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
 </Project>

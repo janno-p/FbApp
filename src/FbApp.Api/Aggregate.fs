@@ -16,17 +16,17 @@ type AggregateError<'Error> =
 
 type ExpectedVersion =
     | New
-    | Version of int64
+    | Version of uint64
     | Any
 
 type ExpectedCommitVersion =
     | NewStream
-    | Value of int64
+    | Value of uint64
 
 type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 
 type CommandHandler<'Command, 'Error> = Guid * ExpectedVersion -> 'Command -> TaskResult<int64, AggregateError<'Error>>
-type LoadAggregateEvents<'Event> = Type * Guid -> Task<int64 option * 'Event seq>
+type LoadAggregateEvents<'Event> = Type * Guid -> Task<uint64 option * 'Event seq>
 type CommitAggregateEvents<'Event, 'Error> = Guid * ExpectedCommitVersion -> 'Event list -> TaskResult<int64, AggregateError<'Error>>
 
 let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)

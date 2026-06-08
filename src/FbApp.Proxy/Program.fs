@@ -121,6 +121,8 @@ let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBear
 let configureServices (builder: WebApplicationBuilder) =
     let configuration = builder.Configuration
 
+    builder.AddServiceDefaults() |> ignore
+
     builder.Services.AddAuthorization()
     |> ignore
 
@@ -155,6 +157,8 @@ let configureApplication (app: WebApplication) =
     app.UseRouting() |> ignore
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
+
+    app.MapDefaultEndpoints() |> ignore
 
     app.UseGiraffe(routes) |> ignore
 

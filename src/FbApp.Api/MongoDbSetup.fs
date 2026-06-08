@@ -7,5 +7,4 @@ open MongoDB.Bson.Serialization
 open MongoDB.Bson.Serialization.Serializers
 
 let init () =
-    BsonDefaults.GuidRepresentationMode <- GuidRepresentationMode.V3
-    BsonSerializer.RegisterSerializer(GuidSerializer(GuidRepresentation.Standard))
+    BsonSerializer.RegisterSerializer(GuidSerializer GuidRepresentation.Standard)

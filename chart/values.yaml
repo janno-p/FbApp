@@ -4,7 +4,7 @@ api:
   env:
     - name: CONNECTIONSTRINGS__MONGODB
       value: mongodb://user:password@fbapp-api-database-mongodb:27017/fbapp
-    - name: EVENTSTORE__URI
+    - name: ConnectionStrings__eventstore
       value: esdb://fbapp-eventstore:2113?tls=false
   image:
     pullPolicy: Always
@@ -108,6 +108,10 @@ proxy:
     enabled: false
   env:
     - name: CONNECTIONSTRINGS__AUTHCLUSTER
+      value: http://fbapp-auth:8080
+    - name: ReverseProxy__Clusters__apiCluster__Destinations__destination1__Address
+      value: http://fbapp-api:8080
+    - name: ReverseProxy__Clusters__authCluster__Destinations__destination1__Address
       value: http://fbapp-auth:8080
   image:
     pullPolicy: Always

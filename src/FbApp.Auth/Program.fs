@@ -108,13 +108,13 @@ let authorize: HttpHandler =
                         OpenIddictConstants.Statuses.Valid,
                         OpenIddictConstants.AuthorizationTypes.Permanent,
                         request.GetScopes()
-                    ) |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toListAsync
+                    ) |> AsyncSeq.toListAsync
 
                 let! principal = svc.SignInManager().CreateUserPrincipalAsync(user)
 
                 principal.SetScopes(request.GetScopes()) |> ignore
 
-                let! resources = svc.OpenIddictScopeManager().ListResourcesAsync(principal.GetScopes()) |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toListAsync
+                let! resources = svc.OpenIddictScopeManager().ListResourcesAsync(principal.GetScopes()) |> AsyncSeq.toListAsync
                 principal.SetResources(resources) |> ignore
 
                 let! authorization =
@@ -365,6 +365,7 @@ let routes = [
 
 
 let configureServices (builder: WebApplicationBuilder) =
+    builder.AddServiceDefaults() |> ignore
     builder.Services.AddAuthorization() |> ignore
 
     builder.Services.AddGiraffe() |> ignore
@@ -416,8 +417,8 @@ let configureServices (builder: WebApplicationBuilder) =
         .AddServer(fun options ->
             options.SetAuthorizationEndpointUris(Routes.Authorize)
                 .SetTokenEndpointUris(Routes.Token)
-                .SetUserinfoEndpointUris(Routes.Userinfo)
-                .SetLogoutEndpointUris(Routes.Logout)
+                .SetUserInfoEndpointUris(Routes.Userinfo)
+                .SetEndSessionEndpointUris(Routes.Logout)
             |> ignore
 
             options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.Roles) |> ignore
@@ -428,14 +429,14 @@ let configureServices (builder: WebApplicationBuilder) =
             options.RemoveEventHandler(OpenIddictServerAspNetCoreHandlers.ValidateTransportSecurityRequirement.Descriptor) |> ignore
             options.DisableAccessTokenEncryption() |> ignore
 
-            options.SetAccessTokenLifetime(TimeSpan.FromMinutes(5)) |> ignore
-            options.SetRefreshTokenLifetime(TimeSpan.FromMinutes(30)) |> ignore
+            options.SetAccessTokenLifetime(TimeSpan.FromMinutes(5L)) |> ignore
+            options.SetRefreshTokenLifetime(TimeSpan.FromMinutes(30L)) |> ignore
 
             options.UseAspNetCore()
                 .EnableAuthorizationEndpointPassthrough()
                 .EnableTokenEndpointPassthrough()
-                .EnableUserinfoEndpointPassthrough()
-                .EnableLogoutEndpointPassthrough()
+                .EnableUserInfoEndpointPassthrough()
+                .EnableEndSessionEndpointPassthrough()
             |> ignore)
         .AddValidation(fun options ->
             options.UseLocalServer() |> ignore
@@ -452,6 +453,7 @@ let configureApplication (app: WebApplication) =
     app.UseRouting() |> ignore
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
+    app.MapDefaultEndpoints() |> ignore
     app.UseGiraffe(routes) |> ignore
 
 

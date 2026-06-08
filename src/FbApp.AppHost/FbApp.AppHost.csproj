@@ -8,4 +8,18 @@
     <UserSecretsId>4a33246d-246c-4fef-9d6b-e2ce55323d67</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../FbApp.Api/FbApp.Api.fsproj" />
+    <ProjectReference Include="../FbApp.Auth/FbApp.Auth.fsproj" />
+    <ProjectReference Include="../FbApp.Proxy/FbApp.Proxy.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.Yarp" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.KurrentDB" />
+  </ItemGroup>
+
 </Project>

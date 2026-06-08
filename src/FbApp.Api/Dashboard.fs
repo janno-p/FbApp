@@ -8,6 +8,7 @@ open Giraffe.EndpointRouting
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
 open MongoDB.Driver
+open Microsoft.AspNetCore.Http.Json
 
 type CompetitionItem =
     {
@@ -16,20 +17,22 @@ type CompetitionItem =
     }
 
 let getCompetitionSources year: HttpHandler =
-    (fun next context ->
+    fun next context ->
         task {
             if year < 2016 then
                 return! Successful.OK [||] next context
             else
                 let authOptions = context.RequestServices.GetService<IOptions<AuthOptions>>().Value
-                let! competitions = FootballData.getCompetitions authOptions.FootballDataToken // [FootballData.Season year]
+                let jsonOptions = context.RequestServices.GetService<IOptions<JsonOptions>>().Value.SerializerOptions
+                let ct = context.RequestAborted
+                let! competitions = FootballData.getCompetitions jsonOptions authOptions.FootballDataToken ct // [FootballData.Season year]
                 match competitions with
-                | Ok(competitions) ->
+                | Ok competitions ->
                     let competitions = competitions |> Array.map (fun x -> { Label = x.Name; Value = x.Id })
                     return! Successful.OK competitions next context
                 | Error(_,_,err) ->
                     return! RequestErrors.BAD_REQUEST err.Error next context
-        })
+        }
 
 let addCompetitionDom input = task {
     let command = Competitions.Create input

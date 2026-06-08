@@ -65,7 +65,7 @@ type Worker(serviceProvider: IServiceProvider, configuration: IConfiguration) =
             )
 
             descriptor.Permissions.Add(Permissions.Endpoints.Authorization) |> ignore
-            descriptor.Permissions.Add(Permissions.Endpoints.Logout) |> ignore
+            descriptor.Permissions.Add(Permissions.Endpoints.EndSession) |> ignore
             descriptor.Permissions.Add(Permissions.Endpoints.Token) |> ignore
             descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode) |> ignore
             descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken) |> ignore

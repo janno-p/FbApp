@@ -1,9 +1,7 @@
 module FbApp.Api.Main
 
-open System.IdentityModel.Tokens.Jwt
 open System.Text.Json
 open System.Text.Json.Serialization
-open EventStore.Client
 open FbApp.Api
 open FbApp.Api.Aggregate
 open FbApp.Api.Configuration
@@ -27,6 +25,8 @@ open MongoDB.Driver
 open Quartz
 open System
 open Microsoft.IdentityModel.JsonWebTokens
+open KurrentDB.Client
+open Microsoft.AspNetCore.Http.Json
 
 
 MongoDbSetup.init()
@@ -59,15 +59,15 @@ let initializeMongoDb (sp: IServiceProvider) =
     let configuration = sp.GetService<IConfiguration>()
     let client =
         match configuration.GetConnectionString("mongodb") with
-        | null -> MongoClient()
-        | value -> MongoClient(value)
+        | null -> new MongoClient()
+        | value -> new MongoClient(value)
     client.GetDatabase("fbapp")
 
 
 let configureJsonSerializer () =
-    let options = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
-    options.Converters.Add(JsonFSharpConverter())
-    SystemTextJson.Serializer options
+    let jsonSerializerOptions = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
+    let JsonFSharpOptions = JsonFSharpOptions.Default()
+    Json.FsharpFriendlySerializer(JsonFSharpOptions, jsonSerializerOptions)
 
 
 let configureJwtAuthentication (options: JwtBearerOptions) =
@@ -81,6 +81,7 @@ let configureJwtAuthentication (options: JwtBearerOptions) =
 
 
 let configureServices (builder: WebApplicationBuilder) =
+    builder.AddServiceDefaults() |> ignore
     builder.Services.AddRouting() |> ignore
 
     builder.Services.AddAuthorization() |> ignore
@@ -109,16 +110,16 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services.Configure<SubscriptionsSettings>(builder.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
 
     let eventStoreConnection =
-        builder.Configuration.GetConnectionString("eventstore")
-        |> Option.ofObj
-        |> Option.defaultValue (builder.Configuration.GetValue("EventStore:Uri"))
+        builder.Configuration.GetConnectionString "eventstore"
 
-    let setConnectionName (settings: EventStoreClientSettings) =
+    let setConnectionName (settings: KurrentDBClientSettings) =
         settings.ConnectionName <- "fbapp"
 
-    builder.Services.AddEventStoreClient(eventStoreConnection, setConnectionName) |> ignore
-    builder.Services.AddEventStoreProjectionManagementClient(eventStoreConnection, setConnectionName) |> ignore
-    builder.Services.AddEventStorePersistentSubscriptionsClient(eventStoreConnection, setConnectionName) |> ignore
+    builder.Services
+        .AddKurrentDBClient(eventStoreConnection, setConnectionName)
+        .AddKurrentDBProjectionManagementClient(eventStoreConnection, setConnectionName)
+        .AddKurrentDBPersistentSubscriptionsClient(eventStoreConnection, setConnectionName)
+    |> ignore
 
     builder.Services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
 
@@ -156,6 +157,10 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services.AddDaprClient()
     builder.Services.AddDistributedMemoryCache().AddProblemDetails().AddSession().AddGiraffe() |> ignore
 
+    builder.Services.ConfigureHttpJsonOptions(fun jsonOptions ->
+        JsonFSharpOptions.Default().AddToJsonSerializerOptions jsonOptions.SerializerOptions
+    ) |> ignore
+
 
 let configureAppConfiguration (builder: WebApplicationBuilder) =
     builder
@@ -185,19 +190,22 @@ let configureApp (app: WebApplication) =
         )
     |> ignore
 
-    let client = app.Services.GetService<EventStoreClient>()
+    app.MapDefaultEndpoints() |> ignore
+
+    let client = app.Services.GetService<KurrentDBClient>()
+    let jsonOptions = app.Services.GetService<IOptions<JsonOptions>>().Value.SerializerOptions
 
     CommandHandlers.competitionsHandler <-
-        makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository client Competitions.AggregateName)
+        makeHandler { Decide = Competitions.decide; Evolve = Competitions.evolve } (makeDefaultRepository client Competitions.AggregateName jsonOptions)
 
     CommandHandlers.predictionsHandler <-
-        makeHandler { Decide = Predictions.decide; Evolve = Predictions.evolve } (makeDefaultRepository client Predictions.AggregateName)
+        makeHandler { Decide = Predictions.decide; Evolve = Predictions.evolve } (makeDefaultRepository client Predictions.AggregateName jsonOptions)
 
     CommandHandlers.fixturesHandler <-
-        makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (makeDefaultRepository client Fixtures.AggregateName)
+        makeHandler { Decide = Fixtures.decide; Evolve = Fixtures.evolve } (makeDefaultRepository client Fixtures.AggregateName jsonOptions)
 
     CommandHandlers.leaguesHandler <-
-        makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository client Leagues.AggregateName)
+        makeHandler { Decide = Leagues.decide; Evolve = Leagues.evolve } (makeDefaultRepository client Leagues.AggregateName jsonOptions)
 
     let processManagerInitTask =
         ProcessManager.connectSubscription app.Services
@@ -206,8 +214,9 @@ let configureApp (app: WebApplication) =
 
     FbApp.PredictionResults.ReadModel.registerPredictionResultHandlers
         (app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("PredictionResults.ReadModel"))
-        (app.Services.GetRequiredService<EventStoreClient>())
+        (app.Services.GetRequiredService<KurrentDBClient>())
         (app.Services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value)
+        jsonOptions
 
     let initCompetition = task {
         use scope = app.Services.CreateScope()

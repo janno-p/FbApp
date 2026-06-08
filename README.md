@@ -12,12 +12,12 @@ Playground application for trying out new technologies, libraries, frameworks, p
 
 ### Run local application ###
 
-* [Docker Desktop with Kubernetes enabled](https://docs.docker.com/docker-for-windows/install/)
-* [Tilt](https://tilt.dev/)
+* [Docker Desktop](https://docs.docker.com/docker-for-windows/install/)
+* [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/cli/overview)
 
 ### Development environment ###
 
-* [.NET Core SDK](https://www.microsoft.com/net/download)
+* [.NET SDK](https://www.microsoft.com/net/download)
 * [Bun](https://bun.sh/)
 
 ## Quick Start ##
@@ -43,55 +43,12 @@ by Google client application registration.
 }
 ```
 
-### Configure kubernetes cluster ###
-
-Install dapr
-
-```sh
-helm repo add dapr https://dapr.github.io/helm-charts/
-
-helm repo update
-
-helm upgrade --install dapr dapr/dapr \
---namespace dapr-system \
---create-namespace \
---wait
-
-kubectl port-forward service/dapr-dashboard 8080:8080 --namespace dapr-system
-```
-
-Install ingress controller
-
-```sh
-helm repo add dapr https://kubernetes.github.io/ingress-nginx
-
-helm repo update
-
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
---namespace ingress-nginx \
---create-namespace \
---set controller.config.use-forwarded-headers=true
---set controller.service.ports.https=8090
---wait
-```
-
 ### Run development environment ###
 
 ```sh
-$ tilt up
+aspire run
 ```
 
-Open [Tilt Dashboard](http://localhost:10350/) to monitor running components.
+Open the Aspire dashboard URL printed by `aspire run` to monitor running components.
 
 Open [Application](https://localhost:8090) for demo.
-
-## Misc. ##
-
-```sh
-docker context ls
-docker context user default
-```
-
-`\\wsl$\docker-desktop-data\data\k8s-pvs`
-
-`kubectl exec --stdin --tty fbapp-api-database-mongodb-0 -n fbapp -- /bin/bash`

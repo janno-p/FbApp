@@ -9,6 +9,7 @@ open FbApp.Common.SimpleTypes
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
 open Quartz
+open Microsoft.AspNetCore.Http.Json
 
 
 type Posix =
@@ -31,13 +32,15 @@ module InMemoryCache =
 
 
 module Hash =
-    let calculate (o: obj) =
-        let bytes = snd (Serialization.serialize(o))
+    let calculate jsonOptions (o: obj) =
+        let bytes = snd (Serialization.serialize jsonOptions o)
         Convert.ToBase64String(System.Security.Cryptography.SHA1.Create().ComputeHash(bytes.ToArray()))
 
 
 [<DisallowConcurrentExecution>]
-type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpdateJob>) =
+type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpdateJob>, jsonOptions: IOptions<JsonOptions>) =
+    let jsonOptions = jsonOptions.Value.SerializerOptions
+
     let competitionId =
         CompetitionId.create FootballData.ActiveCompetition
 
@@ -102,8 +105,8 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                 ()
     }
 
-    let updateFixtures isFullUpdate _ = task {
-        match! FootballData.getCompetitionFixtures authOptions.Value.FootballDataToken FootballData.ActiveCompetition (getRequestFilters isFullUpdate)  with
+    let updateFixtures jsonOptions isFullUpdate ct = task {
+        match! FootballData.getCompetitionFixtures jsonOptions authOptions.Value.FootballDataToken FootballData.ActiveCompetition (getRequestFilters isFullUpdate) ct with
         | Ok matches ->
             logger.LogInformation("Loaded data of {count} fixtures.", matches.Fixtures.Length)
 
@@ -147,11 +150,11 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                     Duration = fixture.Result |> Option.map (fun x -> x.Duration) |> Option.defaultValue "REGULAR"
                 }
 
-                let currentFixtureHashCode = Hash.calculate newFixture
+                let currentFixtureHashCode = Hash.calculate jsonOptions newFixture
 
-                if Some(currentFixtureHashCode) <> previousFixtureHashCode then
+                if Some currentFixtureHashCode <> previousFixtureHashCode then
                     logger.LogInformation("Updating fixture {FixtureId} state updated", fixture.Id)
-                    fixtureUpdates.Add(newFixture)
+                    fixtureUpdates.Add newFixture
 
                 updateCache.Add(fun () ->
                     InMemoryCache.Fixtures[fixtureId] <- currentFixtureHashCode
@@ -175,9 +178,9 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
             | true, hashCode -> Some(hashCode)
             | _ -> None
 
-        let currentHashCode = Hash.calculate standings
+        let currentHashCode = Hash.calculate jsonOptions standings
 
-        if previousHashCode = Some(currentHashCode) then () else
+        if previousHashCode = Some currentHashCode then () else
 
         if standings.Table |> Array.exists (fun x -> x.PlayedGames > 0) then
             let rows =
@@ -209,11 +212,11 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
         InMemoryCache.Standings[key] <- currentHashCode
     }
 
-    let updateStandings cancellationToken = task {
-        match! FootballData.getCompetitionLeagueTable authOptions.Value.FootballDataToken FootballData.ActiveCompetition with
+    let updateStandings jsonOptions ct = task {
+        match! FootballData.getCompetitionLeagueTable jsonOptions authOptions.Value.FootballDataToken FootballData.ActiveCompetition ct with
         | Ok competition ->
             for group in competition.Standings do
-                do! updateGroupTable cancellationToken group
+                do! updateGroupTable ct group
         | Error (errorCode, reason, error) ->
             logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
     }
@@ -221,9 +224,9 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
     let updateCompetitionScorers (scorers: FootballData.CompetitionScorer array) (_: CancellationToken) = task {
         let previousHashCode = InMemoryCache.Scorers
 
-        let currentHashCode = Hash.calculate scorers
+        let currentHashCode = Hash.calculate jsonOptions scorers
 
-        if previousHashCode = Some(currentHashCode) then () else
+        if previousHashCode = Some currentHashCode then () else
 
         let command =
             Competitions.Command.UpdateScorers
@@ -242,10 +245,10 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
         InMemoryCache.Scorers <- Some currentHashCode
     }
 
-    let updateScorers cancellationToken = task {
-        match! FootballData.getScorers authOptions.Value.FootballDataToken FootballData.ActiveCompetition with
+    let updateScorers jsonOptions ct = task {
+        match! FootballData.getScorers jsonOptions authOptions.Value.FootballDataToken FootballData.ActiveCompetition ct with
         | Ok competition ->
-            do! updateCompetitionScorers competition.Scorers cancellationToken
+            do! updateCompetitionScorers competition.Scorers ct
         | Error (errorCode, reason, error) ->
             logger.LogCritical("API returned error code {ErrorCode} ({Reason}): {Error}", errorCode, reason, error)
     }
@@ -256,13 +259,13 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                 logger.LogInformation("{Job} job executing, triggered by {Trigger} at {Time}", context.JobDetail.Key, context.Trigger.Key, DateTimeOffset.UtcNow)
                 let isFullUpdate = context.MergedJobDataMap.GetBoolean("fullUpdate")
                 logger.LogInformation("Performing {Type} update of fixture data", if isFullUpdate then "full" else "partial")
-                do! updateFixtures isFullUpdate context.CancellationToken
+                do! updateFixtures jsonOptions isFullUpdate context.CancellationToken
                 logger.LogInformation("Fixture update completed at {Time}", DateTimeOffset.UtcNow)
                 logger.LogInformation("Updating competition standings")
-                do! updateStandings context.CancellationToken
+                do! updateStandings jsonOptions context.CancellationToken
                 logger.LogInformation("Standings update completed at {Time}", DateTimeOffset.UtcNow)
                 logger.LogInformation("Updating competition scorers")
-                do! updateScorers context.CancellationToken
+                do! updateScorers jsonOptions context.CancellationToken
                 logger.LogInformation("Scorers update completed at {Time}", DateTimeOffset.UtcNow)
             with e ->
                 logger.LogError(e, "Exception occured while updating fixtures.")

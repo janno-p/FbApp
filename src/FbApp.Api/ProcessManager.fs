@@ -12,6 +12,11 @@ open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
 open MongoDB.Driver
 open System
+open KurrentDB.Client
+open System.Threading
+open Microsoft.AspNetCore.Http.Json
+open System.Text.Json
+open Giraffe
 
 
 let (|Nullable|_|) (x: Nullable<_>) =
@@ -38,16 +43,16 @@ let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEve
 }
 
 
-let processCompetitions (logger: ILogger, db) (authOptions: AuthOptions) (md: Metadata) (e: ResolvedEvent) = task {
-    match deserializeOf<Competitions.Event> (e.Event.EventType, e.Event.Data) with
+let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOptions) (md: Metadata) (e: ResolvedEvent) (ct: CancellationToken) = task {
+    match deserializeOf<Competitions.Event> jsonOptions (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
         try
             do! args |> upsertCompetition (logger, db) md e
-            let! teams = FootballData.getCompetitionTeams authOptions.FootballDataToken args.ExternalId
+            let! teams = FootballData.getCompetitionTeams jsonOptions authOptions.FootballDataToken args.ExternalId ct
             let teams = teams |> Result.defaultWith (fun (_,_,err) -> failwith err.Error)
-            let! fixtures = FootballData.getCompetitionFixtures authOptions.FootballDataToken args.ExternalId []
+            let! fixtures = FootballData.getCompetitionFixtures jsonOptions authOptions.FootballDataToken args.ExternalId [] ct
             let fixtures = fixtures |> Result.defaultWith (fun (_,_,err) -> failwith err.Error)
-            let! groups = FootballData.getCompetitionLeagueTable authOptions.FootballDataToken args.ExternalId
+            let! groups = FootballData.getCompetitionLeagueTable jsonOptions authOptions.FootballDataToken args.ExternalId ct
             let groups = groups |> Result.defaultWith (fun (_,_,err) -> failwith err.Error)
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
@@ -203,8 +208,8 @@ let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegis
 }
 
 
-let processPredictions (logger: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
-    match deserializeOf<Predictions.Event> (e.Event.EventType, e.Event.Data) with
+let processPredictions (logger: ILogger, db, jsonOptions: JsonSerializerOptions) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Predictions.Event> jsonOptions (e.Event.EventType, e.Event.Data) with
     | Predictions.Registered args ->
         let! competition = Competitions.get db args.CompetitionId
         if md.Timestamp > competition.Value.Date then
@@ -285,7 +290,7 @@ let updateQualifiedTeams db (competition: ReadModels.Competition) = task {
 }
 
 
-let updateScore db (fixtureId: Guid, expectedVersion: int64, fullTime, extraTime, penalties) = task {
+let updateScore db (fixtureId: Guid, expectedVersion: uint64, fullTime, extraTime, penalties) = task {
     let! fixture = Fixtures.get db fixtureId
     do! Fixtures.updateScore db (fixtureId, expectedVersion) (fullTime, extraTime, penalties)
     let ps = match penalties with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
@@ -300,8 +305,8 @@ let updateScore db (fixtureId: Guid, expectedVersion: int64, fullTime, extraTime
 }
 
 
-let processFixtures (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
-    match deserializeOf<Fixtures.Event> (e.Event.EventType, e.Event.Data) with
+let processFixtures (log: ILogger, db, jsonOptions: JsonSerializerOptions) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Fixtures.Event> jsonOptions (e.Event.EventType, e.Event.Data) with
     | Fixtures.Added input ->
         try
             let! competition = Competitions.get db input.CompetitionId
@@ -366,8 +371,8 @@ let processFixtures (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task 
 }
 
 
-let processLeagues (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
-    match deserializeOf<Leagues.Event> (e.Event.EventType, e.Event.Data) with
+let processLeagues (log: ILogger, db, jsonOptions: JsonSerializerOptions) (md: Metadata) (e: ResolvedEvent) = task {
+    match deserializeOf<Leagues.Event> jsonOptions (e.Event.EventType, e.Event.Data) with
     | Leagues.Created input ->
         try
             let leagueModel : ReadModels.League =
@@ -386,18 +391,18 @@ let processLeagues (log: ILogger, db) (md: Metadata) (e: ResolvedEvent) = task {
 }
 
 
-let eventAppeared (logger: ILogger, db, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) = task {
+let eventAppeared (logger: ILogger, db, jsonOptions, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) (ct: CancellationToken) = task {
     try
         logger.LogInformation($"Event %A{e.Event.EventId} of type %s{e.Event.EventType} appeared in stream %s{e.Event.EventStreamId}")
-        match getMetadata e with
+        match getMetadata jsonOptions e with
         | Some(md) when md.AggregateName = Competitions.AggregateName ->
-            do! processCompetitions (logger, db) authOptions md e
+            do! processCompetitions (logger, db, jsonOptions) authOptions md e ct
         | Some(md) when md.AggregateName = Predictions.AggregateName ->
-            do! processPredictions (logger, db) md e
+            do! processPredictions (logger, db, jsonOptions) md e
         | Some(md) when md.AggregateName = Fixtures.AggregateName ->
-            do! processFixtures (logger, db) md e
+            do! processFixtures (logger, db, jsonOptions) md e
         | Some(md) when md.AggregateName = Leagues.AggregateName ->
-            do! processLeagues (logger, db) md e
+            do! processLeagues (logger, db, jsonOptions) md e
         | _ -> ()
         do! subscription.Ack(e)
         logger.LogInformation($"Event %A{e.Event.EventId} handled")
@@ -428,8 +433,8 @@ let (|AlreadyExists|_|) (ex: exn) =
 
 let initProjections (services: IServiceProvider) = task {
     let logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof<Marker>.DeclaringType)
-    let projectionManagementClient = services.GetRequiredService<EventStoreProjectionManagementClient>()
-    let subscriptionsClient = services.GetRequiredService<EventStorePersistentSubscriptionsClient>()
+    let projectionManagementClient = services.GetRequiredService<KurrentDBProjectionManagementClient>()
+    let subscriptionsClient = services.GetRequiredService<KurrentDBPersistentSubscriptionsClient>()
     let subscriptionsSettings = services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
 
     let query = $"""fromAll()
@@ -477,17 +482,18 @@ let connectSubscription (services: IServiceProvider) = task {
     do! initProjections services
 
     let logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof<Marker>.DeclaringType)
-    let client = services.GetRequiredService<EventStorePersistentSubscriptionsClient>()
+    let client = services.GetRequiredService<KurrentDBPersistentSubscriptionsClient>()
     let subscriptionsSettings = services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value
     let mongoDb = services.GetRequiredService<IMongoDatabase>()
     let authOptions = services.GetService<IOptions<AuthOptions>>().Value
+    let jsonOptions = services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions
 
     logger.LogInformation("Initializing process manager")
     let! _ =
         client.SubscribeToStreamAsync(
             subscriptionsSettings.StreamName,
             subscriptionsSettings.GroupName,
-            (fun sub e _ _ -> eventAppeared (logger, mongoDb, authOptions) sub e)
+            (fun sub e _ ct -> eventAppeared (logger, mongoDb, jsonOptions, authOptions) sub e ct)
         )
     logger.LogInformation("Process manager initialized")
 }

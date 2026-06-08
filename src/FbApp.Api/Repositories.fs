@@ -47,7 +47,7 @@ module ReadModels =
             Fixtures: CompetitionFixture array
             Groups: IDictionary<string, int64 array>
             Players: CompetitionPlayer array
-            Version: int64
+            Version: uint64
             Date: DateTimeOffset
         }
 
@@ -83,7 +83,7 @@ module ReadModels =
             QualificationPredictions: QualificationPrediction array
             ExternalId: int64
             Stage: string
-            Version: int64
+            Version: uint64
         }
 
     type PredictionFixtureResult =
@@ -133,7 +133,7 @@ module ReadModels =
             TopScorers: ScorerResult array
             Winner: QualifiersResult
             Leagues: Guid array
-            Version: int64
+            Version: uint64
         }
 
     type League =
@@ -184,7 +184,7 @@ module Competitions =
         db.GetCollection<ReadModels.Competition>("competitions")
 
     let private filterByIdAndVersion (id, ver) =
-        Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1L)
+        Builders.Filter.Where(fun x -> x.Id = id && x.Version = ver - 1UL)
 
     let tryGetActive db = task {
         let f = Builders.Filter.Eq((fun x -> x.ExternalId), FootballData.ActiveCompetition)

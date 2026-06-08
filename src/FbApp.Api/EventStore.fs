@@ -4,6 +4,7 @@ open EventStore.Client
 open FSharp.Control
 open FbApp.Api.Aggregate
 open System
+open KurrentDB.Client
 
 let [<Literal>] ApplicationName = "FbApp"
 
@@ -17,7 +18,7 @@ type Metadata =
         //EventVersion: int
         Timestamp: DateTimeOffset
         TimestampEpoch: int64
-        AggregateSequenceNumber: int64
+        AggregateSequenceNumber: uint64
         AggregateId: Guid
         //EventId: EventId
         AggregateName: string
@@ -32,33 +33,33 @@ with
             EventType = ""
             Timestamp = now
             TimestampEpoch = now.ToUnixTimeSeconds()
-            AggregateSequenceNumber = 0L
+            AggregateSequenceNumber = 0UL
             AggregateId = aggregateId
             AggregateName = aggregateName
             BatchId = Guid.NewGuid()
         }
 
-let getMetadata (e: ResolvedEvent) : Metadata option =
+let getMetadata jsonOptions (e: ResolvedEvent) : Metadata option =
     e.Event
     |> Option.ofObj
     |> Option.bind (fun x ->
         match x.Metadata with
         | v when v.IsEmpty -> None
-        | arr -> Some(Serialization.deserializeType arr)
+        | arr -> Some(Serialization.deserializeType jsonOptions arr)
     )
 
-let rec readNextPage streamId startFrom (pages: ResizeArray<ResolvedEvent>) (client: EventStoreClient) = task {
+let rec readNextPage streamId startFrom (pages: ResizeArray<ResolvedEvent>) (client: KurrentDBClient) = task {
     let result = client.ReadStreamAsync(Direction.Forwards, streamId, startFrom, maxCount=4096L, resolveLinkTos=false)
     match! result.ReadState with
     | ReadState.Ok ->
-        let! events = result |> AsyncSeq.ofAsyncEnum |> AsyncSeq.toArrayAsync
+        let! events = result |> AsyncSeq.toArrayAsync
         pages.AddRange(events)
         if events.Length = 4096 then
             do! client |> readNextPage streamId events[4095].OriginalEventNumber pages
     | ReadState.StreamNotFound | _ -> ()
 }
 
-let makeRepository<'Event, 'Error> (client: EventStoreClient)
+let makeRepository<'Event, 'Error> (client: KurrentDBClient)
                                    (aggregateName: string)
                                    (serialize: obj -> string * ReadOnlyMemory<byte>)
                                    (deserialize: Type * string * ReadOnlyMemory<byte> -> obj) =
@@ -66,7 +67,7 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
         sprintf "%s-%s" aggregateName (id.ToString("N").ToLower())
 
     let load: LoadAggregateEvents<'Event> =
-        (fun (eventType, id) ->
+        fun (eventType, id) ->
             task {
                 let streamId = aggregateStreamId aggregateName id
                 let pages = ResizeArray<ResolvedEvent>()
@@ -74,12 +75,11 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
                 let domainEvents = pages |> Seq.map (fun e -> deserialize(eventType, e.Event.EventType, e.Event.Data)) |> Seq.cast<'Event>
                 let eventNumber =
                     if pages.Count > 0 then
-                        Some(pages[pages.Count - 1].OriginalEventNumber.ToInt64())
+                        Some(pages[pages.Count - 1].OriginalEventNumber.ToUInt64())
                     else
                         None
                 return (eventNumber, domainEvents)
             }
-        )
 
     let commit: CommitAggregateEvents<'Event, 'Error> =
         (fun (id, expectedVersion) (events: 'Event list) ->
@@ -87,10 +87,10 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
                 let streamId = aggregateStreamId aggregateName id
                 let batchMetadata = Metadata.Create(aggregateName, id)
 
-                let aggregateSequenceNumber =
+                let aggregateSequenceNumber i =
                     match expectedVersion with
-                    | NewStream -> -1L
-                    | Value num -> num
+                    | NewStream -> i
+                    | Value num -> num + 1UL + i
 
                 let eventDatas =
                     events |> List.mapi (fun i e ->
@@ -100,7 +100,7 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
                             { batchMetadata with
                                 Guid = guid
                                 EventType = eventType
-                                AggregateSequenceNumber = aggregateSequenceNumber + 1L + (int64 i)
+                                AggregateSequenceNumber = aggregateSequenceNumber (Convert.ToUInt64 i)
                             }
                         let _, metadata = serialize metadata
                         EventData(Uuid.FromGuid(guid), eventType, data, metadata)
@@ -108,12 +108,12 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
 
                 let expectedVersion =
                     match expectedVersion with
-                    | NewStream -> StreamRevision.None.ToInt64()
-                    | Value v -> v
+                    | NewStream -> StreamState.NoStream
+                    | Value v -> StreamState.StreamRevision(v)
 
                 try
-                    let! writeResult = client.AppendToStreamAsync(streamId, StreamRevision.FromInt64 expectedVersion, eventDatas)
-                    return Ok(writeResult.NextExpectedStreamRevision.ToInt64())
+                    let! writeResult = client.AppendToStreamAsync(streamId, expectedVersion, eventDatas)
+                    return Ok(writeResult.NextExpectedStreamState.ToInt64())
                 with
                 | :? WrongExpectedVersionException ->
                     return Error(WrongExpectedVersion)
@@ -124,5 +124,5 @@ let makeRepository<'Event, 'Error> (client: EventStoreClient)
 
     (load, commit)
 
-let makeDefaultRepository<'Event, 'Error> connection aggregateName =
-    makeRepository<'Event, 'Error> connection aggregateName Serialization.serialize Serialization.deserialize
+let makeDefaultRepository<'Event, 'Error> connection aggregateName jsonOptions =
+    makeRepository<'Event, 'Error> connection aggregateName (Serialization.serialize jsonOptions) (Serialization.deserialize jsonOptions)

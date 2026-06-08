@@ -1,5 +1,6 @@
 {
   "appHost": {
-    "language": "csharp"
+    "language": "csharp",
+    "path": "src/FbApp.AppHost/FbApp.AppHost.csproj"
   }
 }

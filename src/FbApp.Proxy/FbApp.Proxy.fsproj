@@ -2,8 +2,12 @@
 
   <PropertyGroup>
     <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FbApp.ServiceDefaults/FbApp.ServiceDefaults.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Giraffe" />
@@ -13,10 +17,6 @@
 
   <ItemGroup>
     <Compile Include="Program.fs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="out\**\*" />
   </ItemGroup>
 
 </Project>
