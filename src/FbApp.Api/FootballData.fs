@@ -14,7 +14,10 @@ let EuropeanChampionship = 2018L
 let WorldCup = 2000L
 
 [<Literal>]
-let ActiveCompetition = EuropeanChampionship
+let ActiveCompetition = WorldCup
+
+[<Literal>]
+let PlayOffStage = "LAST_32" // "LAST_16"
 
 [<CLIMutable>]
 type Error =
@@ -168,6 +171,13 @@ type Competition =
     }
 
 [<CLIMutable>]
+type CompetitionList =
+    {
+        Count: int
+        Competitions: Competition array
+    }
+
+[<CLIMutable>]
 type CompetitionPlayer =
     {
         Id: int64
@@ -207,22 +217,19 @@ type FixtureResultGoals =
         GoalsAwayTeam: int
     }
 
-[<CLIMutable>]
-type FixtureScore = {
-    Home: int option
-    Away: int option
-    }
+[<AllowNullLiteral>]
+type FixtureScore() =
+    member val Home = Nullable<int>() with get, set
+    member val Away = Nullable<int>() with get, set
 
-[<CLIMutable>]
-type FixtureResult =
-    {
-        Winner: string option
-        Duration: string
-        FullTime: FixtureScore
-        HalfTime: FixtureScore
-        ExtraTime: FixtureScore option
-        Penalties: FixtureScore option
-    }
+[<AllowNullLiteral>]
+type FixtureResult() =
+    member val Winner = Unchecked.defaultof<string> with get, set
+    member val Duration = Unchecked.defaultof<string> with get, set
+    member val FullTime = Unchecked.defaultof<FixtureScore> with get, set
+    member val HalfTime = Unchecked.defaultof<FixtureScore> with get, set
+    member val ExtraTime = Unchecked.defaultof<FixtureScore> with get, set
+    member val Penalties = Unchecked.defaultof<FixtureScore> with get, set
 
 [<CLIMutable>]
 type CompetitionFixtureTeam = {
@@ -377,7 +384,7 @@ let private toQuery lst =
     | xs -> String.Join("&", xs |> List.map (fun x -> x.ToString())) |> sprintf "?%s"
 
 let private baseUri =
-    Uri("http://api.football-data.org/v2/")
+    Uri "https://api.football-data.org/"
 
 let private createClient (authToken: string) =
     let client = new HttpClient()
@@ -400,9 +407,9 @@ let private apiCall<'T> (jsonOptions: JsonSerializerOptions) authToken (uri: str
 
 /// List all available competitions.
 let getCompetitions (jsonOptions: JsonSerializerOptions) authToken (ct: CancellationToken) = task {
-    let uri = $"competitions/%d{ActiveCompetition}"
-    let! comp = apiCall<Competition> jsonOptions authToken uri ct
-    return comp |> Result.map (fun x -> [| x |])
+    let uri = $"/v4/competitions"
+    let! comp = apiCall<CompetitionList> jsonOptions authToken uri ct
+    return comp |> Result.map (fun x -> x.Competitions)
 }
 
 /// List all teams for a certain competition.

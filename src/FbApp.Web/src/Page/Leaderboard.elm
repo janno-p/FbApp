@@ -20,6 +20,7 @@ type alias PredictionResult =
     { name : String
     , matches : Int
     , qualifiers : Int
+    , roundOf16ths: Int
     , quarterFinals : Int
     , semiFinals : Int
     , finals : Int
@@ -81,11 +82,12 @@ viewLeaderboardTable predictionResults =
             ( minRatio, maxRatio )
     in
     div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg py-4" ]
-        (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_2.5rem_1rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
+        (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(9,2rem)_2.5rem_1rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
             [ div [] []
             , div [] []
             , div [ title "Alagrupimängude tulemused", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-format-list-group" ] [] ]
-            , div [ title "Edasipääsejad", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-sixteenth" ] [] ]
+            , div [ title "Edasipääsejad", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-sixteenth-dotted" ] [] ]
+            , div [ title "Kaheksandikfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-sixteenth" ] [] ]
             , div [ title "Veerandfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-eighth" ] [] ]
             , div [ title "Poolfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-quarter" ] [] ]
             , div [ title "Finalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-half" ] [] ]
@@ -101,7 +103,7 @@ viewLeaderboardTable predictionResults =
 
 viewPredictionResult : ( Float, Float ) -> PredictionResult -> Html Msg
 viewPredictionResult ratioRange predictionResult =
-    div [ class "grid grid-cols-[2rem_1fr_2.5rem_1rem] sm:grid-cols-[2rem_1fr_repeat(8,2rem)_2.5rem_1rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
+    div [ class "grid grid-cols-[2rem_1fr_2.5rem_1rem] sm:grid-cols-[2rem_1fr_repeat(9,2rem)_2.5rem_1rem] px-8 leading-8 border-b last:border-b-0 sm:last:border-b border-gray-200 gap-2 la" ]
         [ div [ class "text-center pr-2" ]
             [ if predictionResult.rank == 1 then
                 text "🥇"
@@ -118,6 +120,7 @@ viewPredictionResult ratioRange predictionResult =
         , div [ class "capitalize" ] [ text predictionResult.name ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.matches) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.qualifiers) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.roundOf16ths) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.quarterFinals) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.semiFinals) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.finals) ]
@@ -218,44 +221,51 @@ mapPredictionResult name points scorerFixed total ratio rank =
 
             _ ->
                 0
-    , quarterFinals =
+    , roundOf16ths =
         case points of
             _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , semiFinals =
+    , quarterFinals =
         case points of
             _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , finals =
+    , semiFinals =
         case points of
             _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , winner =
+    , finals =
         case points of
             _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , topScorerHit =
+    , winner =
         case points of
             _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
+    , topScorerHit =
+        case points of
+            _ :: _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
+                x
+
+            _ ->
+                0
     , topScorerGoals =
         case points of
-            _ :: _ :: _ :: _ :: _ :: _ :: _ :: y :: _ ->
+            _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: y :: _ ->
                 y
 
             _ ->

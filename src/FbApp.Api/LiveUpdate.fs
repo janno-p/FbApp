@@ -71,7 +71,7 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                         Penalties = mapGoals fixture.Penalties
                         }
                     |> Some
-                | Some (Fixtures.Last16 | Fixtures.QuarterFinals | Fixtures.SemiFinals | Fixtures.ThirdPlace | Fixtures.Final) ->
+                | Some (Fixtures.Last32 | Fixtures.Last16 | Fixtures.QuarterFinals | Fixtures.SemiFinals | Fixtures.Final) ->
                     match fixture.HomeTeamId, fixture.AwayTeamId with
                     | Some(homeTeamId), Some(awayTeamId) ->
                         Fixtures.UpdateQualifiers {
@@ -119,8 +119,8 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
             let fixtureUpdates = ResizeArray<FixtureDto>()
 
             let mapGoals (g: FootballData.FixtureScore option) =
-                let homeTeam, awayTeam = g |> Option.map (fun x -> (x.Home, x.Away)) |> Option.defaultValue (None, None)
-                match homeTeam, awayTeam with
+                let homeTeam, awayTeam = g |> Option.map (fun x -> (x.Home |> Option.ofNullable, x.Away |> Option.ofNullable)) |> Option.defaultValue (None, None)
+                match homeTeam , awayTeam with
                 | Some(home), Some(away) -> Some(home, away)
                 | _ -> None
 
@@ -142,12 +142,12 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                     UtcDate = fixture.Date
                     Stage = fixture.Stage
                     Status = fixture.Status
-                    FullTime = mapGoals (fixture.Result |> Option.map (fun x -> x.FullTime))
-                    HalfTime = mapGoals (fixture.Result |> Option.map (fun x -> x.HalfTime))
-                    ExtraTime = mapGoals (fixture.Result |> Option.bind (fun x -> x.ExtraTime))
-                    Penalties = mapGoals (fixture.Result |> Option.bind (fun x -> x.Penalties))
-                    Winner = fixture.Result |> Option.bind (fun x -> x.Winner)
-                    Duration = fixture.Result |> Option.map (fun x -> x.Duration) |> Option.defaultValue "REGULAR"
+                    FullTime = mapGoals (fixture.Result |> Option.bind (fun x -> x.FullTime |> Option.ofObj))
+                    HalfTime = mapGoals (fixture.Result |> Option.bind (fun x -> x.HalfTime |> Option.ofObj))
+                    ExtraTime = mapGoals (fixture.Result |> Option.bind (fun x -> x.ExtraTime |> Option.ofObj))
+                    Penalties = mapGoals (fixture.Result |> Option.bind (fun x -> x.Penalties |> Option.ofObj))
+                    Winner = fixture.Result |> Option.bind (fun x -> x.Winner |> Option.ofObj)
+                    Duration = fixture.Result |> Option.bind (fun x -> x.Duration |> Option.ofObj) |> Option.defaultValue "REGULAR"
                 }
 
                 let currentFixtureHashCode = Hash.calculate jsonOptions newFixture

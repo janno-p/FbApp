@@ -26,6 +26,7 @@ type alias Model =
 
 type FixtureStage
     = GroupStage
+    | RoundOf32
     | RoundOf16
     | QuarterFinals
     | SemiFinals
@@ -417,6 +418,9 @@ fixtureStageDecoder =
         |> Json.map
             (\value ->
                 case value of
+                    "LAST_32" ->
+                        RoundOf32
+
                     "LAST_16" ->
                         RoundOf16
 
@@ -467,8 +471,11 @@ fixtureStage fixture =
         GroupStage ->
             "Alagrupimäng"
 
+        RoundOf32 ->
+            "32 parema voor"
+
         RoundOf16 ->
-            "Kohamäng"
+            "Kaheksandikfinaal"
 
         QuarterFinals ->
             "Veerandfinaal"

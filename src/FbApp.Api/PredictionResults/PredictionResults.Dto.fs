@@ -32,21 +32,23 @@ module PredictionResultDto =
         let topScorerGoalPoints = scoresheet.Scorer |> List.map _.GoalCount |> List.sum
         let gainedPoints = [
             1 * (scoresheet.GroupStage.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
-            2 * (scoresheet.Qualifiers.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
-            3 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
-            4 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
-            5 * (scoresheet.Final.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
-            6 * (match snd scoresheet.Winner with Some true -> 1 | _ -> 0)
+            2 * (scoresheet.Qualifiers16ths.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
+            3 * (scoresheet.Qualifiers8ths.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
+            4 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
+            5 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
+            6 * (scoresheet.Final.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
+            7 * (match snd scoresheet.Winner with Some true -> 1 | _ -> 0)
             5 * (if topScorer then 1 else 0)
             1 * topScorerGoalPoints
         ]
         let lostPoints = [
             1 * (scoresheet.GroupStage.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
-            2 * (scoresheet.Qualifiers.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
-            3 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
-            4 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
-            5 * (scoresheet.Final.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
-            6 * (match snd scoresheet.Winner with Some false -> 1 | _ -> 0)
+            2 * (scoresheet.Qualifiers16ths.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
+            3 * (scoresheet.Qualifiers8ths.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
+            4 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
+            5 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
+            6 * (scoresheet.Final.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
+            7 * (match snd scoresheet.Winner with Some false -> 1 | _ -> 0)
             5 * (if not topScorer && topScorerIsFinal then 1 else 0)
             0
         ]

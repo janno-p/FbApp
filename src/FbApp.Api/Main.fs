@@ -229,9 +229,9 @@ let configureApp (app: WebApplication) =
         if count = 0 then
             let input: Competitions.CreateInput =
                 {
-                    Description = "EURO 2024"
+                    Description = "FIFA 2026"
                     ExternalId = FootballData.ActiveCompetition
-                    Date = DateTimeOffset(2024, 6, 14, 20, 0, 0, TimeSpan.Zero)
+                    Date = DateTimeOffset(2026, 6, 11, 19, 0, 0, TimeSpan.Zero)
                 }
             let! _ = Dashboard.addCompetitionDom input
             ()

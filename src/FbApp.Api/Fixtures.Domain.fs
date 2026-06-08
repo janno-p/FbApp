@@ -12,6 +12,7 @@ type Error =
 
 type FixtureStage =
     | Group
+    | Last32
     | Last16
     | QuarterFinals
     | SemiFinals
@@ -21,6 +22,7 @@ type FixtureStage =
 module FixtureStage =
     let tryFromString = function
         | "GROUP_STAGE" -> Some Group
+        | "LAST_32" -> Some Last32
         | "LAST_16" -> Some Last16
         | "QUARTER_FINALS" -> Some QuarterFinals
         | "SEMI_FINALS" -> Some SemiFinals

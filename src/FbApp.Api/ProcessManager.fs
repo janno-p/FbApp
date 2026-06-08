@@ -195,6 +195,7 @@ let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegis
             Email = model.Email
             CompetitionId = model.CompetitionId
             Fixtures = fixtures
+            QualifiersRoundOf32 = model.Qualifiers.RoundOf32 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
             QualifiersRoundOf16 = model.Qualifiers.RoundOf16 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
             QualifiersRoundOf8 = model.Qualifiers.RoundOf8 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
             QualifiersRoundOf4 = model.Qualifiers.RoundOf4 |> List.map (fun x -> { Id = x; HasQualified = Nullable() } : ReadModels.QualifiersResult) |> List.toArray
@@ -347,9 +348,11 @@ let processFixtures (log: ILogger, db, jsonOptions: JsonSerializerOptions) (md: 
                 do! Predictions.updateQualifiers db (input.CompetitionId, "GROUP_STAGE", fixtureModel.HomeTeam.ExternalId, true)
                 do! Predictions.updateQualifiers db (input.CompetitionId, "GROUP_STAGE", fixtureModel.AwayTeam.ExternalId, true)
 
-            if stage = "LAST_16" then
-                let! numFixtures = Fixtures.getFixtureCount db (input.CompetitionId, "LAST_16")
-                if numFixtures = 8L then
+            let numExpectedFixtures = if FootballData.PlayOffStage = "LAST_32" then 16L else 8L
+
+            if stage = FootballData.PlayOffStage then
+                let! numFixtures = Fixtures.getFixtureCount db (input.CompetitionId, FootballData.PlayOffStage)
+                if numFixtures = numExpectedFixtures then
                     do! updateQualifiedTeams db competition
 
         with :? MongoWriteException as ex ->

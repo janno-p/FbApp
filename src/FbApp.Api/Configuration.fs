@@ -2,7 +2,6 @@ namespace FbApp.Api.Configuration
 
 [<CLIMutable>]
 type AuthOptions = {
-    AdminEmails: string[]
     FootballDataToken: string
     }
 

@@ -126,6 +126,7 @@ module ReadModels =
             Email: string
             CompetitionId: Guid
             Fixtures: PredictionFixtureResult array
+            QualifiersRoundOf32: QualifiersResult array
             QualifiersRoundOf16: QualifiersResult array
             QualifiersRoundOf8: QualifiersResult array
             QualifiersRoundOf4: QualifiersResult array
@@ -343,7 +344,7 @@ module Fixtures =
         let! teams =
             (getCollection db).Aggregate(
                 PipelineDefinition<_,ReadModels.FixtureTeamId>.Create(
-                    $"""{{ $match: {{ CompetitionId: UUID("{competitionId:N}"), Stage: "LAST_16" }} }}""",
+                    $"""{{ $match: {{ CompetitionId: UUID("{competitionId:N}"), Stage: "%s{FootballData.PlayOffStage}" }} }}""",
                     """{ $project: { _id: 0, TeamId: ["$HomeTeam.ExternalId", "$AwayTeam.ExternalId"] } }""",
                     """{ $unwind: "$TeamId" }"""
                 )
@@ -372,11 +373,17 @@ module Predictions =
 
     let ofStage db (competitionId: Guid, stage: string) =
         match stage with
+        | "LAST_32"
         | "LAST_16"
         | "QUARTER_FINALS"
         | "SEMI_FINALS" ->
             task {
-                let qualName = if stage = "LAST_16" then "QualifiersRoundOf8" elif stage = "QUARTER_FINALS" then "QualifiersRoundOf4" else "QualifiersRoundOf2"
+                let qualName =
+                    match stage with
+                    | "LAST_32" -> "QualifiersRoundOf16"
+                    | "LAST_16" -> "QualifiersRoundOf8"
+                    | "QUARTER_FINALS" -> "QualifiersRoundOf4"
+                    | _ -> "QualifiersRoundOf2"
                 let pipelines =
                     PipelineDefinition<ReadModels.Prediction, ReadModels.PredictionQualifier>.Create(
                         $"""{{ $match: {{ CompetitionId: {{ $eq: UUID("{competitionId:N}") }} }} }}""",
@@ -447,7 +454,8 @@ module Predictions =
     }
 
     let private getColName = function
-        | "GROUP_STAGE" -> "QualifiersRoundOf16"
+        | "GROUP_STAGE" -> "QualifiersRoundOf32"
+        | "LAST_32" -> "QualifiersRoundOf16"
         | "LAST_16" -> "QualifiersRoundOf8"
         | "QUARTER_FINALS" -> "QualifiersRoundOf4"
         | "SEMI_FINALS" -> "QualifiersRoundOf2"
@@ -485,6 +493,7 @@ module Predictions =
             ()
         }
 
+        do! updateQualifiers "QualifiersRoundOf32"
         do! updateQualifiers "QualifiersRoundOf16"
         do! updateQualifiers "QualifiersRoundOf8"
         do! updateQualifiers "QualifiersRoundOf4"

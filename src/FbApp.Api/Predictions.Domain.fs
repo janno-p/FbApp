@@ -23,6 +23,7 @@ type FixtureResultRegistrationInput =
 [<CLIMutable>]
 type QualifiersRegistrationInput =
     {
+        RoundOf32: int64 array
         RoundOf16: int64 array
         RoundOf8: int64 array
         RoundOf4: int64 array
@@ -52,6 +53,7 @@ type FixtureResultRegistration =
 
 type QualifiersRegistration =
     {
+        RoundOf32: int64 list
         RoundOf16: int64 list
         RoundOf8: int64 list
         RoundOf4: int64 list
@@ -100,6 +102,9 @@ let decide: State option -> Command -> Result<Event list,unit> =
                         |> Seq.toList
                     Qualifiers =
                         {
+                            RoundOf32 =
+                                input.Qualifiers.RoundOf32
+                                |> List.ofArray
                             RoundOf16 =
                                 input.Qualifiers.RoundOf16
                                 |> List.ofArray

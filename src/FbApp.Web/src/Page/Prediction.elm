@@ -20,6 +20,7 @@ type alias Model =
     , stage : PredictionStage
     , fixturePredictions : List FixturePrediction
     , groupPredictions : List GroupPrediction
+    , top32 : List Int
     , top16 : List Int
     , top8 : List Int
     , top4 : List Int
@@ -36,6 +37,7 @@ type alias Model =
 type PredictionStage
     = Initial
     | GroupStage
+    | PlayOffStage
     | RoundOf32Stage
     | RoundOf16Stage
     | QuarterFinalsStage
@@ -117,6 +119,7 @@ init session =
       , stage = Initial
       , fixturePredictions = []
       , groupPredictions = []
+      , top32 = []
       , top16 = []
       , top8 = []
       , top4 = []
@@ -147,12 +150,22 @@ view session model =
                 GroupStage ->
                     viewGroupStage model
 
+                PlayOffStage ->
+                    viewPlayOffStage
+                        model
+                        model.top32
+                        "Alagrupist edasipääsejad"
+                        "Millised meeskonnad jätkavad väljalangemismängudega?"
+                        "Jätka kaheksandikfinalistide ennustamisega"
+                        32
+                        SetRoundOf32Stage
+
                 RoundOf32Stage ->
                     viewPlayOffStage
                         model
                         model.top16
-                        "Alagrupist edasipääsejad"
-                        "Millised meeskonnad jätkavad väljalangemismängudega?"
+                        "Kaheksandikfinalistid"
+                        "Millised meeskonnad jõuavad kaheksandikfinaalidesse?"
                         "Jätka veerandfinalistide ennustamisega"
                         16
                         SetRoundOf16Stage
@@ -232,14 +245,14 @@ viewNote =
     let
         introduction =
             """
-            Ajavahemikus 14. juunist kuni 14. juulini toimuvad Saksamaal 2024. aasta Euroopa
-            meistrivõistlused jalgpallis. Lisaks rahvusmeeskondade mõõduvõtmistele pakub antud veebileht
+            Ajavahemikus 11. juunist kuni 19. juulini toimuvad Põhja-Ameerikas 2026. aasta jalgpalli
+            maailmameistrivõistlused. Lisaks rahvusmeeskondade mõõduvõtmistele pakub antud veebileht
             omavahelist võistlusmomenti ka tugitoolisportlastele tulemuste ennustamise näol.
             """
 
         deadline =
             """
-            Oma eelistusi saad valida ja muuta kuni avamänguni 14. juuni kell 22:00. Pärast seda on
+            Oma eelistusi saad valida ja muuta kuni avamänguni 11. juuni kell 22:00. Pärast seda on
             võimalik sama veebilehe vahendusel jälgida, kuidas tegelikud tulemused kujunevad ning kui täpselt
             need Sinu või teiste ennustustega kokku langevad.
             """
@@ -314,7 +327,7 @@ viewGroupStage model =
     , p [] [ text "Kes võidab mängu?" ]
     , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] fixturesContent
     , div [ class "flex flex-row-reverse" ]
-        [ viewButton SetRoundOf32Stage "Jätka alagrupist edasipääsejate ennustamisega" "mdi-chevron-double-right" disableNextStep
+        [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "mdi-chevron-double-right" disableNextStep
         ]
     ]
 
@@ -537,6 +550,9 @@ viewPlayOffSelection maxSelection model =
     let
         selectedTeams =
             case maxSelection of
+                32 ->
+                    model.top32
+
                 16 ->
                     model.top16
 
@@ -565,6 +581,7 @@ viewPlayOffSelection maxSelection model =
 type Msg
     = SetGroupStage
     | GotCompetitionInfo (Result Http.Error CompetitionInfo)
+    | SetPlayOffStage
     | SetRoundOf32Stage
     | SetRoundOf16Stage
     | SetQuarterFinalsStage
@@ -593,6 +610,9 @@ update msg model =
 
         SetGroupStage ->
             ( { model | stage = GroupStage }, Cmd.none )
+
+        SetPlayOffStage ->
+            ( { model | stage = PlayOffStage }, Cmd.none )
 
         SetRoundOf32Stage ->
             ( { model | stage = RoundOf32Stage }, Cmd.none )
@@ -625,6 +645,9 @@ update msg model =
 
         ToggleQualifier teamId ->
             case model.stage of
+                PlayOffStage ->
+                    ( { model | top32 = updateQualifier 32 model.top32 teamId }, Cmd.none )
+
                 RoundOf32Stage ->
                     ( { model | top16 = updateQualifier 16 model.top16 teamId }, Cmd.none )
 
@@ -928,7 +951,8 @@ predictionEncoder model =
 qualifiersEncoder : Model -> Encode.Value
 qualifiersEncoder model =
     Encode.object
-        [ ( "roundOf16", Encode.list Encode.int model.top16 )
+        [ ( "roundOf32", Encode.list Encode.int model.top32 )
+        , ( "roundOf16", Encode.list Encode.int model.top16 )
         , ( "roundOf8", Encode.list Encode.int model.top8 )
         , ( "roundOf4", Encode.list Encode.int model.top4 )
         , ( "roundOf2", Encode.list Encode.int model.top2 )
