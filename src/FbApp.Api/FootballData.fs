@@ -43,7 +43,6 @@ let private parseIdSuffix (link: Link) =
 type GroupEntryTeam = {
     Id: int64
     Name: string
-    Crest: string
     }
 
 [<CLIMutable>]
@@ -82,7 +81,6 @@ type LeagueEntry =
     {
         Position: int
         TeamName: string
-        CrestURI: string
         PlayedGames: int
         Points: int
         Goals: int
@@ -190,10 +188,8 @@ type CompetitionTeam =
     {
         Id: int64
         Name: string
-        [<JsonPropertyName("tla")>] Code: string
+        Tla: string
         ShortName: string
-        // SquadMarketValue: string
-        Crest: string
         [<JsonPropertyName("squad")>] Players: CompetitionPlayer array
     }
 

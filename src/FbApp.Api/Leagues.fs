@@ -20,14 +20,14 @@ let private getDefaultLeague : HttpHandler =
     })
 
 let private addLeague : HttpHandler =
-    (fun next ctx -> task {
+    fun next ctx -> task {
         let! input = ctx.BindJsonAsync<Leagues.CreateLeagueInput>()
         let id = Leagues.createId (input.CompetitionId, input.Code)
         let! result = CommandHandlers.leaguesHandler (id, Aggregate.New) (Leagues.Create input)
         match result with
         | Ok _ -> return! Successful.ACCEPTED id next ctx
         | Error _ -> return! RequestErrors.CONFLICT "League already exists" next ctx
-    })
+    }
 
 let private addPrediction (leagueId: string, predictionId: string) : HttpHandler =
     (fun next ctx -> task {

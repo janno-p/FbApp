@@ -16,7 +16,7 @@ type TeamDto =
     {
         Id: int64
         Name: string
-        FlagUrl: string
+        Tla: string
     }
 
 
@@ -60,11 +60,11 @@ type FixturesDto =
 
 let private mapTeams (competition: Competition) =
     competition.Teams
-    |> Array.map (fun x -> { Id = x.ExternalId; Name = x.Name; FlagUrl = x.FlagUrl })
+    |> Array.map (fun x -> { Id = x.ExternalId; Name = x.Name; Tla = x.Tla })
 
 
 let private getFixtures: HttpHandler =
-    (fun next context -> task {
+    fun next context -> task {
         match! Competitions.tryGetActive (context.RequestServices.GetRequiredService<IMongoDatabase>()) with
         | Some activeCompetition ->
             let fixtures =
@@ -72,7 +72,7 @@ let private getFixtures: HttpHandler =
                     CompetitionId =
                         activeCompetition.Id
                     Teams =
-                        (activeCompetition |> mapTeams)
+                        activeCompetition |> mapTeams
                     Fixtures =
                         activeCompetition.Fixtures
                         |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
@@ -84,7 +84,7 @@ let private getFixtures: HttpHandler =
             return! Successful.OK fixtures next context
         | None ->
             return! RequestErrors.NOT_FOUND "No active competition" next context
-    })
+    }
 
 
 let private savePredictions: Auth.AuthHttpHandler =

@@ -57,7 +57,7 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
             let command =
                 Competitions.Command.AssignTeamsAndFixtures
                     (
-                        teams.Teams |> Seq.map (fun x -> { Name = x.Name; Code = x.Code; FlagUrl = x.Crest; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
+                        teams.Teams |> Seq.map (fun x -> { Name = x.Name; Tla = x.Tla; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
                         fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
                         groups.Standings |> Seq.map (fun kvp -> kvp.Group, (kvp.Table |> Array.map (fun x -> x.Team.Id))) |> Seq.toList,
                         teams.Teams |> Seq.map (fun t -> t.Players |> Seq.map (fun x -> { Name = x.Name; Position = x.Position; TeamExternalId = t.Id; ExternalId = x.Id } : Competitions.PlayerAssignment)) |> Seq.concat |> Seq.toList
@@ -87,8 +87,7 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
                 (fun team ->
                     {
                         Name = team.Name
-                        Code = team.Code
-                        FlagUrl = team.FlagUrl
+                        Tla = team.Tla
                         ExternalId = team.ExternalId
                     } : ReadModels.Team)
             |> List.toArray

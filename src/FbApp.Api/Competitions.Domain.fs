@@ -18,8 +18,7 @@ type Created =
 type TeamAssignment =
     {
         Name: string
-        Code: string
-        FlagUrl: string
+        Tla: string
         ExternalId: int64
     }
 

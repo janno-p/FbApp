@@ -7,7 +7,7 @@ open FbApp.Fixtures.Queries
 
 type TeamDto = {
     Name: string
-    FlagUrl: string
+    Tla: string
 }
 
 
@@ -46,7 +46,7 @@ module TeamDto =
     let fromTeam (team: Team) =
         {
             Name = team.Name
-            FlagUrl = team.FlagUrl
+            Tla = team.Tla
         }
 
 

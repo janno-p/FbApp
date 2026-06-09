@@ -12,6 +12,7 @@ import Page exposing (PageTab(..), viewResultsTabs)
 import Route
 import Session exposing (Session)
 import Task
+import Team exposing (flagClass)
 import Time exposing (Posix, Zone, utc)
 import Tuple exposing (first, second)
 import Url exposing (Protocol(..))
@@ -54,7 +55,7 @@ type QualifierSide
 
 type alias Team =
     { name : String
-    , flagUrl : String
+    , tla : String
     }
 
 
@@ -198,7 +199,7 @@ viewFixture zone fixture =
 viewTeam : Team -> Html Msg
 viewTeam team =
     div [ class "grow-0 w-32 self-center content-center" ]
-        [ img [ class "h-8 mx-auto", src team.flagUrl, title team.name ] []
+        [ span (flagClass team.tla ++ [ class "h-8 mx-auto", title team.name ]) []
         , div [ class "text-center" ] [ text team.name ]
         ]
 
@@ -462,7 +463,7 @@ teamDecoder : Json.Decoder Team
 teamDecoder =
     Json.succeed Team
         |> required "name" Json.string
-        |> required "flagUrl" Json.string
+        |> required "tla" Json.string
 
 
 fixtureStage : Fixture -> String

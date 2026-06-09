@@ -9,6 +9,7 @@ import Json.Decode as Json
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import Session exposing (Session)
+import Team exposing (flagClass)
 
 
 
@@ -60,7 +61,7 @@ type alias CompetitionInfo =
 type alias Team =
     { id : Int
     , name : String
-    , flagUrl : String
+    , tla : String
     }
 
 
@@ -296,26 +297,28 @@ viewGroupStage model =
                     (\fixture ->
                         div [ class "flex flex-row gap-1" ]
                             [ button
-                                [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1"
+                                [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
                                 , selectionClass fixture HomeWin
                                 , onClick (ToggleFixtureResult fixture.fixtureId HomeWin)
+                                , title fixture.homeTeam.name
                                 ]
-                                [ img [ src fixture.homeTeam.flagUrl, class "h-4" ] []
-                                , text fixture.homeTeam.name
+                                [ span (flagClass fixture.homeTeam.tla ++ [ class "size-6 flex-none" ]) []
+                                , span [ class "capitalize grow font-mono" ] [ text fixture.homeTeam.tla ]
                                 ]
                             , button
-                                [ class "rounded-md basis-1/3"
+                                [ class "rounded-md basis-1/3 cursor-pointer"
                                 , selectionClass fixture Tie
                                 , onClick (ToggleFixtureResult fixture.fixtureId Tie)
                                 ]
                                 [ text "Jääb viiki" ]
                             , button
-                                [ class "rounded-md basis-1/3 p-2 flex flex-row-reverse items-center gap-1"
+                                [ class "rounded-md basis-1/3 p-2 flex flex-row-reverse items-center gap-1 cursor-pointer"
                                 , selectionClass fixture AwayWin
                                 , onClick (ToggleFixtureResult fixture.fixtureId AwayWin)
+                                , title fixture.awayTeam.name
                                 ]
-                                [ img [ src fixture.awayTeam.flagUrl, class "h-4" ] []
-                                , text fixture.awayTeam.name
+                                [ span (flagClass fixture.awayTeam.tla ++ [ class "size-6 flex-none" ]) []
+                                , span [ class "capitalize grow font-mono" ] [ text fixture.awayTeam.tla ]
                                 ]
                             ]
                     )
@@ -450,7 +453,7 @@ viewCountryFilter model =
                                 , class "cursor-pointer w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                 ]
                                 []
-                            , img [ src a.flagUrl, class "h-4" ] []
+                            , span (flagClass a.tla ++ [ class "h-4" ]) []
                             , text a.name
                             ]
                     )
@@ -503,7 +506,7 @@ viewPlayerTable model =
                                     [ text player.position ]
                                 , td [ class "py-4 px-6" ]
                                     [ div [ class "p-2 flex flex-row items-center gap-1" ]
-                                        [ img [ src player.team.flagUrl, class "h-4" ] []
+                                        [ span (flagClass player.team.tla ++ [ class "h-4" ]) []
                                         , text player.team.name
                                         ]
                                     ]
@@ -532,9 +535,10 @@ viewGroupSelection selectedTeams count grp =
                 [ class "rounded-md p-2 flex flex-row items-center gap-1"
                 , selectionClass team.id
                 , onClick (ToggleQualifier team.id)
+                , title team.name
                 ]
-                [ img [ src team.flagUrl, class "h-4" ] []
-                , text team.name
+                [ span (flagClass team.tla ++ [ class "size-6 flex-none" ]) []
+                , span [ class "capitalize grow font-mono" ] [ text team.tla ]
                 ]
     in
     div [ class "flex flex-col" ]
@@ -895,7 +899,7 @@ teamDecoder =
     Json.succeed Team
         |> required "id" Json.int
         |> required "name" Json.string
-        |> required "flagUrl" Json.string
+        |> required "tla" Json.string
 
 
 fixtureDecoder : Json.Decoder Fixture

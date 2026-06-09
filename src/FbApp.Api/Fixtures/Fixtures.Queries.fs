@@ -8,8 +8,7 @@ open MongoDB.Driver
 
 type Team = {
     Name: string
-    Code: string
-    FlagUrl: string
+    Tla: string
     ExternalId: int64
 }
 
