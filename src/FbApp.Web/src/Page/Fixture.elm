@@ -148,13 +148,13 @@ viewFixtureHeader fixture =
             ([ title "Eelmine mäng", class "grow-0 w-8 h-8 rounded-full border border-gray-100" ]
                 ++ buttonStateAttrs previousFixtureId
             )
-            [ span [ class "mdi mdi-arrow-left" ] [] ]
+            [ span [ class "icon-[mdi--arrow-left]" ] [] ]
         , div [ class "grow text-center" ] [ text <| fixtureTitle fixture ]
         , button
             ([ title "Järgmine mäng", class "grow-0 w-8 h-8 rounded-full border border-gray-100" ]
                 ++ buttonStateAttrs nextFixtureId
             )
-            [ span [ class "mdi mdi-arrow-right" ] [] ]
+            [ span [ class "icon-[mdi--arrow-right]" ] [] ]
         ]
 
 
@@ -252,22 +252,22 @@ viewResultIcon expectedResult predictedResult =
     case expectedResult of
         Just result ->
             if result == predictedResult then
-                span [ class "mdi mdi-check text-green-500 text-2xl" ] []
+                span [ class "icon-[mdi--check] text-green-500 text-2xl" ] []
 
             else
-                span [ class "mdi mdi-close text-red-500 text-2xl" ] []
+                span [ class "icon-[mdi--close] text-red-500 text-2xl" ] []
 
         Nothing ->
-            span [ class "mdi mdi-minus text-gray-200 text-2xl" ] []
+            span [ class "icon-[mdi--minus] text-gray-200 text-2xl" ] []
 
 
 qualifierIconClass : Bool -> Html.Attribute Msg
 qualifierIconClass expectQualifies =
     if expectQualifies then
-        class "mdi mdi-check"
+        class "icon-[mdi--check]"
 
     else
-        class "mdi mdi-close"
+        class "icon-[mdi--close]"
 
 
 qualifierColorClass : Maybe FixtureResult -> QualifierSide -> Html.Attribute Msg

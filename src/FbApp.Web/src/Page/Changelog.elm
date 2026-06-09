@@ -84,6 +84,6 @@ viewEntry entry =
 viewChange : String -> Html msg
 viewChange change =
     div [ class "flex flex-row space-x-2 items-center" ]
-        [ span [ class "mdi mdi-check text-accent" ] []
+        [ span [ class "icon-[mdi--check] text-accent" ] []
         , span [] [ text change ]
         ]

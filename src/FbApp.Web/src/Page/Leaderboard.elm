@@ -85,17 +85,17 @@ viewLeaderboardTable predictionResults =
         (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(9,2rem)_2.5rem_1rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
             [ div [] []
             , div [] []
-            , div [ title "Alagrupimängude tulemused", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-format-list-group" ] [] ]
-            , div [ title "Edasipääsejad", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-sixteenth-dotted" ] [] ]
-            , div [ title "Kaheksandikfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-sixteenth" ] [] ]
-            , div [ title "Veerandfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-eighth" ] [] ]
-            , div [ title "Poolfinalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-quarter" ] [] ]
-            , div [ title "Finalistid", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-half" ] [] ]
-            , div [ title "Võitja", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-music-note-whole" ] [] ]
-            , div [ title "Väravaküttide poolt löödud väravad", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-shoe-cleat" ] [] ]
-            , div [ title "Väravakütt", class "text-center hidden sm:block" ] [ span [ class "mdi mdi-medal" ] [] ]
-            , div [ title "Punkte kokku", class "text-center" ] [ span [ class "mdi mdi-sigma" ] [] ]
-            , div [ title "Trend", class "text-center" ] [ span [ class "mdi mdi-trending-up" ] [] ]
+            , div [ title "Alagrupimängude tulemused", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--format-list-group]" ] [] ]
+            , div [ title "Edasipääsejad", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-sixteenth-dotted]" ] [] ]
+            , div [ title "Kaheksandikfinalistid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-sixteenth]" ] [] ]
+            , div [ title "Veerandfinalistid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-eighth]" ] [] ]
+            , div [ title "Poolfinalistid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-quarter]" ] [] ]
+            , div [ title "Finalistid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-half]" ] [] ]
+            , div [ title "Võitja", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-whole]" ] [] ]
+            , div [ title "Väravaküttide poolt löödud väravad", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--shoe-cleat]" ] [] ]
+            , div [ title "Väravakütt", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--medal]" ] [] ]
+            , div [ title "Punkte kokku", class "text-center" ] [ span [ class "icon-[mdi--sigma]" ] [] ]
+            , div [ title "Trend", class "text-center" ] [ span [ class "icon-[mdi--trending-up]" ] [] ]
             ]
             :: List.map (viewPredictionResult ratioRange) predictionResults
         )
@@ -160,21 +160,21 @@ viewRatio value ( minRatio, maxRatio ) =
 
         ( ratioColor, ratioIcon ) =
             if value < minRatio + step then
-                ( "text-negative", "mdi-chevron-double-down" )
+                ( "text-negative", "icon-[mdi--chevron-double-down]" )
 
             else if value < minRatio + 2.0 * step then
-                ( "text-warning", "mdi-chevron-down" )
+                ( "text-warning", "icon-[mdi--chevron-down]" )
 
             else if value < minRatio + 3.0 * step then
-                ( "text-info", "mdi-equal" )
+                ( "text-info", "icon-[mdi--equal]" )
 
             else if value < minRatio + 4.0 * step then
-                ( "text-lime-400", "mdi-chevron-up" )
+                ( "text-lime-400", "icon-[mdi--chevron-up]" )
 
             else
-                ( "text-positive", "mdi-chevron-double-up" )
+                ( "text-positive", "icon-[mdi--chevron-double-up]" )
     in
-    span [ class "mdi", class ratioColor, class ratioIcon, title (Round.round 3 value ++ " %") ] []
+    span [ class ratioColor, class ratioIcon, title (Round.round 3 value ++ " %") ] []
 
 
 type Msg

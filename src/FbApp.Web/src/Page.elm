@@ -53,7 +53,7 @@ viewSiteToolbar : Page -> Maybe String -> Maybe User -> Html msg
 viewSiteToolbar _ competitionName maybeUser =
     nav [ class "glossy bg-sky-600 flex flex-row flex-nowrap items-center text-white px-4 py-1.5 gap-2" ]
         [ a [ Route.href Route.Home, class "text-white grow-0" ]
-            [ span [ class "mdi mdi-soccer text-3xl" ] [] ]
+            [ span [ class "icon-[mdi--soccer] text-3xl" ] [] ]
         , a [ Route.href Route.Home, class "flex flex-col grow text-white gap-2" ]
             [ span [ class "grow-0 text-xl leading-4" ]
                 [ text "Ennustusmäng" ]
@@ -82,7 +82,7 @@ viewUser maybeUser =
                             [ Route.href Route.Changelog
                             , class "text-white"
                             ]
-                            [ span [ class "mdi mdi-cog-outline" ] []
+                            [ span [ class "icon-[mdi--cog-outline]" ] []
                             , span [] [ text "Ava kontrollpaneel" ]
                             ]
                         ]
@@ -95,7 +95,7 @@ viewUser maybeUser =
                         [ Route.href Route.Logout
                         , class "text-white"
                         ]
-                        [ span [ class "mdi mdi-logout" ] []
+                        [ span [ class "icon-[mdi--logout]" ] []
                         , span [] [ text "Logi välja" ]
                         ]
                     ]
@@ -104,7 +104,7 @@ viewUser maybeUser =
 
         Nothing ->
             [ a [ Route.href Route.Login, class "text-white", title "Logi sisse Google kontoga" ]
-                [ div [ class "border border-white rounded-full w-8 h-8 flex items-center justify-center" ] [ span [ class "mdi mdi-google" ] [] ] ]
+                [ div [ class "border border-white rounded-full w-8 h-8 flex items-center justify-center" ] [ span [ class "icon-[mdi--google]" ] [] ] ]
             ]
 
 
@@ -130,7 +130,7 @@ viewResultsTabs activeTab =
                 , tabClass FixtureTab
                 , Route.href (Route.Fixture Nothing)
                 ]
-                [ span [ class "mdi mdi-scoreboard-outline" ] []
+                [ span [ class "icon-[mdi--scoreboard-outline]" ] []
                 , span [ class "hidden sm:inline text-base uppercase" ] [ text "Mängude tulemused" ]
                 ]
             ]
@@ -140,7 +140,7 @@ viewResultsTabs activeTab =
                 , tabClass LeaderboardTab
                 , Route.href Route.Leaderboard
                 ]
-                [ span [ class "mdi mdi-chart-line" ] []
+                [ span [ class "icon-[mdi--chart-line]" ] []
                 , span [ class "hidden sm:inline text-base uppercase" ] [ text "Ennustuste punktitabel" ]
                 ]
             ]

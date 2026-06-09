@@ -121,7 +121,7 @@ viewChallenge session =
                     ]
                     [ div [ class "items-center flex flex-row gap-1" ]
                         [ text "Lisa oma ennustus"
-                        , span [ class "mdi mdi-chevron-double-right" ] []
+                        , span [ class "icon-[mdi--chevron-double-right]" ] []
                         ]
                     ]
                 ]
@@ -131,7 +131,7 @@ viewChallenge session =
             [ div [ class "text-center pt-12" ]
                 [ span [ class "mr-[0.5ch]" ] [ text "Ennustuse tegemiseks logi sisse kasutades oma" ]
                 , div [ class "inline-flex flex-nowrap" ]
-                    [ span [ class "mdi mdi-google" ] []
+                    [ span [ class "icon-[mdi--google]" ] []
                     , text "oogle kontot"
                     ]
                 ]
@@ -141,7 +141,7 @@ viewChallenge session =
                     , onClick LoginToPrediction
                     ]
                     [ div [ class "items-center flex flex-row gap-1" ]
-                        [ span [ class "mdi mdi-login" ] []
+                        [ span [ class "icon-[mdi--login]" ] []
                         , text "Logi sisse"
                         ]
                     ]

@@ -1,6 +1,5 @@
 import { Elm } from '../src/Main.elm'
 
-// import '@mdi/font/css/materialdesignicons.min.css'
 import '../styles/main.css'
 
 function rememberedBytes() {

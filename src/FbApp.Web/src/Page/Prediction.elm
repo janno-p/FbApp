@@ -230,7 +230,7 @@ viewFailure session reason =
         [ p [] [ text "Viga salvestamisel! Ennustuse edastamine ei õnnestunud." ]
         , pre [] [ text reason ]
         , div [ class "flex flex-row-reverse" ]
-            [ viewButton (SavePrediction session) "Proovi uuesti salvestada" "mdi-replay" False ]
+            [ viewButton (SavePrediction session) "Proovi uuesti salvestada" "icon-[mdi--replay]" False ]
         ]
     ]
 
@@ -267,7 +267,7 @@ viewNote =
         , p [] [ text deadline ]
         , p [] [ text motivation ]
         , div [ class "flex flex-row-reverse" ]
-            [ viewButton SetGroupStage "Tee oma ennustused" "mdi-chevron-double-right" False ]
+            [ viewButton SetGroupStage "Tee oma ennustused" "icon-[mdi--chevron-double-right]" False ]
         ]
     ]
 
@@ -327,7 +327,7 @@ viewGroupStage model =
     , p [] [ text "Kes võidab mängu?" ]
     , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] fixturesContent
     , div [ class "flex flex-row-reverse" ]
-        [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "mdi-chevron-double-right" disableNextStep
+        [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
         ]
     ]
 
@@ -350,7 +350,7 @@ viewButton msg label icon isDisabled =
         ]
         [ div [ class "items-center flex flex-row gap-1" ]
             [ text label
-            , span [ class "mdi", class icon ] []
+            , span [ class icon ] []
             ]
         ]
 
@@ -365,7 +365,7 @@ viewPlayOffStage model selection title subTitle btnText count msg =
     , p [] [ text subTitle ]
     , div [ class "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-4 my-8" ] (viewPlayOffSelection count model)
     , div [ class "flex flex-row-reverse" ]
-        [ viewButton msg btnText "mdi-chevron-double-right" disableNextStep
+        [ viewButton msg btnText "icon-[mdi--chevron-double-right]" disableNextStep
         ]
     ]
 
@@ -379,7 +379,7 @@ viewTopScorersStage session model =
                 |> List.map (\x -> p [] [ text x.name ])
            )
         ++ [ div [ class "flex flex-row-reverse" ]
-                [ viewButton (SavePrediction session) "Registreeri oma ennustus" "mdi-chevron-double-right" (List.length model.topScorers /= 3) ]
+                [ viewButton (SavePrediction session) "Registreeri oma ennustus" "icon-[mdi--chevron-double-right]" (List.length model.topScorers /= 3) ]
            , viewPlayerTable model
            ]
 
