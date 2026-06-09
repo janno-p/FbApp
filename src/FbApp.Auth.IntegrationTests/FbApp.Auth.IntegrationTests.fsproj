@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
@@ -10,18 +11,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" />
-    <PackageReference Include="FsUnit.xUnit" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="Testcontainers.PostgreSql" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="TUnit.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Testing.fs" />
+    <PackageReference Remove="TUnit.Assertions.FSharp" />
+    <PackageReference Include="TUnit.Assertions.FSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="AuthApiDatabase.fs" />
+    <Compile Include="AuthApiFactory.fs" />
+    <Compile Include="TestBase.fs" />
     <Compile Include="AuthorizationTests.fs" />
   </ItemGroup>
 

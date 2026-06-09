@@ -1,8 +1,13 @@
-module Tests
+namespace FbApp.Api.IntegrationTests
 
-open System
-open Xunit
+open TUnit.Core
+open TUnit.Assertions
+open TUnit.Assertions.Extensions
+open TUnit.Assertions.FSharp.TaskAssert
 
-[<Fact>]
-let ``My test`` () =
-    Assert.True(true)
+type Tests() =
+    [<Test>]
+    member _.``My test``() = taskAssert {
+        let value = true
+        do! Assert.That(value).IsTrue()
+    }

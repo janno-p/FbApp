@@ -89,7 +89,9 @@ type LiveUpdateJob (authOptions: IOptions<AuthOptions>, logger: ILogger<LiveUpda
                         |> Some
                     | _ ->
                         None
-                | _ ->
+                | Some Fixtures.ThirdPlace ->
+                    None
+                | None ->
                     logger.LogError($"Unknown stage value for fixture %A{fixtureId}: %s{fixture.Stage}")
                     None
 

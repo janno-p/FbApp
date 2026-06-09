@@ -10,7 +10,7 @@
 ## Commands
 
 - Restore/build backend: `dotnet restore FbApp.slnx` then `dotnet build FbApp.slnx`.
-- Run all backend tests: `dotnet test FbApp.slnx`.
+- Run all backend tests: `dotnet test --solution FbApp.slnx`.
 - Run one backend test project: `dotnet test src/FbApp.Auth.IntegrationTests/FbApp.Auth.IntegrationTests.fsproj`.
 - Web install/build/dev: from `src/FbApp.Web`, use `bun install`, `bun run build`, and `bun run dev`. The web package is Bun-managed and keeps `bun.lock` in sync with dependency changes.
 - There are no repo-level lint, formatter, typecheck, or web test scripts in the checked configs.

@@ -1,29 +1,34 @@
-module FbApp.Auth.IntegrationTests.AuthorizationTests
+namespace FbApp.Auth.IntegrationTests
 
 open System.Text.Json
 open System.Text.Json.Nodes
-open FsUnit
-open Xunit
+open TUnit.Assertions.FSharp.TaskAssert
+open TUnit.Assertions
+open TUnit.Assertions.Extensions
+open TUnit.Core
 
-[<Collection("Api")>]
-type AuthorizationTests (fixture: AuthApiFixture) =
-    [<Fact>]
-    member _.``returns valid openid configuration`` () = task {
-        let! response = fixture.Client.GetAsync("/.well-known/openid-configuration")
+type AuthorizationTests() =
+    inherit TestBase()
 
-        response.IsSuccessStatusCode |> should be True
+    [<Test>]
+    member this.``returns valid openid configuration`` () = taskAssert {
+        let client = this.Factory.CreateClient()
+
+        let! response = client.GetAsync "/.well-known/openid-configuration"
+
+        do! Assert.That(response.StatusCode).IsSuccess()
 
         let! content = response.Content.ReadAsStringAsync()
-        let node = JsonNode.Parse(content)
+        let node = JsonNode.Parse content
 
-        node["issuer"].GetValue<string>() |> should equal "http://localhost/"
-        node["authorization_endpoint"].GetValue<string>() |> should equal "http://localhost/connect/authorize"
-        node["token_endpoint"].GetValue<string>() |> should equal "http://localhost/connect/token"
-        node["end_session_endpoint"].GetValue<string>() |> should equal "http://localhost/connect/logout"
-        node["userinfo_endpoint"].GetValue<string>() |> should equal "http://localhost/connect/userinfo"
+        do! Assert.That(node["issuer"].GetValue<string>()).IsEqualTo<string> "http://localhost/"
+        do! Assert.That(node["authorization_endpoint"].GetValue<string>()).IsEqualTo<string> "http://localhost/connect/authorize"
+        do! Assert.That(node["token_endpoint"].GetValue<string>()).IsEqualTo<string> "http://localhost/connect/token"
+        do! Assert.That(node["end_session_endpoint"].GetValue<string>()).IsEqualTo<string> "http://localhost/connect/logout"
+        do! Assert.That(node["userinfo_endpoint"].GetValue<string>()).IsEqualTo<string> "http://localhost/connect/userinfo"
 
-        node["grant_types_supported"].Deserialize<string[]>() |> should be (equalSeq ["authorization_code"; "refresh_token"])
-        node["response_types_supported"].Deserialize<string[]>() |> should be (equalSeq ["code"])
-        node["scopes_supported"].Deserialize<string[]>() |> should be (equalSeq ["openid"; "email"; "profile"; "roles"; "offline_access"])
-        node["claims_supported"].Deserialize<string[]>() |> should be (equalSeq ["aud"; "exp"; "iat"; "iss"; "sub"])
+        do! Assert.That<string[]>(node["grant_types_supported"].Deserialize<string[]>()).IsEquivalentTo ["authorization_code"; "refresh_token"]
+        do! Assert.That<string[]>(node["response_types_supported"].Deserialize<string[]>()).IsEquivalentTo ["code"]
+        do! Assert.That<string[]>(node["scopes_supported"].Deserialize<string[]>()).IsEquivalentTo ["openid"; "email"; "profile"; "roles"; "offline_access"]
+        do! Assert.That<string[]>(node["claims_supported"].Deserialize<string[]>()).IsEquivalentTo ["aud"; "exp"; "iat"; "iss"; "sub"]
     }

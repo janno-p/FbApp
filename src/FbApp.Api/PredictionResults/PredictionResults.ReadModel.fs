@@ -384,6 +384,8 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
                                 scoresheet.UpdateFinal([fixture.AwayTeamId], [fixture.HomeTeamId])
                             | Predictions.Tie ->
                                 scoresheet.UpdateFinal([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.ThirdPlace ->
+                            ()
                         | Fixtures.Final ->
                             match fixture.FixtureResult with
                             | Predictions.HomeWin ->
@@ -392,7 +394,6 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
                                 scoresheet.UpdateWinner([fixture.AwayTeamId], [fixture.HomeTeamId])
                             | Predictions.Tie ->
                                 scoresheet.UpdateWinner([], [fixture.HomeTeamId; fixture.AwayTeamId])
-                        | _ -> ()
                     )
             | _ -> ()
         )
@@ -441,6 +442,8 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
                                 scoresheet.UpdateFinal([fixture.AwayTeamId], [fixture.HomeTeamId])
                             | Predictions.Tie ->
                                 scoresheet.UpdateFinal([], [fixture.HomeTeamId; fixture.AwayTeamId])
+                        | Fixtures.ThirdPlace ->
+                            ()
                         | Fixtures.Final ->
                             match fixture.FixtureResult with
                             | Predictions.HomeWin ->
@@ -449,7 +452,6 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
                                 scoresheet.UpdateWinner([fixture.AwayTeamId], [fixture.HomeTeamId])
                             | Predictions.Tie ->
                                 scoresheet.UpdateWinner([], [fixture.HomeTeamId; fixture.AwayTeamId])
-                        | _ -> ()
                     )
             | _ -> ()
         )

@@ -229,7 +229,7 @@ let configureApp (app: WebApplication) =
         if count = 0 then
             let input: Competitions.CreateInput =
                 {
-                    Description = "FIFA 2026"
+                    Description = "Jalka MM 2026"
                     ExternalId = FootballData.ActiveCompetition
                     Date = DateTimeOffset(2026, 6, 11, 19, 0, 0, TimeSpan.Zero)
                 }
