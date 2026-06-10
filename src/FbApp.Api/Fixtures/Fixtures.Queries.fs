@@ -58,7 +58,7 @@ let getFixtureById : GetFixtureById =
             db.GetCollection<Fixture>("fixtures")
                 .Find(Builders<Fixture>.Filter.Eq((fun x -> x.Id), fixtureId))
                 .SingleOrDefaultAsync()
-        return (if fixture |> box |> isNull then None else Some fixture)
+        return if fixture |> box |> isNull then None else Some fixture
     }
 
 

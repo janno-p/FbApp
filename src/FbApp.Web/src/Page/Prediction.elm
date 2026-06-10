@@ -1,8 +1,8 @@
 module Page.Prediction exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api.Endpoint as Endpoint exposing (competitionInfo, defaultEndpointConfig)
-import Html exposing (Html, button, div, h1, h2, img, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
-import Html.Attributes exposing (checked, class, disabled, for, id, placeholder, scope, src, title, type_, value)
+import Html exposing (Html, button, div, h1, h2, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
+import Html.Attributes exposing (checked, class, disabled, for, id, placeholder, scope, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Json

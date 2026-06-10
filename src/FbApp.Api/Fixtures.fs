@@ -9,10 +9,10 @@ open System
 
 
 let getFixtureStatus (id: Guid) : HttpHandler =
-    (fun next ctx -> task {
+    fun next ctx -> task {
         let! dto = Fixtures.getFixtureStatus (ctx.RequestServices.GetRequiredService<IMongoDatabase>()) id
         return! Successful.OK dto next ctx
-    })
+    }
 
 
 let scope: Endpoint list = [

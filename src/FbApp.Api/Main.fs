@@ -38,7 +38,7 @@ let mainRouter = [
         route "/api/competition/status" FbApp.Competitions.Api.getCompetitionStatus
         route "/api/fixtures" FbApp.Fixtures.Api.getDefaultFixture
         routef "/api/fixtures/%O" FbApp.Fixtures.Api.getFixture
-        route "/api/prediction" (Auth.mustBeLoggedIn >=> (Auth.withUser FbApp.Predictions.Api.getUserPrediction))
+        route "/api/prediction" (Auth.mustBeLoggedIn >=> Auth.withUser FbApp.Predictions.Api.getUserPrediction)
         route "/api/prediction/board" (FbApp.PredictionResults.Api.getLeaderboard FootballData.ActiveCompetition)
     ]
 
@@ -58,10 +58,10 @@ let mainRouter = [
 let initializeMongoDb (sp: IServiceProvider) =
     let configuration = sp.GetService<IConfiguration>()
     let client =
-        match configuration.GetConnectionString("mongodb") with
+        match configuration.GetConnectionString "mongodb" with
         | null -> new MongoClient()
         | value -> new MongoClient(value)
-    client.GetDatabase("fbapp")
+    client.GetDatabase "fbapp"
 
 
 let configureJsonSerializer () =
@@ -73,7 +73,7 @@ let configureJsonSerializer () =
 let configureJwtAuthentication (options: JwtBearerOptions) =
     options.MapInboundClaims <- false
     options.TokenValidationParameters <- TokenValidationParameters(
-        SignatureValidator = (fun token _ -> JsonWebToken(token)),
+        SignatureValidator = (fun token _ -> JsonWebToken token),
         ValidateAudience = false,
         ValidateIssuer = false,
         ValidateIssuerSigningKey = false
@@ -93,7 +93,7 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services.AddSingleton<Json.ISerializer>(configureJsonSerializer()) |> ignore
 
     builder.Services
-        .Configure(fun (opts: GzipCompressionProviderOptions) -> opts.Level <- System.IO.Compression.CompressionLevel.Optimal)
+        .Configure(fun (opts: GzipCompressionProviderOptions) -> opts.Level <- IO.Compression.CompressionLevel.Optimal)
         .AddResponseCompression(fun opts ->
             opts.MimeTypes <- Seq.append ResponseCompressionDefaults.MimeTypes [
                 "application/x-yaml";
@@ -106,8 +106,8 @@ let configureServices (builder: WebApplicationBuilder) =
             ])
     |> ignore
 
-    builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Authentication")) |> ignore
-    builder.Services.Configure<SubscriptionsSettings>(builder.Configuration.GetSection("EventStore:Subscriptions")) |> ignore
+    builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection "Authentication") |> ignore
+    builder.Services.Configure<SubscriptionsSettings>(builder.Configuration.GetSection "EventStore:Subscriptions") |> ignore
 
     let eventStoreConnection =
         builder.Configuration.GetConnectionString "eventstore"
@@ -121,14 +121,14 @@ let configureServices (builder: WebApplicationBuilder) =
         .AddKurrentDBPersistentSubscriptionsClient(eventStoreConnection, setConnectionName)
     |> ignore
 
-    builder.Services.AddSingleton<IMongoDatabase>(initializeMongoDb) |> ignore
+    builder.Services.AddSingleton<IMongoDatabase> initializeMongoDb |> ignore
 
     builder.Services.AddQuartz(fun quartz ->
         quartz.UseSimpleTypeLoader()
         quartz.UseInMemoryStore()
 
-        let jobKey = JobKey("live update")
-        quartz.AddJob<LiveUpdateJob>(fun job -> job.WithIdentity(jobKey) |> ignore)
+        let jobKey = JobKey "live update"
+        quartz.AddJob<LiveUpdateJob>(fun job -> job.WithIdentity jobKey |> ignore)
             |> ignore
 
         quartz.AddTrigger(fun trigger ->
@@ -186,7 +186,7 @@ let configureApp (app: WebApplication) =
         .UseAuthorization()
         .UseEndpoints(fun endpoints ->
             endpoints.MapSubscribeHandler() |> ignore
-            endpoints.MapGiraffeEndpoints(mainRouter)
+            endpoints.MapGiraffeEndpoints mainRouter
         )
     |> ignore
 
@@ -213,7 +213,7 @@ let configureApp (app: WebApplication) =
     processManagerInitTask.Wait()
 
     FbApp.PredictionResults.ReadModel.registerPredictionResultHandlers
-        (app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("PredictionResults.ReadModel"))
+        (app.Services.GetRequiredService<ILoggerFactory>().CreateLogger "PredictionResults.ReadModel")
         (app.Services.GetRequiredService<KurrentDBClient>())
         (app.Services.GetRequiredService<IOptions<SubscriptionsSettings>>().Value)
         jsonOptions
@@ -242,7 +242,7 @@ let configureApp (app: WebApplication) =
 
 [<EntryPoint>]
 let main args =
-    let build = WebApplication.CreateBuilder(args)
+    let build = WebApplication.CreateBuilder args
     configureAppConfiguration build
     configureServices build
 

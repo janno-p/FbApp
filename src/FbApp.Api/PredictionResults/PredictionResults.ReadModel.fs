@@ -2,7 +2,6 @@
 
 open System
 open System.Collections.Generic
-open EventStore.Client
 open FbApp.Api
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
@@ -43,12 +42,12 @@ type Predictions = {
 
 module Dict =
     let tryGet (key: 'Key) (values: #IDictionary<'Key, 'Value>) =
-        match values.TryGetValue(key) with
-        | true, value -> Some(value)
+        match values.TryGetValue key with
+        | true, value -> Some value
         | _ -> None
 
     let tryUpdate (key: 'Key) (getNewValue: 'Value -> 'Value) (values: #IDictionary<'Key, 'Value>) =
-        match values.TryGetValue(key) with
+        match values.TryGetValue key with
         | true, value -> values[key] <- getNewValue(value)
         | _ -> ()
 
@@ -102,28 +101,28 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
     member val Name = name with get
     member this.UpdateQualifers16ths(qualified: TeamId list, unqualified: TeamId list) =
         this.Qualifiers16ths.Keys |> Seq.iter (fun k -> this.Qualifiers16ths[k] <- None)
-        qualified |> List.iter (fun teamId -> if this.Qualifiers16ths.ContainsKey(teamId) then this.Qualifiers16ths[teamId] <- Some true else ())
-        unqualified |> List.iter (fun teamId -> if this.Qualifiers16ths.ContainsKey(teamId) then this.Qualifiers16ths[teamId] <- Some false else ())
+        qualified |> List.iter (fun teamId -> if this.Qualifiers16ths.ContainsKey teamId then this.Qualifiers16ths[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Qualifiers16ths.ContainsKey teamId then this.Qualifiers16ths[teamId] <- Some false else ())
         this.UpdateQualifers8ths([], unqualified)
     member this.UpdateQualifers8ths(qualified: TeamId list, unqualified: TeamId list) =
-        qualified |> List.iter (fun teamId -> if this.Qualifiers8ths.ContainsKey(teamId) then this.Qualifiers8ths[teamId] <- Some true else ())
-        unqualified |> List.iter (fun teamId -> if this.Qualifiers8ths.ContainsKey(teamId) then this.Qualifiers8ths[teamId] <- Some false else ())
+        qualified |> List.iter (fun teamId -> if this.Qualifiers8ths.ContainsKey teamId then this.Qualifiers8ths[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Qualifiers8ths.ContainsKey teamId then this.Qualifiers8ths[teamId] <- Some false else ())
         this.UpdateQuarters([], unqualified)
     member this.UpdateQuarters(qualified: TeamId list, unqualified: TeamId list) =
-        qualified |> List.iter (fun teamId -> if this.Quarters.ContainsKey(teamId) then this.Quarters[teamId] <- Some true else ())
-        unqualified |> List.iter (fun teamId -> if this.Quarters.ContainsKey(teamId) then this.Quarters[teamId] <- Some false else ())
+        qualified |> List.iter (fun teamId -> if this.Quarters.ContainsKey teamId then this.Quarters[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Quarters.ContainsKey teamId then this.Quarters[teamId] <- Some false else ())
         this.UpdateSemis([], unqualified)
     member this.UpdateSemis(qualified: TeamId list, unqualified: TeamId list) =
-        qualified |> List.iter (fun teamId -> if this.Semis.ContainsKey(teamId) then this.Semis[teamId] <- Some true else ())
-        unqualified |> List.iter (fun teamId -> if this.Semis.ContainsKey(teamId) then this.Semis[teamId] <- Some false else ())
+        qualified |> List.iter (fun teamId -> if this.Semis.ContainsKey teamId then this.Semis[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Semis.ContainsKey teamId then this.Semis[teamId] <- Some false else ())
         this.UpdateFinal([], unqualified)
     member this.UpdateFinal(qualified: TeamId list, unqualified: TeamId list) =
-        qualified |> List.iter (fun teamId -> if this.Final.ContainsKey(teamId) then this.Final[teamId] <- Some true else ())
-        unqualified |> List.iter (fun teamId -> if this.Final.ContainsKey(teamId) then this.Final[teamId] <- Some false else ())
+        qualified |> List.iter (fun teamId -> if this.Final.ContainsKey teamId then this.Final[teamId] <- Some true else ())
+        unqualified |> List.iter (fun teamId -> if this.Final.ContainsKey teamId then this.Final[teamId] <- Some false else ())
         this.UpdateWinner([], unqualified)
     member this.UpdateWinner(qualified: TeamId list, unqualified: TeamId list) =
-        qualified |> List.iter (fun teamId -> if fst this.Winner = teamId then this.Winner <- (teamId, Some true) else ())
-        unqualified |> List.iter (fun teamId -> if fst this.Winner = teamId then this.Winner <- (teamId, Some false) else ())
+        qualified |> List.iter (fun teamId -> if fst this.Winner = teamId then this.Winner <- teamId, Some true else ())
+        unqualified |> List.iter (fun teamId -> if fst this.Winner = teamId then this.Winner <- teamId, Some false else ())
     member this.SetFixtureResult(fixtureId: FixtureId, fixtureResult: Predictions.FixtureResult) =
         this.GroupStage
             |> Dict.tryUpdate fixtureId (fun _ ->
@@ -131,7 +130,7 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
                     |> Dict.tryGet fixtureId
                     |> Option.map (fun predictedResult -> Some (predictedResult = fixtureResult))
                     |> Option.defaultValue (Some false))
-    member this.UpdateScorers(competitionScorers: Map<PlayerId, CompetitionScorer>) =
+    member _.UpdateScorers(competitionScorers: Map<PlayerId, CompetitionScorer>) =
         scorers <-
             predictions.TopScorers
             |> List.choose (fun id -> competitionScorers |> Map.tryFind id)
@@ -139,12 +138,12 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
 // TODO : Concurrent collections !?
 module InMemoryStore =
     let fixtures = Dictionary<FixtureId, Fixture>()
-    let qualifiedTeams = (HashSet<TeamId>(), HashSet<TeamId>())
-    let confirmedQualifiedTeams = (HashSet<TeamId>(), HashSet<TeamId>())
-    let quarterFinalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
-    let semiFinalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
-    let finalTeams = (HashSet<TeamId>(), HashSet<TeamId>())
-    let winner = (HashSet<TeamId>(), HashSet<TeamId>())
+    let qualifiedTeams = HashSet<TeamId>(), HashSet<TeamId>()
+    let confirmedQualifiedTeams = HashSet<TeamId>(), HashSet<TeamId>()
+    let quarterFinalTeams = HashSet<TeamId>(), HashSet<TeamId>()
+    let semiFinalTeams = HashSet<TeamId>(), HashSet<TeamId>()
+    let finalTeams = HashSet<TeamId>(), HashSet<TeamId>()
+    let winner = HashSet<TeamId>(), HashSet<TeamId>()
     let scoresheets = Dictionary<PredictionId, Scoresheet>()
     let teams = HashSet<TeamId>()
 
@@ -214,12 +213,12 @@ let selectWrong (_, wrong: HashSet<TeamId>) (teams: TeamId seq) =
 let updateConfirmedTeams () =
     let confirmedCorrect, confirmedWrong = InMemoryStore.confirmedQualifiedTeams
     let correct, wrong = InMemoryStore.qualifiedTeams
-    confirmedCorrect |> Seq.iter (fun teamId -> ignore (correct.Add(teamId), wrong.Remove(teamId)))
-    confirmedWrong |> Seq.iter (fun teamId -> ignore (correct.Remove(teamId), wrong.Add(teamId)))
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add(x) |> ignore)
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add(x) |> ignore)
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add(x) |> ignore)
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.winner).Add(x) |> ignore)
+    confirmedCorrect |> Seq.iter (fun teamId -> ignore (correct.Add teamId, wrong.Remove teamId))
+    confirmedWrong |> Seq.iter (fun teamId -> ignore (correct.Remove teamId, wrong.Add teamId))
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add x |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add x |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add x |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.winner).Add x |> ignore)
 
 let updateQualifiedTeams (rows: Competitions.StandingRow list) =
     let correct, wrong = InMemoryStore.qualifiedTeams
@@ -227,29 +226,29 @@ let updateQualifiedTeams (rows: Competitions.StandingRow list) =
     let teams =
         rows |> List.map (_.TeamId >> TeamId.create)
     let resetTeam teamId =
-        correct.Remove(teamId) |> ignore
+        correct.Remove teamId |> ignore
         if confirmedCorrect.Contains teamId then
-            correct.Add(teamId) |> ignore
-        wrong.Remove(teamId) |> ignore
+            correct.Add teamId |> ignore
+        wrong.Remove teamId |> ignore
         if confirmedWrong.Contains teamId then
-            wrong.Add(teamId) |> ignore
+            wrong.Add teamId |> ignore
     teams |> List.iter resetTeam
     let addCorrect teamId =
         if not (correct.Contains teamId) && not (wrong.Contains teamId) then
-            correct.Add(teamId) |> ignore
+            correct.Add teamId |> ignore
     let addWrong teamId =
         if not (correct.Contains teamId) && not (wrong.Contains teamId) then
-            wrong.Add(teamId) |> ignore
+            wrong.Add teamId |> ignore
     if rows |> List.exists (fun x -> x.PlayedGames < 3) then
         rows |> List.filter (isQualified rows) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter addCorrect
         rows |> List.filter (isUnqualified rows) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter addWrong
     else
         rows |> List.filter (fun x -> x.Position < 3) |> List.map (fun x -> TeamId.create x.TeamId) |> List.iter addCorrect
         rows |> List.filter (fun x -> x.Position > 3) |>  List.map (fun x -> TeamId.create x.TeamId) |> List.iter addWrong
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add(x) |> ignore)
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add(x) |> ignore)
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add(x) |> ignore)
-    wrong |> Seq.iter (fun x -> (snd InMemoryStore.winner).Add(x) |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.quarterFinalTeams).Add x |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.semiFinalTeams).Add x |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.finalTeams).Add x |> ignore)
+    wrong |> Seq.iter (fun x -> (snd InMemoryStore.winner).Add x |> ignore)
 
 let getDropoutTeams () = [
     yield! snd InMemoryStore.winner
@@ -269,7 +268,7 @@ let processCompetitions _ _ = function
                 scoresheet.UpdateQualifers16ths(qualified, unqualified)
             )
     | Competitions.Event.ScorersUpdated scorers ->
-        let isFinal = (fst InMemoryStore.winner |> Seq.length) > 0
+        let isFinal = fst InMemoryStore.winner |> Seq.length > 0
         let dropoutTeams = getDropoutTeams ()
         let maxGoals = if scorers |> List.isEmpty then None else Some (scorers |> List.map (fun x -> x.Goals) |> List.max)
         let competitionScorers: Map<PlayerId, CompetitionScorer> =
@@ -283,16 +282,17 @@ let processCompetitions _ _ = function
                             Final(Some x.Goals = maxGoals)
                         else if dropoutTeams |> List.contains (TeamId.create x.TeamId) then
                             if Some x.Goals <> maxGoals then
-                                Final(false)
+                                Final false
                             else
                                 Pending(Some x.Goals = maxGoals)
                         else
                             Pending(Some x.Goals = maxGoals)
                 }
-                (data.PlayerId, data))
+                data.PlayerId, data
+            )
             |> Map.ofList
         InMemoryStore.scoresheets.Values
-            |> Seq.iter (fun scoreSheet -> scoreSheet.UpdateScorers(competitionScorers))
+            |> Seq.iter (fun scoreSheet -> scoreSheet.UpdateScorers competitionScorers)
     | Competitions.Event.Created _
     | Competitions.Event.FixturesAssigned _
     | Competitions.Event.GroupsAssigned _
@@ -326,8 +326,8 @@ let processFixtures (aggregateId: Guid) _ (version: int64) = function
                     16, Fixtures.FixtureStage.Last16
             if fixtureStage <> stageName then () else
             let confirmedCorrect, confirmedWrong = InMemoryStore.confirmedQualifiedTeams
-            confirmedCorrect.Add(homeTeamId) |> ignore
-            confirmedCorrect.Add(awayTeamId) |> ignore
+            confirmedCorrect.Add homeTeamId |> ignore
+            confirmedCorrect.Add awayTeamId |> ignore
             if confirmedCorrect.Count = numConfirms then
                 InMemoryStore.teams |> Seq.except confirmedCorrect |> Seq.iter (confirmedWrong.Add >> ignore)
             updateConfirmedTeams ()
@@ -489,31 +489,31 @@ let registerPredictionResultHandlers (logger: ILogger) (client: KurrentDBClient)
     let eventAppeared (e: ResolvedEvent) = task {
         try
             match getMetadata jsonOptions e with
-            | Some(md) when md.AggregateName = Competitions.AggregateName ->
+            | Some md when md.AggregateName = Competitions.AggregateName ->
                 processEvents e processCompetitions
-            | Some(md) when md.AggregateName = Fixtures.AggregateName ->
+            | Some md when md.AggregateName = Fixtures.AggregateName ->
                 processEvents e (processFixtures md.AggregateId)
-            | Some(md) when md.AggregateName = Predictions.AggregateName ->
+            | Some md when md.AggregateName = Predictions.AggregateName ->
                 processEvents e processPredictions
             | _ ->
                 ()
             checkpoint <- e.OriginalEventNumber
         with ex ->
-            logger.LogError(ex, $"Failed to handle event %A{e.Event.EventId}")
+            logger.LogError(ex, "Failed to handle event {EventId}", e.Event.EventId)
             raise ex
     }
 
-    logger.LogInformation("Initializing prediction results handler")
+    logger.LogInformation "Initializing prediction results handler"
 
     let rec subscribe () = task {
         let! _ =
             client.SubscribeToStreamAsync(
                 subscriptionSettings.StreamName,
-                FromStream.After(checkpoint),
-                (fun sub e _ -> eventAppeared e),
+                FromStream.After checkpoint,
+                (fun _ e _ -> eventAppeared e),
                 true,
                 subscriptionDropped = (fun _ _ _ ->
-                    logger.LogInformation("Trying to reconnect")
+                    logger.LogInformation "Trying to reconnect"
                     subscribe().Wait()
                 )
             )
@@ -522,7 +522,7 @@ let registerPredictionResultHandlers (logger: ILogger) (client: KurrentDBClient)
 
     subscribe().Wait()
 
-    logger.LogInformation("Prediction results handler initialized")
+    logger.LogInformation "Prediction results handler initialized"
 
 let getPredictionResults () =
     InMemoryStore.scoresheets.Values

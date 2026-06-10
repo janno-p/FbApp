@@ -80,7 +80,7 @@ type Event =
     | Declined
 
 let decide: State option -> Command -> Result<Event list,unit> =
-    (fun _ -> function
+    fun _ -> function
         | Register (input, name, email) ->
             let mapResult = function
                 | "HOME" -> HomeWin
@@ -121,17 +121,15 @@ let decide: State option -> Command -> Result<Event list,unit> =
                     Winner = input.Winner
                     TopScorers = input.TopScorers |> List.ofArray
                 }
-            Ok([Registered registration])
-        | Decline -> Ok([Declined])
-    )
+            Ok [Registered registration]
+        | Decline -> Ok [Declined]
 
 let evolve: State option -> Event -> State =
-    (fun state -> function
+    fun state -> function
         | Registered _ -> { IsAccepted = true }
         | Declined -> { state.Value with IsAccepted = false }
-    )
 
 let predictionsGuid = Guid "2945d861-0b2f-4783-914b-97988b98c76b"
 
 let createId (competitionId: Guid, Email email) =
-    Deterministic.Create(predictionsGuid, (sprintf "%s-%s" (competitionId.ToString("N")) email), 5)
+    Deterministic.Create(predictionsGuid, $"{competitionId:N}-%s{email}", 5)

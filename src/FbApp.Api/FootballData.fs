@@ -34,11 +34,6 @@ type Link =
         Href: string
     }
 
-let private parseIdSuffix (link: Link) =
-    let index = link.Href.LastIndexOf("/")
-    let value = link.Href.Substring(index + 1)
-    Convert.ToInt64(value)
-
 [<CLIMutable>]
 type GroupEntryTeam = {
     Id: int64
@@ -335,7 +330,7 @@ type CompetitionFixtureFilter =
 with
     override this.ToString() =
         match this with
-        | Range (s, e) -> sprintf "dateFrom=%s&dateTo=%s" (s.ToString("yyyy-MM-dd")) (e.ToString("yyyy-MM-dd"))
+        | Range (s, e) -> sprintf "dateFrom=%s&dateTo=%s" (s.ToString "yyyy-MM-dd") (e.ToString "yyyy-MM-dd")
         | Matchday n -> $"matchday=%d{n}"
 
 type FixturesFilter =
@@ -390,7 +385,7 @@ let private createClient (authToken: string) =
 
 let private apiCall<'T> (jsonOptions: JsonSerializerOptions) authToken (uri: string) (ct: CancellationToken) = task {
     use client = createClient authToken
-    let! response = client.GetAsync(uri)
+    let! response = client.GetAsync uri
     if response.IsSuccessStatusCode then
         let! jsonStream = response.Content.ReadAsStreamAsync()
         let! result = JsonSerializer.DeserializeAsync<'T>(jsonStream, jsonOptions, ct)

@@ -88,28 +88,28 @@ let private getFixtures: HttpHandler =
 
 
 let private savePredictions: Auth.AuthHttpHandler =
-    (fun user next context -> task {
+    fun user next context -> task {
         let! dto = context.BindJsonAsync<Predictions.PredictionRegistrationInput>()
         let! competition = Competitions.get (context.RequestServices.GetRequiredService<IMongoDatabase>()) dto.CompetitionId
         match competition with
-        | Some(competition) when competition.Date > DateTimeOffset.Now ->
+        | Some competition when competition.Date > DateTimeOffset.Now ->
             let command = Predictions.Register (dto, user.Name, user.Email)
             let id = Predictions.createId (dto.CompetitionId, Predictions.Email user.Email)
             let! result = CommandHandlers.predictionsHandler (id, Aggregate.New) command
             match result with
             | Ok _ -> return! Successful.ACCEPTED id next context
-            | Error(Aggregate.WrongExpectedVersion) -> return! RequestErrors.CONFLICT "Prediction already exists" next context
-            | Error(e) -> return! RequestErrors.BAD_REQUEST e next context
+            | Error Aggregate.WrongExpectedVersion -> return! RequestErrors.CONFLICT "Prediction already exists" next context
+            | Error e -> return! RequestErrors.BAD_REQUEST e next context
         | Some _ ->
             return! RequestErrors.BAD_REQUEST "Competition has already begun" next context
         | None ->
             return! RequestErrors.BAD_REQUEST "Invalid competition id" next context
-    })
+    }
 
 
 let predictScope: Endpoint list = [
     POST [
-        route "/" (Auth.mustBeLoggedIn >=> (Auth.withUser savePredictions))
+        route "/" (Auth.mustBeLoggedIn >=> Auth.withUser savePredictions)
     ]
     GET [
         route "/fixtures" getFixtures

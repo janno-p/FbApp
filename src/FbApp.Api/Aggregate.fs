@@ -35,14 +35,14 @@ let makeHandler (aggregate: Aggregate<'State, 'Command, 'Event, 'Error>)
         let! streamPosition, events = load (typeof<'Event>, streamId)
         let state = events |> Seq.fold (fun state event -> Some(aggregate.Evolve state event)) Option<'State>.None
         match aggregate.Decide state command with
-        | Ok(events) ->
+        | Ok events ->
             let expectedCommitVersion =
-                match (expectedVersion, streamPosition) with
+                match expectedVersion, streamPosition with
                 | New, _ -> NewStream
                 | Version v, _ -> Value v
                 | Any, Some ver -> Value ver
                 | Any, None -> NewStream
             return! commit (streamId, expectedCommitVersion) events
-        | Error(err) ->
-            return Error(DomainError(err))
+        | Error err ->
+            return Error(DomainError err)
     }

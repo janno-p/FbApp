@@ -22,7 +22,7 @@ let getActiveCompetition: GetActiveCompetition =
         let! competition =
             db.GetCollection<Competition>("competitions")
                 .Find(Builders<Competition>.Filter.Eq((fun x -> x.ExternalId), competitionId))
-                .Limit(Nullable(1))
+                .Limit(Nullable 1)
                 .SingleOrDefaultAsync()
-        return (if competition |> box |> isNull then None else Some competition)
+        return if competition |> box |> isNull then None else Some competition
     }

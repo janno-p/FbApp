@@ -45,7 +45,7 @@ module FixtureId =
         Guid "2130666a-7b4b-44c7-9d0a-da020138ffc0"
 
     let create (competitionId: CompetitionId) (externalId: int64) =
-        let competitionIdValue = (CompetitionId.value competitionId).ToString("N")
+        let competitionIdValue = (CompetitionId.value competitionId).ToString "N"
         Deterministic.Create(fixturesNamespace, sprintf "%s-%s" competitionIdValue (externalId.ToString()), 5)
             |> FixtureId
 
@@ -66,8 +66,8 @@ module PredictionId =
         Guid "2945d861-0b2f-4783-914b-97988b98c76b"
 
     let create (competitionId: CompetitionId) (Predictions.Email email) =
-        let competitionIdValue = (CompetitionId.value competitionId).ToString("N")
-        Deterministic.Create(predictionsNamespace, (sprintf "%s-%s" competitionIdValue email), 5)
+        let competitionIdValue = (CompetitionId.value competitionId).ToString "N"
+        Deterministic.Create(predictionsNamespace, $"%s{competitionIdValue}-%s{email}", 5)
             |> PredictionId
 
     let fromGuid =

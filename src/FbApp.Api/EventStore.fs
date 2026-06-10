@@ -1,6 +1,5 @@
 module FbApp.Api.EventStore
 
-open EventStore.Client
 open FSharp.Control
 open FbApp.Api.Aggregate
 open System
@@ -53,7 +52,7 @@ let rec readNextPage streamId startFrom (pages: ResizeArray<ResolvedEvent>) (cli
     match! result.ReadState with
     | ReadState.Ok ->
         let! events = result |> AsyncSeq.toArrayAsync
-        pages.AddRange(events)
+        pages.AddRange events
         if events.Length = 4096 then
             do! client |> readNextPage streamId events[4095].OriginalEventNumber pages
     | ReadState.StreamNotFound | _ -> ()
@@ -78,11 +77,11 @@ let makeRepository<'Event, 'Error> (client: KurrentDBClient)
                         Some(pages[pages.Count - 1].OriginalEventNumber.ToUInt64())
                     else
                         None
-                return (eventNumber, domainEvents)
+                return eventNumber, domainEvents
             }
 
     let commit: CommitAggregateEvents<'Event, 'Error> =
-        (fun (id, expectedVersion) (events: 'Event list) ->
+        fun (id, expectedVersion) (events: 'Event list) ->
             task {
                 let streamId = aggregateStreamId aggregateName id
                 let batchMetadata = Metadata.Create(aggregateName, id)
@@ -103,26 +102,25 @@ let makeRepository<'Event, 'Error> (client: KurrentDBClient)
                                 AggregateSequenceNumber = aggregateSequenceNumber (Convert.ToUInt64 i)
                             }
                         let _, metadata = serialize metadata
-                        EventData(Uuid.FromGuid(guid), eventType, data, metadata)
+                        EventData(Uuid.FromGuid guid, eventType, data, metadata)
                     )
 
                 let expectedVersion =
                     match expectedVersion with
                     | NewStream -> StreamState.NoStream
-                    | Value v -> StreamState.StreamRevision(v)
+                    | Value v -> StreamState.StreamRevision v
 
                 try
                     let! writeResult = client.AppendToStreamAsync(streamId, expectedVersion, eventDatas)
                     return Ok(writeResult.NextExpectedStreamState.ToInt64())
                 with
                 | :? WrongExpectedVersionException ->
-                    return Error(WrongExpectedVersion)
+                    return Error WrongExpectedVersion
                 | ex ->
                     return Error(Other ex)
             }
-        )
 
-    (load, commit)
+    load, commit
 
 let makeDefaultRepository<'Event, 'Error> connection aggregateName jsonOptions =
     makeRepository<'Event, 'Error> connection aggregateName (Serialization.serialize jsonOptions) (Serialization.deserialize jsonOptions)

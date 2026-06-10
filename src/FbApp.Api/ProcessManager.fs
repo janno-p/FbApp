@@ -1,7 +1,6 @@
 module FbApp.Api.ProcessManager
 
 
-open EventStore.Client
 open FbApp.Api.Configuration
 open FbApp.Api.Domain
 open FbApp.Api.EventStore
@@ -16,7 +15,6 @@ open KurrentDB.Client
 open System.Threading
 open Microsoft.AspNetCore.Http.Json
 open System.Text.Json
-open Giraffe
 
 
 let (|Nullable|_|) (x: Nullable<_>) =
@@ -59,7 +57,7 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
                     (
                         teams.Teams |> Seq.map (fun x -> { Name = x.Name; Tla = x.Tla; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
                         fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
-                        groups.Standings |> Seq.map (fun kvp -> kvp.Group, (kvp.Table |> Array.map (fun x -> x.Team.Id))) |> Seq.toList,
+                        groups.Standings |> Seq.map (fun kvp -> kvp.Group, kvp.Table |> Array.map (fun x -> x.Team.Id)) |> Seq.toList,
                         teams.Teams |> Seq.map (fun t -> t.Players |> Seq.map (fun x -> { Name = x.Name; Position = x.Position; TeamExternalId = t.Id; ExternalId = x.Id } : Competitions.PlayerAssignment)) |> Seq.concat |> Seq.toList
                     )
             let id = Competitions.createId args.ExternalId
@@ -121,7 +119,7 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
             with :? WrongExpectedVersionException as ex ->
                 logger.LogInformation(ex, "Cannot process current event: {0} {1}", e.OriginalStreamId, e.OriginalEventNumber)
     | Competitions.GroupsAssigned groups ->
-        do! (dict groups) |> Competitions.updateGroups db (md.AggregateId, md.AggregateSequenceNumber)
+        do! dict groups |> Competitions.updateGroups db (md.AggregateId, md.AggregateSequenceNumber)
     | Competitions.StandingsUpdated _
     | Competitions.ScorersUpdated _ ->
         ()
@@ -169,7 +167,7 @@ let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegis
         |> Seq.map (mapFixtureResult db model.CompetitionId)
         |> Seq.toArray
 
-    let! fixtures = System.Threading.Tasks.Task.WhenAll(fixtureTasks)
+    let! fixtures = System.Threading.Tasks.Task.WhenAll fixtureTasks
 
     let updates =
         fixtures
@@ -185,7 +183,7 @@ let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegis
                 do! Fixtures.addPrediction db id prediction
             })
 
-    let! _ = System.Threading.Tasks.Task.WhenAll(updates)
+    let! _ = System.Threading.Tasks.Task.WhenAll updates
 
     let prediction: ReadModels.Prediction =
         {
@@ -231,21 +229,21 @@ let updateFixtureOrder db competitionId = task {
     match fixtures |> Seq.toList with
     | [] | [_] -> ()
     | [x;y] ->
-        if x.PreviousId.HasValue || x.NextId <> Nullable(y.Id) then
-            do! Fixtures.setAdjacentFixtures db x.Id (None, Some(y.Id))
-        if y.PreviousId <> Nullable(x.Id) || y.NextId.HasValue then
-            do! Fixtures.setAdjacentFixtures db y.Id (Some(x.Id), None)
+        if x.PreviousId.HasValue || x.NextId <> Nullable y.Id then
+            do! Fixtures.setAdjacentFixtures db x.Id (None, Some y.Id)
+        if y.PreviousId <> Nullable x.Id || y.NextId.HasValue then
+            do! Fixtures.setAdjacentFixtures db y.Id (Some x.Id, None)
     | fixtures ->
         let x, y = match fixtures with x::y::_ -> x, y | _ -> failwith "never"
-        if x.PreviousId.HasValue || x.NextId <> Nullable(y.Id) then
-            do! Fixtures.setAdjacentFixtures db x.Id (None, Some(y.Id))
+        if x.PreviousId.HasValue || x.NextId <> Nullable y.Id then
+            do! Fixtures.setAdjacentFixtures db x.Id (None, Some y.Id)
         for w in fixtures |> List.windowed 3 do
             let p, x, n = match w with [p; x; n] -> p, x, n | _ -> failwith "never"
-            if x.PreviousId <> Nullable(p.Id) || x.NextId <> Nullable(n.Id) then
-                do! Fixtures.setAdjacentFixtures db x.Id (Some(p.Id), Some(n.Id))
+            if x.PreviousId <> Nullable p.Id || x.NextId <> Nullable n.Id then
+                do! Fixtures.setAdjacentFixtures db x.Id (Some p.Id, Some n.Id)
         let x, y = match fixtures |> List.rev with x::y::_ -> x, y | _ -> failwith "never"
-        if x.PreviousId <> Nullable(y.Id) || x.NextId.HasValue then
-            do! Fixtures.setAdjacentFixtures db x.Id (Some(y.Id), None)
+        if x.PreviousId <> Nullable y.Id || x.NextId.HasValue then
+            do! Fixtures.setAdjacentFixtures db x.Id (Some y.Id, None)
 }
 
 
@@ -293,8 +291,8 @@ let updateQualifiedTeams db (competition: ReadModels.Competition) = task {
 let updateScore db (fixtureId: Guid, expectedVersion: uint64, fullTime, extraTime, penalties) = task {
     let! fixture = Fixtures.get db fixtureId
     do! Fixtures.updateScore db (fixtureId, expectedVersion) (fullTime, extraTime, penalties)
-    let ps = match penalties with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
-    let et = match extraTime with Some(u) -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
+    let ps = match penalties with Some u -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
+    let et = match extraTime with Some u -> [| u.Home; u.Away |] | _ -> [| 0; 0 |]
     let actualResult = mapActualResult (fixture.Status, [| fullTime.Home; fullTime.Away |], et, ps)
     if fixture.Stage = "GROUP_STAGE" then
         if actualResult |> isNull |> not then
@@ -324,7 +322,7 @@ let processFixtures (log: ILogger, db, jsonOptions: JsonSerializerOptions) (md: 
                 {
                     Id = md.AggregateId
                     CompetitionId = input.CompetitionId
-                    Date = input.Date.ToOffset(TimeSpan.Zero)
+                    Date = input.Date.ToOffset TimeSpan.Zero
                     PreviousId = Nullable()
                     NextId = Nullable()
                     HomeTeam = homeTeam
@@ -395,19 +393,19 @@ let processLeagues (log: ILogger, db, jsonOptions: JsonSerializerOptions) (md: M
 
 let eventAppeared (logger: ILogger, db, jsonOptions, authOptions: AuthOptions) (subscription: PersistentSubscription) (e: ResolvedEvent) (ct: CancellationToken) = task {
     try
-        logger.LogInformation($"Event %A{e.Event.EventId} of type %s{e.Event.EventType} appeared in stream %s{e.Event.EventStreamId}")
+        logger.LogInformation("Event {EventId} of type {EventType} appeared in stream {StreamId}", e.Event.EventId, e.Event.EventType, e.Event.EventStreamId)
         match getMetadata jsonOptions e with
-        | Some(md) when md.AggregateName = Competitions.AggregateName ->
+        | Some md when md.AggregateName = Competitions.AggregateName ->
             do! processCompetitions (logger, db, jsonOptions) authOptions md e ct
-        | Some(md) when md.AggregateName = Predictions.AggregateName ->
+        | Some md when md.AggregateName = Predictions.AggregateName ->
             do! processPredictions (logger, db, jsonOptions) md e
-        | Some(md) when md.AggregateName = Fixtures.AggregateName ->
+        | Some md when md.AggregateName = Fixtures.AggregateName ->
             do! processFixtures (logger, db, jsonOptions) md e
-        | Some(md) when md.AggregateName = Leagues.AggregateName ->
+        | Some md when md.AggregateName = Leagues.AggregateName ->
             do! processLeagues (logger, db, jsonOptions) md e
         | _ -> ()
-        do! subscription.Ack(e)
-        logger.LogInformation($"Event %A{e.Event.EventId} handled")
+        do! subscription.Ack e
+        logger.LogInformation("Event {EventId} handled", e.Event.EventId)
     with ex ->
         do! subscription.Nack(PersistentSubscriptionNakEventAction.Retry, "unexpected exception occured", e)
         logger.LogError(ex, $"Failed to handle event %A{e.Event.EventId}")
@@ -449,14 +447,14 @@ let initProjections (services: IServiceProvider) = task {
 }})"""
 
     try
-        logger.LogInformation($"Trying to create '%s{subscriptionsSettings.StreamName}' projection (if not exists)")
+        logger.LogInformation("Trying to create '{StreamName}' projection (if not exists)", subscriptionsSettings.StreamName)
         do! projectionManagementClient.CreateContinuousAsync(subscriptionsSettings.StreamName, query)
         do! projectionManagementClient.UpdateAsync(subscriptionsSettings.StreamName, query, emitEnabled = true)
     with
     | Conflict ->
         ()
     | e ->
-        logger.LogCritical(e, $"Error occurred while initializing '%s{subscriptionsSettings.StreamName}' projection")
+        logger.LogCritical(e, "Error occurred while initializing '{StreamName}' projection", subscriptionsSettings.StreamName)
         raise e
 
     let settings =
@@ -467,15 +465,15 @@ let initProjections (services: IServiceProvider) = task {
         )
 
     try
-        logger.LogInformation($"Trying to create '%s{subscriptionsSettings.GroupName}' subscription group ...")
+        logger.LogInformation("Trying to create '{GroupName}' subscription group ...", subscriptionsSettings.GroupName)
         if subscriptionsSettings.Reset then
             do! subscriptionsClient.DeleteToStreamAsync(subscriptionsSettings.StreamName, subscriptionsSettings.GroupName)
         do! subscriptionsClient.CreateToStreamAsync(subscriptionsSettings.StreamName, subscriptionsSettings.GroupName, settings)
     with
     | AlreadyExists ->
-        logger.LogInformation($"Subscription group '%s{subscriptionsSettings.GroupName}' already exists")
+        logger.LogInformation("Subscription group '{GroupName}' already exists", subscriptionsSettings.GroupName)
     | e ->
-        logger.LogCritical(e, $"Error occurred while initializing '%s{subscriptionsSettings.GroupName}' subscription group")
+        logger.LogCritical(e, "Error occurred while initializing '{GroupName}' subscription group", subscriptionsSettings.GroupName)
         raise e
 }
 
@@ -490,12 +488,12 @@ let connectSubscription (services: IServiceProvider) = task {
     let authOptions = services.GetService<IOptions<AuthOptions>>().Value
     let jsonOptions = services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions
 
-    logger.LogInformation("Initializing process manager")
+    logger.LogInformation "Initializing process manager"
     let! _ =
         client.SubscribeToStreamAsync(
             subscriptionsSettings.StreamName,
             subscriptionsSettings.GroupName,
             (fun sub e _ ct -> eventAppeared (logger, mongoDb, jsonOptions, authOptions) sub e ct)
         )
-    logger.LogInformation("Process manager initialized")
+    logger.LogInformation "Process manager initialized"
 }

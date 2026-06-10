@@ -9,15 +9,15 @@ open MongoDB.Driver
 open System
 
 let private getLeague (code: string) : HttpHandler =
-    (fun next ctx -> task {
+    fun next ctx -> task {
         code |> ignore
         return! Successful.OK null next ctx
-    })
+    }
 
 let private getDefaultLeague : HttpHandler =
-    (fun next ctx -> task {
+    fun next ctx -> task {
         return! Successful.OK null next ctx
-    })
+    }
 
 let private addLeague : HttpHandler =
     fun next ctx -> task {
@@ -30,20 +30,20 @@ let private addLeague : HttpHandler =
     }
 
 let private addPrediction (leagueId: string, predictionId: string) : HttpHandler =
-    (fun next ctx -> task {
-        let leagueId = Guid.Parse(leagueId)
-        let predictionId = Guid.Parse(predictionId)
+    fun next ctx -> task {
+        let leagueId = Guid.Parse leagueId
+        let predictionId = Guid.Parse predictionId
         let! result = CommandHandlers.leaguesHandler (leagueId, Aggregate.Any) (Leagues.AddPrediction predictionId)
         match result with
         | Ok _ -> return! Successful.ACCEPTED predictionId next ctx
-        | Error(e) -> return! RequestErrors.BAD_REQUEST e next ctx
-    })
+        | Error e -> return! RequestErrors.BAD_REQUEST e next ctx
+    }
 
 let private getLeagues : HttpHandler =
-    (fun next ctx -> task {
+    fun next ctx -> task {
         let! leagues = Repositories.Leagues.getAll (ctx.RequestServices.GetRequiredService<IMongoDatabase>())
         return! Successful.OK leagues next ctx
-    })
+    }
 
 let scope: Endpoint list = [
     GET [

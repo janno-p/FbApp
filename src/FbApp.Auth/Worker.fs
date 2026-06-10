@@ -60,35 +60,35 @@ type Worker(serviceProvider: IServiceProvider, configuration: IConfiguration) =
 
             redirectUris
             |> Seq.iter (fun redirectUri ->
-                descriptor.PostLogoutRedirectUris.Add(Uri(redirectUri)) |> ignore
-                descriptor.RedirectUris.Add(Uri(redirectUri)) |> ignore
+                descriptor.PostLogoutRedirectUris.Add(Uri redirectUri) |> ignore
+                descriptor.RedirectUris.Add(Uri redirectUri) |> ignore
             )
 
-            descriptor.Permissions.Add(Permissions.Endpoints.Authorization) |> ignore
-            descriptor.Permissions.Add(Permissions.Endpoints.EndSession) |> ignore
-            descriptor.Permissions.Add(Permissions.Endpoints.Token) |> ignore
-            descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode) |> ignore
-            descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken) |> ignore
-            descriptor.Permissions.Add(Permissions.ResponseTypes.Code) |> ignore
-            descriptor.Permissions.Add(Permissions.Scopes.Email) |> ignore
-            descriptor.Permissions.Add(Permissions.Scopes.Profile) |> ignore
-            descriptor.Permissions.Add(Permissions.Scopes.Roles) |> ignore
+            descriptor.Permissions.Add Permissions.Endpoints.Authorization |> ignore
+            descriptor.Permissions.Add Permissions.Endpoints.EndSession |> ignore
+            descriptor.Permissions.Add Permissions.Endpoints.Token |> ignore
+            descriptor.Permissions.Add Permissions.GrantTypes.AuthorizationCode |> ignore
+            descriptor.Permissions.Add Permissions.GrantTypes.RefreshToken |> ignore
+            descriptor.Permissions.Add Permissions.ResponseTypes.Code |> ignore
+            descriptor.Permissions.Add Permissions.Scopes.Email |> ignore
+            descriptor.Permissions.Add Permissions.Scopes.Profile |> ignore
+            descriptor.Permissions.Add Permissions.Scopes.Roles |> ignore
 
-            descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange) |> ignore
+            descriptor.Requirements.Add Requirements.Features.ProofKeyForCodeExchange |> ignore
 
-            match! manager.FindByClientIdAsync("fbapp-ui-client") with
+            match! manager.FindByClientIdAsync "fbapp-ui-client" with
             | null ->
-                let! _ = manager.CreateAsync(descriptor)
+                let! _ = manager.CreateAsync descriptor
                 ()
             | app ->
                 let! _ = manager.UpdateAsync(app, descriptor)
                 ()
 
             let roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>()
-            let! adminRoleExists = roleManager.RoleExistsAsync("admin")
+            let! adminRoleExists = roleManager.RoleExistsAsync "admin"
             if not adminRoleExists then
                 let adminRole = ApplicationRole(Name = "admin")
-                let! _ = roleManager.CreateAsync(adminRole)
+                let! _ = roleManager.CreateAsync adminRole
                 ()
         }
 

@@ -2,10 +2,8 @@
 
 open FSharp.Reflection
 open System
-open System.IO
 open System.Text
 open System.Text.Json
-open System.Threading
 
 let eventType o =
     let typ = o.GetType()

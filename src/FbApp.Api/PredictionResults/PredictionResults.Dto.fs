@@ -17,15 +17,15 @@ type PredictionResultDto = {
 module PredictionResultDto =
     let private getTopScorer (ss: Scoresheet) =
         if ss.Scorer |> List.isEmpty then
-            (false, false)
-        else if ss.Scorer |> List.forall (fun x -> x.IsTopScorer = Final(false)) then
-            (false, true)
-        else if ss.Scorer |> List.exists (fun x -> x.IsTopScorer = Final(true)) then
-            (true, true)
-        else if ss.Scorer |> List.exists (fun x -> x.IsTopScorer = Pending(true)) then
-            (true, false)
+            false, false
+        else if ss.Scorer |> List.forall (fun x -> x.IsTopScorer = Final false) then
+            false, true
+        else if ss.Scorer |> List.exists (fun x -> x.IsTopScorer = Final true) then
+            true, true
+        else if ss.Scorer |> List.exists (fun x -> x.IsTopScorer = Pending true) then
+            true, false
         else
-            (false, false)
+            false, false
 
     let fromScoresheet (scoresheet: Scoresheet) =
         let topScorer, topScorerIsFinal = getTopScorer scoresheet
@@ -37,8 +37,8 @@ module PredictionResultDto =
             4 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
             5 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
             6 * (scoresheet.Final.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
-            7 * (match snd scoresheet.Winner with Some true -> 1 | _ -> 0)
-            5 * (if topScorer then 1 else 0)
+            7 * match snd scoresheet.Winner with Some true -> 1 | _ -> 0
+            5 * if topScorer then 1 else 0
             1 * topScorerGoalPoints
         ]
         let lostPoints = [
@@ -48,8 +48,8 @@ module PredictionResultDto =
             4 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
             5 * (scoresheet.Semis.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
             6 * (scoresheet.Final.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
-            7 * (match snd scoresheet.Winner with Some false -> 1 | _ -> 0)
-            5 * (if not topScorer && topScorerIsFinal then 1 else 0)
+            7 * match snd scoresheet.Winner with Some false -> 1 | _ -> 0
+            5 * if not topScorer && topScorerIsFinal then 1 else 0
             0
         ]
         let maxTotalPoints = MaxTotalPoints + topScorerGoalPoints
@@ -58,6 +58,6 @@ module PredictionResultDto =
             Points = gainedPoints |> Array.ofList
             ScorerFixed = topScorerIsFinal
             Total = gainedPoints |> List.sum
-            Ratio = double (maxTotalPoints - (List.sum lostPoints)) / double maxTotalPoints * 100.0
+            Ratio = double (maxTotalPoints - List.sum lostPoints) / double maxTotalPoints * 100.0
             Rank = 0
         }

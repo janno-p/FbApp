@@ -20,5 +20,5 @@ let getUserPrediction : GetUserPrediction =
                 .Find(Builders<BsonDocument>.Filter.Eq("_id", predictionId))
                 .CountDocumentsAsync()
 
-        return (if predictionsCount = 0 then None else Some predictionId)
+        return if predictionsCount = 0 then None else Some predictionId
     }

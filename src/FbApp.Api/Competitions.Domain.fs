@@ -81,19 +81,18 @@ type Event =
     | ScorersUpdated of Scorer list
 
 let decide: State option -> Command -> Result<Event list,unit> =
-    (fun _ -> function
+    fun _ -> function
         | Create { Description = description; ExternalId = externalId; Date = date } ->
-            Ok([Created { Description = description; ExternalId = externalId; Date = date }])
+            Ok [Created { Description = description; ExternalId = externalId; Date = date }]
         | AssignTeamsAndFixtures (teams, fixtures, groups, players) ->
-            Ok([TeamsAssigned teams; FixturesAssigned fixtures; GroupsAssigned groups; PlayersAssigned players])
+            Ok [TeamsAssigned teams; FixturesAssigned fixtures; GroupsAssigned groups; PlayersAssigned players]
         | UpdateStandings(s, standingRowInputs) ->
-            Ok([StandingsUpdated (s, standingRowInputs)])
+            Ok [StandingsUpdated (s, standingRowInputs)]
         | UpdateScorers scorers ->
-            Ok([ScorersUpdated scorers])
-    )
+            Ok [ScorersUpdated scorers]
 
 let evolve: State option -> Event -> State =
-    (fun _ -> function
+    fun _ -> function
         | Created _ -> ()
         | TeamsAssigned _ -> ()
         | FixturesAssigned _ -> ()
@@ -101,7 +100,6 @@ let evolve: State option -> Event -> State =
         | PlayersAssigned _ -> ()
         | StandingsUpdated _ -> ()
         | ScorersUpdated _ -> ()
-    )
 
 let competitionsNamespace =
     Guid "1dc53967-8c3b-49a9-9496-27a2267bbef7"

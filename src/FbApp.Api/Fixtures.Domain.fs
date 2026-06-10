@@ -133,35 +133,35 @@ type Command =
     | UpdateQualifiers of UpdateQualifiersInput
 
 let decide : State option -> Command -> Result<Event list, Error> =
-    (fun state -> function
+    fun state -> function
         | AddFixture input ->
             match state with
-            | Some _ -> Error(FixtureAlreadyAdded)
-            | None -> Ok([Added input])
+            | Some _ -> Error FixtureAlreadyAdded
+            | None -> Ok [Added input]
         | UpdateFixture input ->
             match state with
-            | Some(state) ->
+            | Some state ->
                 Ok([
-                    let status = FixtureStatus.FromString(input.Status)
+                    let status = FixtureStatus.FromString input.Status
                     if status <> state.Status then
                         yield StatusChanged status
 
                     match input.FullTime, input.ExtraTime, input.Penalties with
-                    | Some(fullTime), extraTime, penalties when input.FullTime <> state.FullTime || extraTime <> state.ExtraTime || penalties <> state.Penalties ->
+                    | Some fullTime, extraTime, penalties when input.FullTime <> state.FullTime || extraTime <> state.ExtraTime || penalties <> state.Penalties ->
                         yield ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties }
                     | _ -> ()
                 ])
-            | None -> Error(UnknownFixture)
+            | None -> Error UnknownFixture
         | UpdateQualifiers input ->
             match state with
-            | Some(state) ->
+            | Some state ->
                 Ok([
                     let status = FixtureStatus.FromString(input.Status)
                     if status <> state.Status then
                         yield StatusChanged status
 
                     match input.FullTime, input.ExtraTime, input.Penalties with
-                    | Some(fullTime), extraTime, penalties when input.FullTime <> state.FullTime || extraTime <> state.ExtraTime || penalties <> state.Penalties ->
+                    | Some fullTime, extraTime, penalties when input.FullTime <> state.FullTime || extraTime <> state.ExtraTime || penalties <> state.Penalties ->
                         yield ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties }
                     | _ -> ()
                 ])
@@ -170,24 +170,22 @@ let decide : State option -> Command -> Result<Event list, Error> =
                     yield Added { CompetitionId = input.CompetitionId; ExternalId = input.ExternalId; HomeTeamId = input.HomeTeamId; AwayTeamId = input.AwayTeamId; Date = input.Date; Status = input.Status; Stage = input.Stage }
                     if input.FullTime.IsSome then yield ScoreChanged2 { FullTime = input.FullTime.Value; ExtraTime = input.ExtraTime; Penalties = input.Penalties }
                 ])
-    )
 
 let evolve : State option -> Event -> State =
-    (fun state -> function
+    fun state -> function
         | Added input ->
-            { Date = input.Date; Status = FixtureStatus.FromString(input.Status); FullTime = None; ExtraTime = None; Penalties = None }
+            { Date = input.Date; Status = FixtureStatus.FromString input.Status; FullTime = None; ExtraTime = None; Penalties = None }
         | StatusChanged status ->
             let fullTime =
                 match status, state.Value.FullTime with
-                | InPlay, None -> Some({ Home = 0; Away = 0 })
+                | InPlay, None -> Some { Home = 0; Away = 0 }
                 | _, fullTime -> fullTime
             { state.Value with Status = status; FullTime = fullTime }
         | ScoreChanged2 { FullTime = fullTime; ExtraTime = extraTime; Penalties = penalties } ->
-            { state.Value with FullTime = Some(fullTime); ExtraTime = extraTime; Penalties = penalties }
-    )
+            { state.Value with FullTime = Some fullTime; ExtraTime = extraTime; Penalties = penalties }
 
 let fixturesNamespace =
     Guid "2130666a-7b4b-44c7-9d0a-da020138ffc0"
 
 let createId (competitionId: Guid, externalId: int64) =
-    Deterministic.Create(fixturesNamespace, sprintf "%s-%s" (competitionId.ToString("N")) (externalId.ToString()), 5)
+    Deterministic.Create(fixturesNamespace, sprintf "%s-%s" (competitionId.ToString "N") (externalId.ToString()), 5)

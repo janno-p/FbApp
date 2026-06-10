@@ -24,15 +24,15 @@ type DaprConfigFilter(configuration: IConfiguration) =
     let [<Literal>] DaprPrefix = "dapr:"
 
     let getClusterAddress (clusterId: string) =
-        configuration.GetConnectionString(clusterId)
+        configuration.GetConnectionString clusterId
         |> Option.ofObj
 
     interface IProxyConfigFilter with
         member _.ConfigureClusterAsync(originalCluster, _) =
-            let newDestinations = Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase)
+            let newDestinations = Dictionary<string, DestinationConfig> StringComparer.OrdinalIgnoreCase
 
             match getClusterAddress originalCluster.ClusterId with
-            | Some(connectionString) ->
+            | Some connectionString ->
                 originalCluster.Destinations
                 |> Seq.tryExactlyOne
                 |> Option.iter (fun kvp ->
@@ -45,15 +45,15 @@ type DaprConfigFilter(configuration: IConfiguration) =
                 )
             | None ->
                 let daprPort =
-                    match Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") |> Int32.TryParse with
+                    match Environment.GetEnvironmentVariable "DAPR_HTTP_PORT" |> Int32.TryParse with
                     | true, port -> port
                     | false, _ -> 3500
 
                 originalCluster.Destinations
                 |> Seq.iter (fun kvp ->
-                    if kvp.Value.Address.StartsWith(DaprPrefix) then
+                    if kvp.Value.Address.StartsWith DaprPrefix then
                         let destination = DestinationConfig(
-                            Address = $"http://localhost:%d{daprPort}%s{kvp.Value.Address.Substring(DaprPrefix.Length)}",
+                            Address = $"http://localhost:%d{daprPort}%s{kvp.Value.Address.Substring DaprPrefix.Length}",
                             Health = kvp.Value.Health,
                             Metadata = kvp.Value.Metadata
                         )
@@ -73,10 +73,10 @@ type DaprConfigFilter(configuration: IConfiguration) =
                 LoadBalancingPolicy = originalCluster.LoadBalancingPolicy
             )
 
-            ValueTask<ClusterConfig>(cluster)
+            ValueTask<ClusterConfig> cluster
 
         member _.ConfigureRouteAsync(originalRoute, _, _) =
-            ValueTask<RouteConfig>(originalRoute)
+            ValueTask<RouteConfig> originalRoute
 
 
 type ProxyJwtBearerEvents () =
@@ -109,7 +109,7 @@ type ProxyJwtBearerEvents () =
 
 
 let configureJwtAuthentication (configuration: IConfiguration) (options: JwtBearerOptions) =
-    options.Authority <- configuration.GetConnectionString("authCluster")
+    options.Authority <- configuration.GetConnectionString "authCluster"
     options.TokenValidationParameters.ValidateAudience <- false
     options.TokenValidationParameters.ValidIssuer <- configuration["Authentication:ValidIssuer"]
     options.RequireHttpsMetadata <- false
@@ -130,7 +130,7 @@ let configureServices (builder: WebApplicationBuilder) =
     |> ignore
 
     builder.Services.AddReverseProxy()
-        .LoadFromConfig(configuration.GetSection("ReverseProxy"))
+        .LoadFromConfig(configuration.GetSection "ReverseProxy")
         .AddConfigFilter<DaprConfigFilter>()
     |> ignore
 
@@ -160,7 +160,7 @@ let configureApplication (app: WebApplication) =
 
     app.MapDefaultEndpoints() |> ignore
 
-    app.UseGiraffe(routes) |> ignore
+    app.UseGiraffe routes |> ignore
 
     app.UseEndpoints(fun endpoints ->
         endpoints.MapReverseProxy() |> ignore
@@ -168,7 +168,7 @@ let configureApplication (app: WebApplication) =
 
 [<EntryPoint>]
 let main args =
-    let builder = WebApplication.CreateBuilder(args)
+    let builder = WebApplication.CreateBuilder args
     configureServices builder
 
     let app = builder.Build()

@@ -8,7 +8,7 @@ open MongoDB.Driver
 
 
 let findPredictions term : HttpHandler =
-    (fun next ctx -> task {
+    fun next ctx -> task {
         let db = ctx.RequestServices.GetRequiredService<IMongoDatabase>()
         match! Competitions.tryGetActive db with
         | Some competition ->
@@ -16,7 +16,7 @@ let findPredictions term : HttpHandler =
             return! Successful.OK predictions next ctx
         | None ->
             return! RequestErrors.NOT_FOUND "No active competition" next ctx
-    })
+    }
 
 let scope: Endpoint list = [
     subRoute "/admin" [

@@ -41,20 +41,20 @@ let addCompetitionDom input = task {
 }
 
 let addCompetition: HttpHandler =
-    (fun next context ->
+    fun next context ->
         task {
             let! input = context.BindJsonAsync<Competitions.CreateInput>()
             match! addCompetitionDom input with
             | Ok _ -> return! Successful.ACCEPTED id next context
             | Error _ -> return! RequestErrors.CONFLICT "Competition already exists" next context
-        })
+        }
 
 let getCompetitions: HttpHandler =
-    (fun next context ->
+    fun next context ->
         task {
             let! competitions = Repositories.Competitions.getAll (context.RequestServices.GetRequiredService<IMongoDatabase>())
             return! Successful.OK competitions next context
-        })
+        }
 
 let dashboardScope: Endpoint list = [
     GET [

@@ -32,8 +32,8 @@ type AuthHttpHandler = AuthUser -> HttpHandler
 let withUser (handler: AuthHttpHandler) : HttpHandler =
     fun next ctx -> task {
         let user = {
-            Name = ctx.User.FindFirstValue("name")
-            Email = ctx.User.FindFirstValue("email")
+            Name = ctx.User.FindFirstValue "name"
+            Email = ctx.User.FindFirstValue "email"
         }
         return! handler user next ctx
     }

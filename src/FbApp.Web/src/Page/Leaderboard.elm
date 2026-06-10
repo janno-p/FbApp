@@ -20,7 +20,7 @@ type alias PredictionResult =
     { name : String
     , matches : Int
     , qualifiers : Int
-    , roundOf16ths: Int
+    , roundOf16ths : Int
     , quarterFinals : Int
     , semiFinals : Int
     , finals : Int
@@ -81,7 +81,7 @@ viewLeaderboardTable predictionResults =
         ratioRange =
             ( minRatio, maxRatio )
     in
-    div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg py-4" ]
+    div [ class "sm:rounded-md sm:border border-gray-200 sm:w-160 sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg py-4" ]
         (div [ class "hidden sm:grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-[2rem_1fr_repeat(9,2rem)_2.5rem_1rem] font-semibold px-8 border-b border-gray-200 pb-2 gap-2" ]
             [ div [] []
             , div [] []

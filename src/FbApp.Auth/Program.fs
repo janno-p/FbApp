@@ -27,7 +27,7 @@ open System.Security.Claims
 module Ioc =
     let get<'t> (ctx: HttpContext) =
         let scoped = lazy ctx.RequestServices.GetRequiredService<'t>()
-        (fun () -> scoped.Value)
+        fun () -> scoped.Value
 
     let create ctx =
         {|
@@ -36,7 +36,7 @@ module Ioc =
             OpenIddictApplicationManager = ctx |> get<IOpenIddictApplicationManager>
             OpenIddictAuthorizationManager = ctx |> get<IOpenIddictAuthorizationManager>
             OpenIddictScopeManager = ctx |> get<IOpenIddictScopeManager>
-            HttpClientFactory = ctx |> get<System.Net.Http.IHttpClientFactory>
+            HttpClientFactory = ctx |> get<Net.Http.IHttpClientFactory>
             Configuration = ctx |> get<IConfiguration>
         |}
 
@@ -44,18 +44,18 @@ let getDestinations (principal: ClaimsPrincipal) (claim: Claim) = seq {
     match claim.Type with
     | OpenIddictConstants.Claims.Name ->
         yield OpenIddictConstants.Destinations.AccessToken
-        if principal.HasScope(OpenIddictConstants.Scopes.Profile) then
+        if principal.HasScope OpenIddictConstants.Scopes.Profile then
             yield OpenIddictConstants.Destinations.IdentityToken
     | OpenIddictConstants.Claims.Email ->
         yield OpenIddictConstants.Destinations.AccessToken
-        if principal.HasScope(OpenIddictConstants.Scopes.Email) then
+        if principal.HasScope OpenIddictConstants.Scopes.Email then
             yield OpenIddictConstants.Destinations.IdentityToken
     | OpenIddictConstants.Claims.Role ->
         yield OpenIddictConstants.Destinations.AccessToken
-        if principal.HasScope(OpenIddictConstants.Scopes.Roles) then
+        if principal.HasScope OpenIddictConstants.Scopes.Roles then
             yield OpenIddictConstants.Destinations.IdentityToken
     | OpenIddictConstants.Claims.Picture ->
-        if principal.HasScope(OpenIddictConstants.Scopes.Profile) then
+        if principal.HasScope OpenIddictConstants.Scopes.Profile then
             yield OpenIddictConstants.Destinations.IdentityToken
     | "AspNet.Identity.SecurityStamp" ->
         ()
@@ -72,34 +72,34 @@ let authorize: HttpHandler =
         if request = null then
             failwith "The OpenID Connect request cannot be retrieved"
 
-        match! ctx.AuthenticateAsync(IdentityConstants.ApplicationScheme) with
+        match! ctx.AuthenticateAsync IdentityConstants.ApplicationScheme with
         | null as v | v when not v.Succeeded ->
             do! ctx.ForbidAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(dict [
-                (OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.LoginRequired)
-                (OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The user is not logged in")
+                OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.LoginRequired
+                OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The user is not logged in"
             ]))
             return Some ctx
         | result ->
             let properties = result.Properties |> Option.ofObj
             let issuedUtc = properties |> Option.bind (fun p -> p.IssuedUtc |> Option.ofNullable) |> Option.defaultValue DateTimeOffset.MinValue
             match request.MaxAge |> Option.ofNullable with
-            | Some maxAge when DateTimeOffset.UtcNow - issuedUtc > TimeSpan.FromSeconds(Convert.ToDouble(maxAge)) ->
+            | Some maxAge when DateTimeOffset.UtcNow - issuedUtc > TimeSpan.FromSeconds(Convert.ToDouble maxAge) ->
                 do! ctx.ForbidAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(dict [
-                    (OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.LoginRequired)
-                    (OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The user is not logged in")
+                    OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.LoginRequired
+                    OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The user is not logged in"
                 ]))
                 return Some ctx
             | _ ->
-                let! user = svc.UserManager().GetUserAsync(result.Principal)
+                let! user = svc.UserManager().GetUserAsync result.Principal
                 if user = null then
                     failwith "The user details cannot be retrieved"
 
-                let! application = svc.OpenIddictApplicationManager().FindByClientIdAsync(request.ClientId)
+                let! application = svc.OpenIddictApplicationManager().FindByClientIdAsync request.ClientId
                 if application = null then
                     failwith "Details concerning the calling client application cannot be found"
 
-                let! subject = svc.UserManager().GetUserIdAsync(user)
-                let! client = svc.OpenIddictApplicationManager().GetIdAsync(application)
+                let! subject = svc.UserManager().GetUserIdAsync user
+                let! client = svc.OpenIddictApplicationManager().GetIdAsync application
 
                 let! authorizations =
                     svc.OpenIddictAuthorizationManager().FindAsync(
@@ -110,17 +110,17 @@ let authorize: HttpHandler =
                         request.GetScopes()
                     ) |> AsyncSeq.toListAsync
 
-                let! principal = svc.SignInManager().CreateUserPrincipalAsync(user)
+                let! principal = svc.SignInManager().CreateUserPrincipalAsync user
 
                 principal.SetScopes(request.GetScopes()) |> ignore
 
                 let! resources = svc.OpenIddictScopeManager().ListResourcesAsync(principal.GetScopes()) |> AsyncSeq.toListAsync
-                principal.SetResources(resources) |> ignore
+                principal.SetResources resources |> ignore
 
                 let! authorization =
                     match authorizations |> Seq.tryLast with
                     | Some x ->
-                        System.Threading.Tasks.ValueTask.FromResult(x)
+                        Threading.Tasks.ValueTask.FromResult x
                     | None ->
                         svc.OpenIddictAuthorizationManager().CreateAsync(
                             principal,
@@ -129,8 +129,8 @@ let authorize: HttpHandler =
                             OpenIddictConstants.AuthorizationTypes.Permanent,
                             principal.GetScopes()
                         )
-                let! authorizationId = svc.OpenIddictAuthorizationManager().GetIdAsync(authorization)
-                principal.SetAuthorizationId(authorizationId) |> ignore
+                let! authorizationId = svc.OpenIddictAuthorizationManager().GetIdAsync authorization
+                principal.SetAuthorizationId authorizationId |> ignore
 
                 let getDestinations = getDestinations principal
 
@@ -150,21 +150,21 @@ let exchangeToken: HttpHandler =
         | null ->
             return! RequestErrors.BAD_REQUEST "The OpenID Connect request cannot be retrieved" next ctx
         | request when request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType() ->
-            let! authenticateResult = ctx.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)
+            let! authenticateResult = ctx.AuthenticateAsync OpenIddictServerAspNetCoreDefaults.AuthenticationScheme
             let principal = authenticateResult.Principal
 
-            match! svc.UserManager().GetUserAsync(principal) with
+            match! svc.UserManager().GetUserAsync principal with
             | null ->
                 do! ctx.ForbidAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(dict [
-                    (OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.InvalidGrant)
-                    (OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The token is no longer valid")
+                    OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.InvalidGrant
+                    OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The token is no longer valid"
                 ]))
                 return Some ctx
             | user ->
-                let! canSignIn = svc.SignInManager().CanSignInAsync(user)
+                let! canSignIn = svc.SignInManager().CanSignInAsync user
                 if canSignIn then
                     let arr = principal.Claims |> Seq.map (fun x -> $"%s{x.Type}=%s{x.Value}")
-                    ctx.GetLogger("YYY").LogInformation(": " + ctx.GetJsonSerializer().SerializeToString(arr))
+                    ctx.GetLogger("YYY").LogInformation(": " + ctx.GetJsonSerializer().SerializeToString arr)
                     principal.SetClaim(OpenIddictConstants.Claims.Name, user.FullName) |> ignore
                     principal.SetClaim(OpenIddictConstants.Claims.Email, user.Email) |> ignore
                     principal.Claims |> Seq.iter (fun claim -> claim.SetDestinations(getDestinations principal claim) |> ignore)
@@ -172,8 +172,8 @@ let exchangeToken: HttpHandler =
                     return Some ctx
                 else
                     do! ctx.ForbidAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, AuthenticationProperties(dict [
-                        (OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.InvalidGrant)
-                        (OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The user is no longer allowed to sign in")
+                        OpenIddictServerAspNetCoreConstants.Properties.Error, OpenIddictConstants.Errors.InvalidGrant
+                        OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription, "The user is no longer allowed to sign in"
                     ]))
                     return Some ctx
         | request ->
@@ -184,7 +184,7 @@ let exchangeToken: HttpHandler =
 let googleLogin: HttpHandler =
     fun _ ctx -> task {
         let returnUrl =
-            match ctx.Request.Query.TryGetValue("returnUrl") with
+            match ctx.Request.Query.TryGetValue "returnUrl" with
             | true, value -> Some (value.ToString())
             | _ -> None
         let svc = ctx |> Ioc.create
@@ -229,20 +229,20 @@ type PeopleApiPhotos () =
 
 
 let updateUser (user: ApplicationUser) (principal: ClaimsPrincipal) =
-    user.Email <- principal.FindFirstValue(ClaimTypes.Email)
+    user.Email <- principal.FindFirstValue ClaimTypes.Email
     user.EmailConfirmed <- true
-    user.FullName <- principal.FindFirstValue(ClaimTypes.Name)
-    user.GivenName <- principal.FindFirstValue(ClaimTypes.GivenName)
-    user.PictureUrl <- principal.FindFirstValue(OpenIddictConstants.Claims.Picture)
+    user.FullName <- principal.FindFirstValue ClaimTypes.Name
+    user.GivenName <- principal.FindFirstValue ClaimTypes.GivenName
+    user.PictureUrl <- principal.FindFirstValue OpenIddictConstants.Claims.Picture
     user.Provider <- "Google"
-    user.ProviderId <- principal.FindFirstValue(ClaimTypes.NameIdentifier)
-    user.Surname <- principal.FindFirstValue(ClaimTypes.Surname)
-    user.UserName <- principal.FindFirstValue(ClaimTypes.Email)
+    user.ProviderId <- principal.FindFirstValue ClaimTypes.NameIdentifier
+    user.Surname <- principal.FindFirstValue ClaimTypes.Surname
+    user.UserName <- principal.FindFirstValue ClaimTypes.Email
 
 
 let updateAdminRole (user: ApplicationUser) (principal: ClaimsPrincipal) (ctx: HttpContext) = task {
     let svc = ctx |> Ioc.create
-    let userEmail = principal.FindFirstValue(ClaimTypes.Email)
+    let userEmail = principal.FindFirstValue ClaimTypes.Email
     let isDefaultAdmin = userEmail.Equals(svc.Configuration()["Authorization:DefaultAdmin"])
     let! hasAdminRole = svc.UserManager().IsInRoleAsync(user, "admin")
     if isDefaultAdmin <> hasAdminRole then
@@ -257,7 +257,7 @@ let googleResponse: HttpHandler =
         let svc = ctx |> Ioc.create
 
         let returnUrl =
-            match ctx.Request.Query.TryGetValue("returnUrl") with
+            match ctx.Request.Query.TryGetValue "returnUrl" with
             | true, value -> value.ToString()
             | _ -> "/"
 
@@ -267,18 +267,18 @@ let googleResponse: HttpHandler =
         | info ->
             let! result = svc.SignInManager().ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, false)
             if result.Succeeded then
-                let! user = svc.UserManager().FindByNameAsync(info.Principal.FindFirstValue(ClaimTypes.Email))
+                let! user = svc.UserManager().FindByNameAsync(info.Principal.FindFirstValue ClaimTypes.Email)
                 updateUser user info.Principal
                 do! ctx |> updateAdminRole user info.Principal
-                let! _ = svc.UserManager().UpdateAsync(user)
+                let! _ = svc.UserManager().UpdateAsync user
                 ()
             else
                 let user = ApplicationUser()
                 updateUser user info.Principal
 
-                let! identityResult = svc.UserManager().CreateAsync(user)
+                let! identityResult = svc.UserManager().CreateAsync user
                 if identityResult.Succeeded then
-                    let! _ = svc.UserManager().UpdateAsync(user)
+                    let! _ = svc.UserManager().UpdateAsync user
                     do! ctx |> updateAdminRole user info.Principal
                     let! identityResult = svc.UserManager().AddLoginAsync(user, info)
                     if identityResult.Succeeded then
@@ -293,16 +293,16 @@ let userinfo: HttpHandler =
     fun next ctx -> task {
         let svc = ctx |> Ioc.create
 
-        let! authenticateResult = ctx.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)
+        let! authenticateResult = ctx.AuthenticateAsync OpenIddictServerAspNetCoreDefaults.AuthenticationScheme
         let principal = authenticateResult.Principal
 
-        match! svc.UserManager().GetUserAsync(principal) with
+        match! svc.UserManager().GetUserAsync principal with
         | null ->
             return! RequestErrors.FORBIDDEN OpenIddictConstants.Errors.InvalidToken next ctx
         | user ->
-            let claims = Dictionary<string, obj>(StringComparer.Ordinal)
+            let claims = Dictionary<string, obj> StringComparer.Ordinal
 
-            let! subject = svc.UserManager().GetUserIdAsync(user)
+            let! subject = svc.UserManager().GetUserIdAsync user
             claims[OpenIddictConstants.Claims.Subject] <- box subject
 
             claims[OpenIddictConstants.Claims.Name] <- box user.FullName
@@ -310,22 +310,22 @@ let userinfo: HttpHandler =
             claims[OpenIddictConstants.Claims.FamilyName] <- box user.Surname
             claims[OpenIddictConstants.Claims.Picture] <- box user.PictureUrl
 
-            if principal.HasScope(OpenIddictConstants.Scopes.Email) then
-                let! email = svc.UserManager().GetEmailAsync(user)
+            if principal.HasScope OpenIddictConstants.Scopes.Email then
+                let! email = svc.UserManager().GetEmailAsync user
                 claims[OpenIddictConstants.Claims.Email] <- box email
 
-                let! emailVerified = svc.UserManager().IsEmailConfirmedAsync(user)
+                let! emailVerified = svc.UserManager().IsEmailConfirmedAsync user
                 claims[OpenIddictConstants.Claims.EmailVerified] <- box emailVerified
 
-            if principal.HasScope(OpenIddictConstants.Scopes.Phone) then
-                let! phoneNumber = svc.UserManager().GetPhoneNumberAsync(user)
+            if principal.HasScope OpenIddictConstants.Scopes.Phone then
+                let! phoneNumber = svc.UserManager().GetPhoneNumberAsync user
                 claims[OpenIddictConstants.Claims.PhoneNumber] <- box phoneNumber
 
-                let! phoneNumberVerified = svc.UserManager().IsPhoneNumberConfirmedAsync(user)
+                let! phoneNumberVerified = svc.UserManager().IsPhoneNumberConfirmedAsync user
                 claims[OpenIddictConstants.Claims.PhoneNumberVerified] <- box phoneNumberVerified
 
-            if principal.HasScope(OpenIddictConstants.Scopes.Roles) then
-                let! roles = svc.UserManager().GetRolesAsync(user)
+            if principal.HasScope OpenIddictConstants.Scopes.Roles then
+                let! roles = svc.UserManager().GetRolesAsync user
                 claims[OpenIddictConstants.Claims.Role] <- box roles
 
             return! Successful.OK claims next ctx
@@ -371,19 +371,19 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services.AddGiraffe() |> ignore
 
     builder.Services.AddDbContext<ApplicationDbContext>(fun options ->
-        let connectionString = builder.Configuration.GetConnectionString("postgres")
-        options.UseNpgsql(connectionString) |> ignore
+        let connectionString = builder.Configuration.GetConnectionString "postgres"
+        options.UseNpgsql connectionString |> ignore
         options.UseOpenIddict<Guid>() |> ignore
     ) |> ignore
 
     builder.Services.AddAuthentication()
         .AddGoogle(fun options ->
-            let googleSection = builder.Configuration.GetSection("Google:Authentication")
+            let googleSection = builder.Configuration.GetSection "Google:Authentication"
             options.ClientId <- googleSection["ClientId"]
             options.ClientSecret <- googleSection["ClientSecret"]
             options.CallbackPath <- PathString "/connect/google/callback"
             options.SignInScheme <- IdentityConstants.ExternalScheme
-            options.Scope.Add("profile")
+            options.Scope.Add "profile"
             options.ClaimActions.MapJsonKey(OpenIddictConstants.Claims.Picture, "picture"))
     |> ignore
 
@@ -418,7 +418,7 @@ let configureServices (builder: WebApplicationBuilder) =
             options.SetAuthorizationEndpointUris(Routes.Authorize)
                 .SetTokenEndpointUris(Routes.Token)
                 .SetUserInfoEndpointUris(Routes.Userinfo)
-                .SetEndSessionEndpointUris(Routes.Logout)
+                .SetEndSessionEndpointUris Routes.Logout
             |> ignore
 
             options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.Roles) |> ignore
@@ -426,11 +426,11 @@ let configureServices (builder: WebApplicationBuilder) =
             options.AllowRefreshTokenFlow() |> ignore
             options.AddDevelopmentEncryptionCertificate() |> ignore
             options.AddDevelopmentSigningCertificate() |> ignore
-            options.RemoveEventHandler(OpenIddictServerAspNetCoreHandlers.ValidateTransportSecurityRequirement.Descriptor) |> ignore
+            options.RemoveEventHandler OpenIddictServerAspNetCoreHandlers.ValidateTransportSecurityRequirement.Descriptor |> ignore
             options.DisableAccessTokenEncryption() |> ignore
 
-            options.SetAccessTokenLifetime(TimeSpan.FromMinutes(5L)) |> ignore
-            options.SetRefreshTokenLifetime(TimeSpan.FromMinutes(30L)) |> ignore
+            options.SetAccessTokenLifetime(TimeSpan.FromMinutes 5L) |> ignore
+            options.SetRefreshTokenLifetime(TimeSpan.FromMinutes 30L) |> ignore
 
             options.UseAspNetCore()
                 .EnableAuthorizationEndpointPassthrough()
@@ -454,7 +454,7 @@ let configureApplication (app: WebApplication) =
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
     app.MapDefaultEndpoints() |> ignore
-    app.UseGiraffe(routes) |> ignore
+    app.UseGiraffe routes |> ignore
 
 
 let configureAppConfiguration (builder: WebApplicationBuilder) =
@@ -469,7 +469,7 @@ let configureAppConfiguration (builder: WebApplicationBuilder) =
 
 [<EntryPoint>]
 let main args =
-    let builder = WebApplication.CreateBuilder(args)
+    let builder = WebApplication.CreateBuilder args
     configureAppConfiguration builder
     configureServices builder
 

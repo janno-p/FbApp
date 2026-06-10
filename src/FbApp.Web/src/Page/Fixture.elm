@@ -2,8 +2,8 @@ module Page.Fixture exposing (Model, Msg, init, update, view)
 
 import Api.Endpoint as Endpoint exposing (defaultEndpointConfig, fixture)
 import DateFormat
-import Html exposing (Html, button, div, img, span, table, tbody, td, text, tr)
-import Html.Attributes exposing (class, disabled, src, title)
+import Html exposing (Html, button, div, span, table, tbody, td, text, tr)
+import Html.Attributes exposing (class, disabled, title)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Json
@@ -111,7 +111,7 @@ view model =
         content =
             div []
                 [ viewResultsTabs FixtureTab
-                , div [ class "sm:rounded-md sm:border border-gray-200 sm:w-[40rem] sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg" ]
+                , div [ class "sm:rounded-md sm:border border-gray-200 sm:w-160 sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg" ]
                     [ viewFixtureHeader model.fixture
                     , case model.fixture of
                         Just fixture ->
