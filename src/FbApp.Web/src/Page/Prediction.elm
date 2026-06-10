@@ -34,6 +34,7 @@ type alias Model =
     , playerFilter : String
     , selectedPositions : List String
     , selectedCountries : List Int
+    , thirds : List TeamRanking
     }
 
 
@@ -100,6 +101,7 @@ type alias FixturePrediction =
     , homeTeam : Team
     , awayTeam : Team
     , groupName : String
+    , confident : Bool
     }
 
 
@@ -154,6 +156,7 @@ init session =
       , playerFilter = ""
       , selectedPositions = []
       , selectedCountries = []
+      , thirds = []
       }
     , checkExisting session
     )
@@ -416,11 +419,37 @@ viewGroupTable group =
         ]
 
 
-viewThirdPlaceRankings : List GroupFixturePrediction -> Html Msg
-viewThirdPlaceRankings groupsFixtures =
+viewThirdRankControls : TeamRanking -> Maybe Int -> Maybe Int -> Int -> List (Html Msg)
+viewThirdRankControls ranking prevPts nextPts rank =
+    if ranking.status == Just Loose || ranking.status == Just UserDefined then
+        (if prevPts == Just ranking.points then
+            [ span [ class "flex-none icon-[mdi--arrow-up-thick] place-self-center cursor-pointer", onClick (SetThirdsUserRanking rank (rank - 1)) ] [] ]
+
+         else
+            []
+        )
+            ++ (if nextPts == Just ranking.points then
+                    [ span [ class "flex-none icon-[mdi--arrow-down-thick] place-self-center cursor-pointer", onClick (SetThirdsUserRanking rank (rank + 1)) ] [] ]
+
+                else
+                    []
+               )
+            ++ (if ranking.status == Just Loose then
+                    [ span [ class "flex-none icon-[mdi--checkbox-marked-circle-outline] place-self-center cursor-pointer", onClick (SetThirdsUserRanking rank rank) ] [] ]
+
+                else
+                    []
+               )
+
+    else
+        []
+
+
+updateThirds : List GroupFixturePrediction -> List TeamRanking
+updateThirds groups =
     let
         table =
-            groupsFixtures
+            groups
                 |> List.filterMap
                     (\x ->
                         case x.rankings of
@@ -439,30 +468,75 @@ viewThirdPlaceRankings groupsFixtures =
 
                 _ ->
                     ( 0, 0 )
+
+        allResults =
+            groups
+                |> List.all
+                    (\g -> g.fixtures |> List.all (\x -> x.result /= Nothing))
     in
-    div []
+    table
+        |> List.indexedMap
+            (\i ranking ->
+                { ranking
+                    | status =
+                        if not allResults then
+                            Nothing
+
+                        else if ranking.points > pts8th || (i < 8 && pts8th /= pts9th) then
+                            Just Fixed
+
+                        else if pts8th == ranking.points then
+                            Just Loose
+
+                        else
+                            Just Fixed
+                }
+            )
+
+
+viewThirdPlaceRankings : List TeamRanking -> Html Msg
+viewThirdPlaceRankings thirds =
+    let
+        prev i =
+            if i == 0 then
+                Nothing
+
+            else
+                thirds |> List.drop (i - 1) |> List.head |> Maybe.map .points
+
+        next i =
+            if (i - 1) == List.length thirds then
+                Nothing
+
+            else
+                thirds |> List.drop (i + 1) |> List.head |> Maybe.map .points
+    in
+    div [ class " mb-8" ]
         [ h1 [] [ text "Kolmanda koha meeskonnad" ]
         , div [ class "border border-accent" ]
-            (table
+            (thirds
                 |> List.indexedMap
                     (\i ranking ->
                         div
                             (class "flex flex-row gap-2 py-2"
-                                :: (if ranking.points > pts8th || (i < 8 && pts8th /= pts9th) then
+                                :: (if i < 8 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
                                         [ class "bg-green-200 text-green-900" ]
 
-                                    else if pts8th == ranking.points then
-                                        [ class "bg-slate-100 text-slate-600" ]
+                                    else if i > 7 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
+                                        [ class "bg-red-200 text-red-900" ]
 
                                     else
-                                        [ class "bg-red-200 text-red-900" ]
+                                        [ class "bg-slate-100 text-slate-600" ]
                                    )
                             )
-                            [ span [ class "font-mono flex-none px-2" ] [ text (String.fromInt (i + 1) ++ ".") ]
-                            , span (flagClass ranking.team.tla ++ [ class "size-6 flex-none" ]) []
-                            , span [ class "capitalize font-mono grow" ] [ text ranking.team.tla ]
-                            , span [ class "flex-none px-2" ] [ text (String.fromInt ranking.points ++ "pts") ]
-                            ]
+                            ([ span [ class "font-mono flex-none px-2 w-10 text-right" ] [ text (String.fromInt (i + 1) ++ ".") ]
+                             , span (flagClass ranking.team.tla ++ [ class "size-6 flex-none" ]) []
+                             , span [ class "capitalize font-mono grow" ] [ text ranking.team.tla ]
+                             ]
+                                ++ viewThirdRankControls ranking (prev i) (next i) i
+                                ++ [ span [ class "flex-none px-2" ] [ text (String.fromInt ranking.points ++ "pts") ]
+                                   ]
+                            )
                     )
             )
         ]
@@ -509,7 +583,7 @@ viewGroupStage model =
                     ]
                 , div
                     [ class "flex flex-row items-center" ]
-                    [ input
+                    {--[ input
                         [ checked False -- (List.member a.id model.selectedCountries)
                         , name groupName
 
@@ -518,6 +592,20 @@ viewGroupStage model =
                         , class "cursor-pointer size-5 text-blue-600 bg-gray-100 rounded border-gray-300 dark:bg-gray-700 dark:border-gray-600"
                         , title "Topeltpunktid"
                         ]
+                        []
+                    ]--}
+                    [ span
+                        ([ class "text-lg icon-[mdi--verified] hover:opacity-100 cursor-pointer bg-violet-700 border-violet-200"
+                         , title "Topeltpanus"
+                         , onClick (SetConfidenceBooster groupName fixture)
+                         ]
+                            ++ (if fixture.confident then
+                                    [ class "opacity-100" ]
+
+                                else
+                                    [ class "opacity-25" ]
+                               )
+                        )
                         []
                     ]
                 ]
@@ -542,7 +630,7 @@ viewGroupStage model =
     , p [] [ text "Kes võidab mängu?" ]
     , viewButton RandomizeGroupStage "Rändom!" "icon-[mdi--dice]" False
     , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] groupsContent
-    , viewThirdPlaceRankings model.fixturePredictions
+    , viewThirdPlaceRankings model.thirds
     , div [ class "flex flex-row-reverse" ]
         [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
         ]
@@ -818,6 +906,8 @@ type Msg
     | RandomizeGroupStage
     | GotRandomGroupResults (List FixtureResult)
     | SetUserRanking String Int Int
+    | SetThirdsUserRanking Int Int
+    | SetConfidenceBooster String FixturePrediction
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -860,8 +950,8 @@ update msg model =
             ( model, Cmd.none )
 
         ToggleFixtureResult groupName fixtureId fixtureResult ->
-            ( { model
-                | fixturePredictions =
+            let
+                fixturePredictions =
                     model.fixturePredictions
                         |> List.map
                             (\g ->
@@ -871,6 +961,10 @@ update msg model =
                                 else
                                     g
                             )
+            in
+            ( { model
+                | fixturePredictions = fixturePredictions
+                , thirds = updateThirds fixturePredictions
               }
             , Cmd.none
             )
@@ -932,10 +1026,85 @@ update msg model =
             )
 
         GotRandomGroupResults results ->
-            ( { model | fixturePredictions = randomizeFixturePredictions model.fixturePredictions results }, Cmd.none )
+            let
+                fixturePredictions =
+                    randomizeFixturePredictions model.fixturePredictions results
+            in
+            ( { model
+                | fixturePredictions = fixturePredictions
+                , thirds = updateThirds fixturePredictions
+              }
+            , Cmd.none
+            )
 
         SetUserRanking groupName oldRank newRank ->
-            ( { model | fixturePredictions = setUserRank model.fixturePredictions groupName oldRank newRank }, Cmd.none )
+            let
+                fixturePredictions =
+                    setUserRank model.fixturePredictions groupName oldRank newRank
+            in
+            ( { model
+                | fixturePredictions = fixturePredictions
+                , thirds = updateThirds fixturePredictions
+              }
+            , Cmd.none
+            )
+
+        SetThirdsUserRanking oldRank newRank ->
+            ( { model | thirds = setThirdsUserRank model.thirds oldRank newRank }, Cmd.none )
+
+        SetConfidenceBooster groupName fixture ->
+            ( { model
+                | fixturePredictions =
+                    model.fixturePredictions
+                        |> List.map
+                            (\g ->
+                                if g.groupName == groupName then
+                                    { g
+                                        | fixtures =
+                                            g.fixtures
+                                                |> List.map
+                                                    (\f ->
+                                                        if f == fixture then
+                                                            { f | confident = True }
+
+                                                        else
+                                                            { f | confident = False }
+                                                    )
+                                    }
+
+                                else
+                                    g
+                            )
+              }
+            , Cmd.none
+            )
+
+
+setThirdsUserRank : List TeamRanking -> Int -> Int -> List TeamRanking
+setThirdsUserRank rankings oldRank newRank =
+    let
+        mi =
+            min oldRank newRank
+
+        ma =
+            max oldRank newRank
+    in
+    if mi == ma then
+        rankings
+            |> List.indexedMap
+                (\i r ->
+                    if i == mi then
+                        { r | status = Just UserDefined }
+
+                    else
+                        r
+                )
+
+    else
+        (rankings |> List.take mi)
+            ++ (rankings |> List.drop ma |> List.head |> Maybe.map (\x -> [ { x | status = Just UserDefined } ]) |> Maybe.withDefault [])
+            ++ (rankings |> List.drop mi |> List.head |> Maybe.map (\x -> [ { x | status = Just UserDefined } ]) |> Maybe.withDefault [])
+            ++ (rankings |> List.drop (ma + 1))
 
 
 setUserRank : List GroupFixturePrediction -> String -> Int -> Int -> List GroupFixturePrediction
@@ -1151,6 +1320,7 @@ preparePredictions model =
         | fixturePredictions = fixturePredictions
         , groupPredictions = groupPredictions
         , playerPredictions = getPlayerPredictions model
+        , thirds = updateThirds fixturePredictions
     }
 
 
@@ -1193,6 +1363,7 @@ mapGroupFixture competitionInfo groupDto =
                         , awayTeam = team2
                         , result = Nothing
                         , groupName = groupDto.name
+                        , confident = False
                         }
 
                 _ ->
