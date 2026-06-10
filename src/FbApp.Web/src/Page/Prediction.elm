@@ -9,6 +9,7 @@ import Http
 import Json.Decode as Json
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
+import Random
 import Session exposing (Session)
 import Team exposing (flagClass)
 
@@ -285,8 +286,8 @@ findTeam teams teamId =
     teams |> List.filter (\val -> val.id == teamId) |> List.head
 
 
-viewGroupTable : GroupFixturePrediction -> Html Msg
-viewGroupTable group =
+calculateGroupTable : GroupFixturePrediction -> List ( Team, Int )
+calculateGroupTable group =
     let
         updateTable ( team, points ) table =
             table
@@ -299,27 +300,36 @@ viewGroupTable group =
                             Nothing ->
                                 Just ( team, points )
                     )
+    in
+    group.fixtures
+        |> List.foldl
+            (\f table ->
+                case f.result of
+                    Nothing ->
+                        table |> updateTable ( f.homeTeam, 0 ) |> updateTable ( f.awayTeam, 0 )
 
+                    Just HomeWin ->
+                        table |> updateTable ( f.homeTeam, 3 ) |> updateTable ( f.awayTeam, 0 )
+
+                    Just Tie ->
+                        table |> updateTable ( f.homeTeam, 1 ) |> updateTable ( f.awayTeam, 1 )
+
+                    Just AwayWin ->
+                        table |> updateTable ( f.homeTeam, 0 ) |> updateTable ( f.awayTeam, 3 )
+            )
+            Dict.empty
+        |> Dict.values
+        |> List.sortBy (\( _, v ) -> -v)
+
+
+viewGroupTable : GroupFixturePrediction -> Html Msg
+viewGroupTable group =
+    let
         teamPoints =
-            group.fixtures
-                |> List.foldl
-                    (\f table ->
-                        case f.result of
-                            Nothing ->
-                                table |> updateTable ( f.homeTeam, 0 ) |> updateTable ( f.awayTeam, 0 )
+            calculateGroupTable group
 
-                            Just HomeWin ->
-                                table |> updateTable ( f.homeTeam, 3 ) |> updateTable ( f.awayTeam, 0 )
-
-                            Just Tie ->
-                                table |> updateTable ( f.homeTeam, 1 ) |> updateTable ( f.awayTeam, 1 )
-
-                            Just AwayWin ->
-                                table |> updateTable ( f.homeTeam, 0 ) |> updateTable ( f.awayTeam, 3 )
-                    )
-                    Dict.empty
-                |> Dict.values
-                |> List.sortBy (\( _, v ) -> -v)
+        pts3th =
+            teamPoints |> List.drop 2 |> List.head |> Maybe.map (\x -> Tuple.second x) |> Maybe.withDefault 0
     in
     div [ class "mt-8 mb-8" ]
         [ h1
@@ -331,10 +341,63 @@ viewGroupTable group =
                     (\i ( team, pts ) ->
                         div
                             (class "flex flex-row gap-2 py-2"
-                                :: (if i < 2 then
+                                :: (if pts > pts3th then
                                         [ class "bg-green-200" ]
 
-                                    else if i == 2 then
+                                    else if pts == pts3th then
+                                        [ class "bg-yellow-100" ]
+
+                                    else
+                                        [ class "bg-red-200" ]
+                                   )
+                            )
+                            [ span [ class "font-mono flex-none px-2" ] [ text (String.fromInt (i + 1) ++ ".") ]
+                            , span (flagClass team.tla ++ [ class "size-6 flex-none" ]) []
+                            , span [ class "capitalize font-mono grow" ] [ text team.tla ]
+                            , span [ class "flex-none px-2" ] [ text (String.fromInt pts ++ "pts") ]
+                            ]
+                    )
+            )
+        ]
+
+
+viewThirdPlaceRankings : List GroupFixturePrediction -> Html Msg
+viewThirdPlaceRankings groupsFixtures =
+    let
+        table =
+            groupsFixtures
+                |> List.map calculateGroupTable
+                |> List.filterMap
+                    (\t ->
+                        case t of
+                            [ _, _, team, _ ] ->
+                                Just team
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.sortBy (\( _, pts ) -> -pts)
+
+        ( pts8th, pts9th ) =
+            case table |> List.drop 7 of
+                p8 :: p9 :: _ ->
+                    ( Tuple.second p8, Tuple.second p9 )
+
+                _ ->
+                    ( 0, 0 )
+    in
+    div []
+        [ h1 [] [ text "Kolmanda koha meeskonnad" ]
+        , div [ class "border border-accent" ]
+            (table
+                |> List.indexedMap
+                    (\i ( team, pts ) ->
+                        div
+                            (class "flex flex-row gap-2 py-2"
+                                :: (if pts > pts8th || (i < 8 && pts8th /= pts9th) then
+                                        [ class "bg-green-200" ]
+
+                                    else if pts8th == pts then
                                         [ class "bg-yellow-100" ]
 
                                     else
@@ -423,7 +486,9 @@ viewGroupStage model =
     in
     [ h1 [] [ text "Alagrupimängud" ]
     , p [] [ text "Kes võidab mängu?" ]
+    , viewButton RandomizeGroupStage "Rändom!" "icon-[mdi--dice]" False
     , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] groupsContent
+    , viewThirdPlaceRankings model.fixturePredictions
     , div [ class "flex flex-row-reverse" ]
         [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
         ]
@@ -696,6 +761,8 @@ type Msg
     | TogglePositionFilter String
     | ToggleCountryFilter Int
     | CheckedExisting (Result Http.Error (Maybe String))
+    | RandomizeGroupStage
+    | GotRandomGroupResults (List FixtureResult)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -792,6 +859,34 @@ update msg model =
 
         ToggleCountryFilter val ->
             ( { model | selectedCountries = toggleListItem val model.selectedCountries }, Cmd.none )
+
+        RandomizeGroupStage ->
+            ( model
+            , Random.generate GotRandomGroupResults (Random.list (12 * 6) (Random.uniform HomeWin [ Tie, AwayWin ]))
+            )
+
+        GotRandomGroupResults results ->
+            ( { model | fixturePredictions = randomizeFixturePredictions model.fixturePredictions results }, Cmd.none )
+
+
+randomizeFixturePredictions : List GroupFixturePrediction -> List FixtureResult -> List GroupFixturePrediction
+randomizeFixturePredictions groups results =
+    let
+        lookup =
+            results |> List.indexedMap (\i x -> ( i, x )) |> Dict.fromList
+    in
+    groups
+        |> List.indexedMap
+            (\i group ->
+                { group
+                    | fixtures =
+                        group.fixtures
+                            |> List.indexedMap
+                                (\j fixture ->
+                                    { fixture | result = lookup |> Dict.get (i * 6 + j) }
+                                )
+                }
+            )
 
 
 toggleListItem : a -> List a -> List a
