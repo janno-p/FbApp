@@ -28,6 +28,7 @@ type FixtureAssignment =
         AwayTeamId: int64
         Date: DateTimeOffset
         ExternalId: int64
+        Group: string option
     }
 
 type PlayerAssignment =

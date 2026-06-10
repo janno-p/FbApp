@@ -1,8 +1,9 @@
 module Page.Prediction exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api.Endpoint as Endpoint exposing (competitionInfo, defaultEndpointConfig)
+import Dict
 import Html exposing (Html, button, div, h1, h2, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
-import Html.Attributes exposing (checked, class, disabled, for, id, placeholder, scope, title, type_, value)
+import Html.Attributes exposing (checked, class, disabled, for, id, name, placeholder, scope, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Json
@@ -19,7 +20,7 @@ import Team exposing (flagClass)
 type alias Model =
     { competitionInfo : Maybe CompetitionInfo
     , stage : PredictionStage
-    , fixturePredictions : List FixturePrediction
+    , fixturePredictions : List GroupFixturePrediction
     , groupPredictions : List GroupPrediction
     , top32 : List Int
     , top16 : List Int
@@ -52,7 +53,6 @@ type PredictionStage
 type alias CompetitionInfo =
     { competitionId : String
     , teams : List Team
-    , fixtures : List Fixture
     , groups : List Group
     , players : List Player
     }
@@ -75,6 +75,7 @@ type alias Fixture =
 type alias Group =
     { name : String
     , teamIds : List Int
+    , fixtures : List Fixture
     }
 
 
@@ -97,6 +98,12 @@ type alias FixturePrediction =
     , result : Maybe FixtureResult
     , homeTeam : Team
     , awayTeam : Team
+    }
+
+
+type alias GroupFixturePrediction =
+    { groupName : String
+    , fixtures : List FixturePrediction
     }
 
 
@@ -278,6 +285,72 @@ findTeam teams teamId =
     teams |> List.filter (\val -> val.id == teamId) |> List.head
 
 
+viewGroupTable : GroupFixturePrediction -> Html Msg
+viewGroupTable group =
+    let
+        updateTable ( team, points ) table =
+            table
+                |> Dict.update team.id
+                    (\val ->
+                        case val of
+                            Just ( _, pts ) ->
+                                Just ( team, pts + points )
+
+                            Nothing ->
+                                Just ( team, points )
+                    )
+
+        teamPoints =
+            group.fixtures
+                |> List.foldl
+                    (\f table ->
+                        case f.result of
+                            Nothing ->
+                                table |> updateTable ( f.homeTeam, 0 ) |> updateTable ( f.awayTeam, 0 )
+
+                            Just HomeWin ->
+                                table |> updateTable ( f.homeTeam, 3 ) |> updateTable ( f.awayTeam, 0 )
+
+                            Just Tie ->
+                                table |> updateTable ( f.homeTeam, 1 ) |> updateTable ( f.awayTeam, 1 )
+
+                            Just AwayWin ->
+                                table |> updateTable ( f.homeTeam, 0 ) |> updateTable ( f.awayTeam, 3 )
+                    )
+                    Dict.empty
+                |> Dict.values
+                |> List.sortBy (\( _, v ) -> -v)
+    in
+    div [ class "mt-8 mb-8" ]
+        [ h1
+            []
+            [ text "Ennustatav tabeliseis" ]
+        , div [ class "border border-accent" ]
+            (teamPoints
+                |> List.indexedMap
+                    (\i ( team, pts ) ->
+                        div
+                            (class "flex flex-row gap-2 py-2"
+                                :: (if i < 2 then
+                                        [ class "bg-green-200" ]
+
+                                    else if i == 2 then
+                                        [ class "bg-yellow-100" ]
+
+                                    else
+                                        [ class "bg-red-200" ]
+                                   )
+                            )
+                            [ span [ class "font-mono flex-none px-2" ] [ text (String.fromInt (i + 1) ++ ".") ]
+                            , span (flagClass team.tla ++ [ class "size-6 flex-none" ]) []
+                            , span [ class "capitalize font-mono grow" ] [ text team.tla ]
+                            , span [ class "flex-none px-2" ] [ text (String.fromInt pts ++ "pts") ]
+                            ]
+                    )
+            )
+        ]
+
+
 viewGroupStage : Model -> List (Html Msg)
 viewGroupStage model =
     let
@@ -291,44 +364,66 @@ viewGroupStage model =
             else
                 class "bg-red-200 hover:bg-red-400"
 
-        fixturesContent =
+        fixturesContent groupName fixture =
+            div [ class "flex flex-row gap-1" ]
+                [ button
+                    [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
+                    , selectionClass fixture HomeWin
+                    , onClick (ToggleFixtureResult fixture.fixtureId HomeWin)
+                    , title fixture.homeTeam.name
+                    ]
+                    [ span (flagClass fixture.homeTeam.tla ++ [ class "size-6 flex-none" ]) []
+                    , span [ class "capitalize grow font-mono" ] [ text fixture.homeTeam.tla ]
+                    ]
+                , button
+                    [ class "rounded-md basis-1/3 cursor-pointer"
+                    , selectionClass fixture Tie
+                    , onClick (ToggleFixtureResult fixture.fixtureId Tie)
+                    ]
+                    [ text "Jääb viiki" ]
+                , button
+                    [ class "rounded-md basis-1/3 p-2 flex flex-row-reverse items-center gap-1 cursor-pointer"
+                    , selectionClass fixture AwayWin
+                    , onClick (ToggleFixtureResult fixture.fixtureId AwayWin)
+                    , title fixture.awayTeam.name
+                    ]
+                    [ span (flagClass fixture.awayTeam.tla ++ [ class "size-6 flex-none" ]) []
+                    , span [ class "capitalize grow font-mono" ] [ text fixture.awayTeam.tla ]
+                    ]
+                , div
+                    [ class "flex flex-row items-center" ]
+                    [ input
+                        [ checked False -- (List.member a.id model.selectedCountries)
+                        , name groupName
+
+                        --, onClick (ToggleCountryFilter a.id)
+                        , type_ "radio"
+                        , class "cursor-pointer size-5 text-blue-600 bg-gray-100 rounded border-gray-300 dark:bg-gray-700 dark:border-gray-600"
+                        , title "Topeltpunktid"
+                        ]
+                        []
+                    ]
+                ]
+
+        groupsContent =
             model.fixturePredictions
                 |> List.map
-                    (\fixture ->
-                        div [ class "flex flex-row gap-1" ]
-                            [ button
-                                [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
-                                , selectionClass fixture HomeWin
-                                , onClick (ToggleFixtureResult fixture.fixtureId HomeWin)
-                                , title fixture.homeTeam.name
-                                ]
-                                [ span (flagClass fixture.homeTeam.tla ++ [ class "size-6 flex-none" ]) []
-                                , span [ class "capitalize grow font-mono" ] [ text fixture.homeTeam.tla ]
-                                ]
-                            , button
-                                [ class "rounded-md basis-1/3 cursor-pointer"
-                                , selectionClass fixture Tie
-                                , onClick (ToggleFixtureResult fixture.fixtureId Tie)
-                                ]
-                                [ text "Jääb viiki" ]
-                            , button
-                                [ class "rounded-md basis-1/3 p-2 flex flex-row-reverse items-center gap-1 cursor-pointer"
-                                , selectionClass fixture AwayWin
-                                , onClick (ToggleFixtureResult fixture.fixtureId AwayWin)
-                                , title fixture.awayTeam.name
-                                ]
-                                [ span (flagClass fixture.awayTeam.tla ++ [ class "size-6 flex-none" ]) []
-                                , span [ class "capitalize grow font-mono" ] [ text fixture.awayTeam.tla ]
-                                ]
-                            ]
+                    (\groupFixture ->
+                        div [ class "border-primary" ]
+                            (h1 [] [ text (groupFixture.groupName ++ " alagrupp") ]
+                                :: (groupFixture.fixtures
+                                        |> List.map (fixturesContent groupFixture.groupName)
+                                   )
+                                ++ [ viewGroupTable groupFixture ]
+                            )
                     )
 
         disableNextStep =
-            model.fixturePredictions |> List.any (\f -> f.result == Nothing)
+            model.fixturePredictions |> List.map (\g -> g.fixtures) |> List.concat |> List.any (\f -> f.result == Nothing)
     in
     [ h1 [] [ text "Alagrupimängud" ]
     , p [] [ text "Kes võidab mängu?" ]
-    , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] fixturesContent
+    , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] groupsContent
     , div [ class "flex flex-row-reverse" ]
         [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
         ]
@@ -770,20 +865,27 @@ updateQualifier count selectedTeams teamId =
         teamId :: selectedTeams
 
 
-updateFixtureResult : Int -> FixtureResult -> FixturePrediction -> FixturePrediction
-updateFixtureResult fixtureId fixtureResult fixture =
-    if fixture.fixtureId == fixtureId then
-        { fixture
-            | result =
-                if fixture.result == Just fixtureResult then
-                    Nothing
+updateFixtureResult : Int -> FixtureResult -> GroupFixturePrediction -> GroupFixturePrediction
+updateFixtureResult fixtureId fixtureResult groupFixture =
+    { groupFixture
+        | fixtures =
+            groupFixture.fixtures
+                |> List.map
+                    (\fixture ->
+                        if fixture.fixtureId == fixtureId then
+                            { fixture
+                                | result =
+                                    if fixture.result == Just fixtureResult then
+                                        Nothing
 
-                else
-                    Just fixtureResult
-        }
+                                    else
+                                        Just fixtureResult
+                            }
 
-    else
-        fixture
+                        else
+                            fixture
+                    )
+    }
 
 
 filterByPosition : Model -> List PlayerPrediction -> List PlayerPrediction
@@ -825,7 +927,7 @@ preparePredictions model =
     let
         fixturePredictions =
             model.competitionInfo
-                |> Maybe.map (\comp -> comp.fixtures |> List.filterMap (mapFixture comp))
+                |> Maybe.map (\comp -> comp.groups |> List.map (mapGroupFixture comp))
                 |> Maybe.withDefault []
 
         groupPredictions =
@@ -859,21 +961,27 @@ mapGroup competitionInfo groupDto =
         Nothing
 
 
-mapFixture : CompetitionInfo -> Fixture -> Maybe FixturePrediction
-mapFixture competitionInfo fixtureDto =
+mapGroupFixture : CompetitionInfo -> Group -> GroupFixturePrediction
+mapGroupFixture competitionInfo groupDto =
     let
-        homeTeam =
-            findTeam competitionInfo.teams fixtureDto.homeTeamId
+        mapFixture fixtureDto =
+            let
+                homeTeam =
+                    findTeam competitionInfo.teams fixtureDto.homeTeamId
 
-        awayTeam =
-            findTeam competitionInfo.teams fixtureDto.awayTeamId
+                awayTeam =
+                    findTeam competitionInfo.teams fixtureDto.awayTeamId
+            in
+            case ( homeTeam, awayTeam ) of
+                ( Just team1, Just team2 ) ->
+                    Just { fixtureId = fixtureDto.id, homeTeam = team1, awayTeam = team2, result = Nothing }
+
+                _ ->
+                    Nothing
     in
-    case ( homeTeam, awayTeam ) of
-        ( Just team1, Just team2 ) ->
-            Just { fixtureId = fixtureDto.id, homeTeam = team1, awayTeam = team2, result = Nothing }
-
-        _ ->
-            Nothing
+    { groupName = groupDto.name
+    , fixtures = groupDto.fixtures |> List.filterMap mapFixture
+    }
 
 
 getCompetitionInfo : Cmd Msg
@@ -889,7 +997,6 @@ competitionInfoDecoder =
     Json.succeed CompetitionInfo
         |> required "competitionId" Json.string
         |> required "teams" (Json.list teamDecoder)
-        |> required "fixtures" (Json.list fixtureDecoder)
         |> required "groups" (Json.list groupDecoder)
         |> required "players" (Json.list playerDecoder)
 
@@ -915,6 +1022,7 @@ groupDecoder =
     Json.succeed Group
         |> required "name" Json.string
         |> required "teamIds" (Json.list Json.int)
+        |> required "fixtures" (Json.list fixtureDecoder)
 
 
 playerDecoder : Json.Decoder Player
@@ -945,7 +1053,7 @@ predictionEncoder : Model -> Encode.Value
 predictionEncoder model =
     Encode.object
         [ ( "competitionId", Encode.string (model.competitionInfo |> Maybe.map (\x -> x.competitionId) |> Maybe.withDefault "") )
-        , ( "fixtures", Encode.list fixtureResultEncoder model.fixturePredictions )
+        , ( "fixtures", Encode.list fixtureResultEncoder (model.fixturePredictions |> List.map (\x -> x.fixtures) |> List.concat) )
         , ( "qualifiers", qualifiersEncoder model )
         , ( "winner", Encode.int (model.top1 |> List.head |> Maybe.withDefault 0) )
         , ( "topScorers", Encode.list Encode.int (model.topScorers |> List.map (\x -> x.playerId)) )

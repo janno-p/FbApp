@@ -34,6 +34,7 @@ type GroupDto =
     {
         Name: string
         TeamIds: int64[]
+        Fixtures: FixtureDto[]
     }
 
 
@@ -52,7 +53,6 @@ type FixturesDto =
     {
         CompetitionId: Guid
         Teams: TeamDto[]
-        Fixtures: FixtureDto[]
         Groups: GroupDto[]
         Players: PlayerDto[]
     }
@@ -73,11 +73,16 @@ let private getFixtures: HttpHandler =
                         activeCompetition.Id
                     Teams =
                         activeCompetition |> mapTeams
-                    Fixtures =
-                        activeCompetition.Fixtures
-                        |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
                     Groups =
-                        activeCompetition.Groups |> Seq.map (fun x -> { Name = x.Key; TeamIds = x.Value }) |> Seq.toArray
+                        activeCompetition.Groups
+                        |> Seq.map (fun x ->
+                            let fixtures =
+                                activeCompetition.Fixtures
+                                |> Array.filter (fun f -> f.GroupName = Some x.Key)
+                                |> Array.map (fun x -> { Id = x.ExternalId; HomeTeamId = x.HomeTeamId; AwayTeamId = x.AwayTeamId })
+                            { Name = x.Key; TeamIds = x.Value; Fixtures = fixtures }
+                        )
+                        |> Seq.toArray
                     Players =
                         activeCompetition.Players |> Seq.map (fun x -> { Id = x.ExternalId; Name = x.Name; Position = x.Position; TeamId = x.TeamExternalId }) |> Seq.toArray
                 }

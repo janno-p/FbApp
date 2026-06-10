@@ -239,6 +239,7 @@ type CompetitionFixture =
         AwayTeam: CompetitionFixtureTeam option
         [<JsonPropertyName("score")>] Result: FixtureResult option
         Stage: string
+        Group: string option
         LastUpdated: DateTimeOffset
         //Odds
     }

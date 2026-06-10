@@ -27,6 +27,7 @@ module ReadModels =
             AwayTeamId: int64
             Date: DateTimeOffset
             ExternalId: int64
+            GroupName: string option
         }
 
     type CompetitionPlayer =

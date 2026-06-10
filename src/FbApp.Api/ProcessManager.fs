@@ -41,6 +41,12 @@ let upsertCompetition (logger: ILogger, db) (metadata: Metadata) (e: ResolvedEve
 }
 
 
+let normalizeGroupName (name: string) =
+    name.Split([| '_'; ' ' |], StringSplitOptions.RemoveEmptyEntries)
+    |> Array.filter (fun tok -> tok.Length = 1 && Char.IsAsciiLetterUpper(tok[0]))
+    |> Array.exactlyOne
+
+
 let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOptions) (md: Metadata) (e: ResolvedEvent) (ct: CancellationToken) = task {
     match deserializeOf<Competitions.Event> jsonOptions (e.Event.EventType, e.Event.Data) with
     | Competitions.Created args ->
@@ -56,8 +62,8 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
                 Competitions.Command.AssignTeamsAndFixtures
                     (
                         teams.Teams |> Seq.map (fun x -> { Name = x.Name; Tla = x.Tla; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
-                        fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id } : Competitions.FixtureAssignment) |> Seq.toList,
-                        groups.Standings |> Seq.map (fun kvp -> kvp.Group, kvp.Table |> Array.map (fun x -> x.Team.Id)) |> Seq.toList,
+                        fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id; Group = x.Group |> Option.map normalizeGroupName } : Competitions.FixtureAssignment) |> Seq.toList,
+                        groups.Standings |> Seq.map (fun kvp -> normalizeGroupName kvp.Group, kvp.Table |> Array.map (fun x -> x.Team.Id)) |> Seq.toList,
                         teams.Teams |> Seq.map (fun t -> t.Players |> Seq.map (fun x -> { Name = x.Name; Position = x.Position; TeamExternalId = t.Id; ExternalId = x.Id } : Competitions.PlayerAssignment)) |> Seq.concat |> Seq.toList
                     )
             let id = Competitions.createId args.ExternalId
@@ -98,6 +104,7 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
                     AwayTeamId = t.AwayTeamId
                     Date = t.Date.ToOffset(TimeSpan.Zero)
                     ExternalId = t.ExternalId
+                    GroupName = t.Group
                 } : ReadModels.CompetitionFixture
             ) |> List.toArray
         do! Competitions.updateFixtures db (md.AggregateId, md.AggregateSequenceNumber) fixtureProjections
