@@ -610,12 +610,12 @@ viewGroupStage session model =
             model.thirds |> List.all (\r -> r.status == Just Fixed || r.status == Just UserDefined)
 
         disableNextStep =
-            --not (allFixturesPredicted && allBoostersSet && allRankingsResolved && thirdPlaceRankingsResolved)
-            False
+            not (allFixturesPredicted && allBoostersSet && allRankingsResolved && thirdPlaceRankingsResolved)
     in
     [ h1 [] [ text "Alagrupimängud" ]
     , p [] [ text "Kes võidab mängu?" ]
-    , viewButton RandomizeGroupStage "Rändom!" "icon-[mdi--dice]" False
+
+    --, viewButton RandomizeGroupStage "Rändom!" "icon-[mdi--dice]" False
     , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] groupsContent
     , viewThirdPlaceRankings model.thirds
     , div [ class "flex flex-row-reverse" ]
@@ -1731,6 +1731,8 @@ predictionEncoder model =
         , ( "qualifiers", qualifiersEncoder model )
         , ( "winner", Encode.int (model.final |> List.head |> Maybe.andThen (\x -> x.winner) |> Maybe.map .id |> Maybe.withDefault 0) )
         , ( "topScorers", Encode.list Encode.int (model.topScorers |> List.map (\x -> x.playerId)) )
+        , ( "groups", Encode.list groupsEncoder model.fixturePredictions )
+        , ( "thirdRankings", Encode.list Encode.int (model.thirds |> List.map (\x -> x.team.id)) )
         ]
 
 
@@ -1742,6 +1744,15 @@ qualifiersEncoder model =
         , ( "roundOf8", Encode.list Encode.int (model.quarterFinals |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
         , ( "roundOf4", Encode.list Encode.int (model.semiFinals |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
         , ( "roundOf2", Encode.list Encode.int (model.final |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
+        ]
+
+
+groupsEncoder : GroupFixturePrediction -> Encode.Value
+groupsEncoder group =
+    Encode.object
+        [ ( "groupName", Encode.string group.groupName )
+        , ( "confidentFixture", Encode.int (group.fixtures |> List.filter (\x -> x.confident) |> List.head |> Maybe.map (\x -> x.fixtureId) |> Maybe.withDefault 0) )
+        , ( "rankingOrder", Encode.list Encode.int (group.rankings |> List.map (\x -> x.team.id)) )
         ]
 
 

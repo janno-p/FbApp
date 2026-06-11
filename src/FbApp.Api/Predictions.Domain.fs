@@ -18,7 +18,6 @@ type FixtureResultRegistrationInput =
     {
         Id: int64
         Result: string
-        Confident: bool
     }
 
 [<CLIMutable>]
@@ -32,6 +31,13 @@ type QualifiersRegistrationInput =
     }
 
 [<CLIMutable>]
+type GroupResultInput = {
+    GroupName: string
+    ConfidentFixture: int64
+    RankingOrder: int64[]
+}
+
+[<CLIMutable>]
 type PredictionRegistrationInput =
     {
         CompetitionId: Guid
@@ -39,6 +45,8 @@ type PredictionRegistrationInput =
         Qualifiers: QualifiersRegistrationInput
         Winner: int64
         TopScorers: int64[]
+        Groups: GroupResultInput[]
+        ThirdRankings: int64[]
     }
 
 type FixtureResult =
@@ -61,6 +69,13 @@ type QualifiersRegistration =
         RoundOf2: int64 list
     }
 
+type GroupRegistration =
+    {
+        GroupName: string
+        BoostedFixtureId: int64
+        RankingOrder: int64[]
+    }
+
 type PredictionRegistration =
     {
         Name: string
@@ -70,6 +85,8 @@ type PredictionRegistration =
         Qualifiers: QualifiersRegistration
         Winner: int64
         TopScorers: int64 list
+        Groups: GroupRegistration list
+        ThirdRankings: int64 list
     }
 
 type Command =
@@ -121,6 +138,18 @@ let decide: State option -> Command -> Result<Event list,unit> =
                         }
                     Winner = input.Winner
                     TopScorers = input.TopScorers |> List.ofArray
+                    Groups =
+                        input.Groups
+                        |> Seq.map (fun x ->
+                            {
+                                GroupName = x.GroupName
+                                BoostedFixtureId = x.ConfidentFixture
+                                RankingOrder = x.RankingOrder
+                            })
+                        |> Seq.toList
+                    ThirdRankings =
+                        input.ThirdRankings
+                        |> List.ofArray
                 }
             Ok [Registered registration]
         | Decline -> Ok [Declined]
