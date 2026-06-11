@@ -34,7 +34,6 @@ MongoDbSetup.init()
 
 let mainRouter = [
     GET [
-        route "/dapr/config" (obj() |> Successful.OK)
         route "/api/competition/status" FbApp.Competitions.Api.getCompetitionStatus
         route "/api/fixtures" FbApp.Fixtures.Api.getDefaultFixture
         routef "/api/fixtures/%O" FbApp.Fixtures.Api.getFixture
@@ -154,7 +153,6 @@ let configureServices (builder: WebApplicationBuilder) =
         options.WaitForJobsToComplete <- true
     ) |> ignore
 
-    builder.Services.AddDaprClient()
     builder.Services.AddDistributedMemoryCache().AddProblemDetails().AddSession().AddGiraffe() |> ignore
 
     builder.Services.ConfigureHttpJsonOptions(fun jsonOptions ->
@@ -181,11 +179,9 @@ let configureApp (app: WebApplication) =
         .UseResponseCompression()
         .UseStaticFiles()
         .UseRouting()
-        .UseCloudEvents()
         .UseAuthentication()
         .UseAuthorization()
         .UseEndpoints(fun endpoints ->
-            endpoints.MapSubscribeHandler() |> ignore
             endpoints.MapGiraffeEndpoints mainRouter
         )
     |> ignore

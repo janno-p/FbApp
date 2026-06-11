@@ -24,10 +24,11 @@
 
 ## Architecture Notes
 
-- `FbApp.Proxy` is the front door for `/api/*`, `/connect/*`, and `/.well-known/*`. Its YARP config rewrites `dapr:` destinations using `DAPR_HTTP_PORT` unless a connection string override exists.
-- `FbApp.Api` is a Giraffe app using MongoDB, KurrentDB, Dapr, and Quartz; main routes and startup wiring live in `src/FbApp.Api/Main.fs`.
+- `FbApp.Proxy` is the front door for `/api/*`, `/connect/*`, and `/.well-known/*`. Its YARP config uses direct destination addresses from `ReverseProxy` config, with Aspire references/local appsettings in development and Helm environment overrides in Kubernetes.
+- `FbApp.Api` is a Giraffe app using MongoDB, KurrentDB, and Quartz; main routes and startup wiring live in `src/FbApp.Api/Main.fs`.
 - `FbApp.Auth` hosts OpenIddict/Google auth backed by PostgreSQL; startup and routes live in `src/FbApp.Auth/Program.fs`, and client/role seeding is in `Worker.fs`.
 - The Elm app entrypoint is `src/FbApp.Web/app/main.ts`, which initializes `src/Main.elm` and bridges random-byte ports through `localStorage` for the OAuth PKCE flow.
+- Current user-facing app routes include `/prediction`, `/fixture`, `/fixture/:id`, and `/leaderboard`; API prediction routes include `/api/predict`, `/api/predict/fixtures`, `/api/predict/third-place-matchups`, `/api/prediction`, and `/api/prediction/board`.
 
 ## Testing Gotchas
 

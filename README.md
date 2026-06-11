@@ -1,28 +1,28 @@
-﻿# FbApp #
+﻿# FbApp
 
-Playground application for trying out new technologies, libraries, frameworks, patterns, tools etc.
+FbApp is a 2026 football prediction application and playground for the current .NET, F#, Elm, Aspire, and event-sourced architecture used in this repository.
 
-## Primary Objectives ##
+The app lets authenticated users submit competition predictions, including group-stage rankings, third-place qualification, knockout fixtures, top-scorer picks, and boosters. It also exposes fixture views, prediction status, leaderboards, leagues, and admin dashboard endpoints.
 
-* Client application using [Elm](https://elm-lang.org/) and [Vite](https://vitejs.dev/).
-* Server API built with [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) and [F# Programming Language](https://fsharp.org).
-* Apply [CQRS](https://martinfowler.com/bliki/CQRS.html) and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) principles to [Microservices](https://microservices.io/) architecture.
+## Architecture
 
-## Prerequisites ##
+- `src/FbApp.Web` is a Bun-managed Vite/Elm client.
+- `src/FbApp.Proxy` is the YARP front door for `/api/*`, `/connect/*`, and `/.well-known/*`.
+- `src/FbApp.Api` is an ASP.NET Core/Giraffe F# API using MongoDB read models, KurrentDB event streams, and Quartz live-update jobs.
+- `src/FbApp.Auth` hosts OpenIddict, Google OAuth, ASP.NET Core Identity, and PostgreSQL-backed auth state.
+- `src/FbApp.AppHost` starts the local Aspire environment with PostgreSQL, MongoDB, KurrentDB, API, Auth, Proxy, web client, and HTTPS ingress on `https://localhost:8090`.
+- `chart/` contains the Kubernetes/Helm deployment for API, Auth, Proxy, web, MongoDB, PostgreSQL, and EventStore/KurrentDB-compatible event storage. Proxy routing uses configured service addresses directly.
 
-### Run local application ###
+## Prerequisites
 
-* [Docker Desktop](https://docs.docker.com/docker-for-windows/install/)
-* [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/cli/overview)
+- [Docker Desktop](https://docs.docker.com/docker-for-windows/install/) or another Docker-compatible runtime for local infrastructure and integration tests.
+- [.NET SDK](https://www.microsoft.com/net/download) with the SDK required by the solution.
+- [.NET Aspire CLI](https://learn.microsoft.com/dotnet/aspire/cli/overview) for local orchestration.
+- [Bun](https://bun.sh/) for the web client.
 
-### Development environment ###
+## Quick Start
 
-* [.NET SDK](https://www.microsoft.com/net/download)
-* [Bun](https://bun.sh/)
-
-## Quick Start ##
-
-### Configure Google OAuth authentication ###
+### Configure Google OAuth Authentication
 
 Use Google Developer Console to register new application for Google authentication:
 
@@ -34,16 +34,21 @@ by Google client application registration.
 
 ```json
 {
-  "Authentication": {
-    "Google": {
+  "Google": {
+    "Authentication": {
       "ClientId": "<redacted>",
       "ClientSecret": "<redacted>"
     }
+  },
+  "Authorization": {
+    "DefaultAdmin": "<optional admin email>"
   }
 }
 ```
 
-### Run development environment ###
+When running through Aspire, the same values can be supplied from `src/FbApp.AppHost` configuration as `Services:AuthService:ClientId`, `Services:AuthService:ClientSecret`, and `Services:AuthService:DefaultAdmin`. Football-Data API access is configured as `Services:ApiService:FootballDataToken` in AppHost configuration or `Authentication:FootballDataToken` in API configuration.
+
+### Run Development Environment
 
 ```sh
 aspire run
@@ -52,3 +57,32 @@ aspire run
 Open the Aspire dashboard URL printed by `aspire run` to monitor running components.
 
 Open [Application](https://localhost:8090) for demo.
+
+## Common Commands
+
+Restore and build the backend solution from the repo root:
+
+```sh
+dotnet restore FbApp.slnx
+dotnet build FbApp.slnx
+```
+
+Run backend tests:
+
+```sh
+dotnet test --solution FbApp.slnx
+```
+
+Run the web client from `src/FbApp.Web`:
+
+```sh
+bun install
+bun run dev
+bun run build
+```
+
+## Public Routes
+
+- Web routes include `/`, `/login`, `/logout`, `/changelog`, `/prediction`, `/fixture`, `/fixture/:id`, and `/leaderboard`.
+- API routes include `/api/competition/status`, `/api/predict/fixtures`, `/api/predict`, `/api/predict/third-place-matchups`, `/api/prediction`, `/api/prediction/board`, `/api/fixtures`, and `/api/fixtures/{id}`.
+- Admin-only API routes are grouped under `/api/dashboard`, `/api/predictions/admin`, and `/api/leagues/admin`.

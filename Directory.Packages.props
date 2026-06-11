@@ -11,7 +11,6 @@
     <PackageVersion Include="Be.Vlaanderen.Basisregisters.Generators.Guid.Deterministic" Version="5.1.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.KurrentDB" Version="13.4.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.KurrentDB" Version="13.4.0" />
-    <PackageVersion Include="Dapr.AspNetCore" Version="1.17.9" />
     <PackageVersion Include="FSharp.Control.AsyncSeq" Version="4.15.0" />
     <PackageVersion Include="FSharp.Core" Version="10.1.301" />
     <PackageVersion Include="FSharp.SystemTextJson" Version="1.4.36" />

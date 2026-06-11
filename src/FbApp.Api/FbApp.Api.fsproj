@@ -12,7 +12,6 @@
   <ItemGroup>
     <PackageReference Include="Be.Vlaanderen.Basisregisters.Generators.Guid.Deterministic" />
     <PackageReference Include="CommunityToolkit.Aspire.KurrentDB" />
-    <PackageReference Include="Dapr.AspNetCore" />
     <PackageReference Include="FSharp.Control.AsyncSeq" />
     <PackageReference Include="FSharp.Core" />
     <PackageReference Include="FSharp.SystemTextJson" />

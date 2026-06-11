@@ -8,12 +8,8 @@ api:
       value: esdb://fbapp-eventstore:2113?tls=false
   image:
     pullPolicy: Always
-    repository: localhost:32000/fbapp-api
-    tag: 'latest'
-  podAnnotations:
-    dapr.io/enabled: "true"
-    dapr.io/app-id: "fbapp-api"
-    dapr.io/app-port: "8080"
+    repository: fbapp-api
+    tag: v1
   service:
     port: 8080
 
@@ -42,8 +38,8 @@ auth:
       value: Host=fbapp-auth-database-postgresql;Port=5432;Database=fbapp_auth;Username=user;Password=password
   image:
     pullPolicy: Always
-    repository: localhost:32000/fbapp-auth
-    tag: 'latest'
+    repository: fbapp-auth
+    tag: v1
   service:
     port: 8080
     type: ClusterIP
@@ -115,12 +111,8 @@ proxy:
       value: http://fbapp-auth:8080
   image:
     pullPolicy: Always
-    repository: localhost:32000/fbapp-proxy
-    tag: 'latest'
-  podAnnotations:
-    dapr.io/enabled: "true"
-    dapr.io/app-id: "fbapp-proxy"
-    dapr.io/app-port: "8080"
+    repository: fbapp-proxy
+    tag: v1
   service:
     port: 8080
     type: ClusterIP
@@ -131,8 +123,8 @@ web:
   env: []
   image:
     pullPolicy: Always
-    repository: localhost:32000/fbapp-web
-    tag: 'latest'
+    repository: fbapp-web
+    tag: v1
   service:
     port: 80
     type: ClusterIP
