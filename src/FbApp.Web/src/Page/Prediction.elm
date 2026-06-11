@@ -372,35 +372,38 @@ viewGroupTable group =
         [ h1
             []
             [ text "Ennustatav tabeliseis" ]
-        , div [ class "border border-accent" ]
-            (group.rankings
-                |> List.indexedMap
-                    (\i ranking ->
-                        div
-                            (class "flex flex-row gap-2 py-2"
-                                :: (if i < 2 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
-                                        [ class "bg-green-200 text-green-900" ]
+        , div []
+            [ viewTodo [ text "Otsusta, milline on meeskondade lõplik järjestus alagrupis" ] (group.rankings |> List.all (\r -> r.status == Just Fixed || r.status == Just UserDefined))
+            , div [ class "border border-accent" ]
+                (group.rankings
+                    |> List.indexedMap
+                        (\i ranking ->
+                            div
+                                (class "flex flex-row gap-2 py-2"
+                                    :: (if i < 2 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
+                                            [ class "bg-green-200 text-green-900" ]
 
-                                    else if i == 2 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
-                                        [ class "bg-amber-200 text-amber-900" ]
+                                        else if i == 2 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
+                                            [ class "bg-amber-200 text-amber-900" ]
 
-                                    else if i == 3 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
-                                        [ class "bg-red-200 text-red-900" ]
+                                        else if i == 3 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
+                                            [ class "bg-red-200 text-red-900" ]
 
-                                    else
-                                        [ class "bg-slate-100 text-slate-600" ]
-                                   )
-                            )
-                            ([ span [ class "font-mono flex-none px-2" ] [ text (String.fromInt (i + 1) ++ ".") ]
-                             , span (flagClass ranking.team.tla ++ [ class "size-6 flex-none" ]) []
-                             , span [ class "capitalize font-mono grow" ] [ text ranking.team.tla ]
-                             ]
-                                ++ viewRankControls ranking (prev i) (next i) i group.groupName
-                                ++ [ span [ class "flex-none px-2" ] [ text (String.fromInt ranking.points ++ "pts") ]
-                                   ]
-                            )
-                    )
-            )
+                                        else
+                                            [ class "bg-slate-100 text-slate-600" ]
+                                       )
+                                )
+                                ([ span [ class "font-mono flex-none px-2" ] [ text (String.fromInt (i + 1) ++ ".") ]
+                                 , span (flagClass ranking.team.tla ++ [ class "size-6 flex-none" ]) []
+                                 , span [ class "capitalize font-mono grow" ] [ text ranking.team.tla ]
+                                 ]
+                                    ++ viewRankControls ranking (prev i) (next i) i group.groupName
+                                    ++ [ span [ class "flex-none px-2" ] [ text (String.fromInt ranking.points ++ "pts") ]
+                                       ]
+                                )
+                        )
+                )
+            ]
         ]
 
 
@@ -496,34 +499,67 @@ viewThirdPlaceRankings thirds =
             else
                 thirds |> List.drop (i + 1) |> List.head |> Maybe.map .points
     in
-    div [ class " mb-8" ]
+    div [ class "flex flex-col items-center mb-8" ]
         [ h1 [] [ text "Kolmanda koha meeskonnad" ]
-        , div [ class "border border-accent" ]
-            (thirds
-                |> List.indexedMap
-                    (\i ranking ->
-                        div
-                            (class "flex flex-row gap-2 py-2"
-                                :: (if i < 8 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
-                                        [ class "bg-green-200 text-green-900" ]
+        , div [ class "w-100" ]
+            [ viewTodo [ text "Otsusta, millised 8 meeskonda pääsevad edasi alagrupi kolmandana" ] (thirds |> List.all (\r -> r.status == Just Fixed || r.status == Just UserDefined))
+            , div [ class "border border-accent" ]
+                (thirds
+                    |> List.indexedMap
+                        (\i ranking ->
+                            div
+                                (class "flex flex-row gap-2 py-2"
+                                    :: (if i < 8 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
+                                            [ class "bg-green-200 text-green-900" ]
 
-                                    else if i > 7 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
-                                        [ class "bg-red-200 text-red-900" ]
+                                        else if i > 7 && (ranking.status == Just Fixed || ranking.status == Just UserDefined) then
+                                            [ class "bg-red-200 text-red-900" ]
 
-                                    else
-                                        [ class "bg-slate-100 text-slate-600" ]
-                                   )
-                            )
-                            ([ span [ class "font-mono flex-none px-2 w-10 text-right" ] [ text (String.fromInt (i + 1) ++ ".") ]
-                             , span (flagClass ranking.team.tla ++ [ class "size-6 flex-none" ]) []
-                             , span [ class "capitalize font-mono grow" ] [ text ranking.team.tla ]
-                             ]
-                                ++ viewThirdRankControls ranking (prev i) (next i) i
-                                ++ [ span [ class "flex-none px-2" ] [ text (String.fromInt ranking.points ++ "pts") ]
-                                   ]
-                            )
-                    )
-            )
+                                        else
+                                            [ class "bg-slate-100 text-slate-600" ]
+                                       )
+                                )
+                                ([ span [ class "font-mono flex-none px-2 w-10 text-right" ] [ text (String.fromInt (i + 1) ++ ".") ]
+                                 , span (flagClass ranking.team.tla ++ [ class "size-6 flex-none" ]) []
+                                 , span [ class "capitalize font-mono grow" ] [ text ranking.team.tla ]
+                                 ]
+                                    ++ viewThirdRankControls ranking (prev i) (next i) i
+                                    ++ [ span [ class "flex-none px-2" ] [ text (String.fromInt ranking.points ++ "pts") ]
+                                       ]
+                                )
+                        )
+                )
+            ]
+        ]
+
+
+viewTodo : List (Html Msg) -> Bool -> Html Msg
+viewTodo content isCompleted =
+    let
+        ( borderClass, bgClass, ( iconClass, textClass ) ) =
+            if isCompleted then
+                ( class "border-emerald-200"
+                , class "bg-emerald-50"
+                , ( class "icon-[mdi--check-box] text-emerald-500"
+                  , class "text-emerald-800"
+                  )
+                )
+
+            else
+                ( class "border-amber-200"
+                , class "bg-amber-50"
+                , ( class "icon-[mdi--check-box-outline-blank] text-amber-500"
+                  , class "text-amber-800"
+                  )
+                )
+    in
+    div [ class "rounded-lg border p-4 my-2", borderClass, bgClass ]
+        [ div [ class "flex items-start gap-3", textClass ]
+            [ span [ class "flex-none size-6", iconClass ] []
+            , div []
+                [ p [ class "mt-1 text-sm grow" ] content
+                ]
+            ]
         ]
 
 
@@ -588,8 +624,10 @@ viewGroupStage session model =
             model.fixturePredictions
                 |> List.map
                     (\groupFixture ->
-                        div [ class "border-primary" ]
+                        div [ class "w-100" ]
                             (h1 [] [ text (groupFixture.groupName ++ " alagrupp") ]
+                                :: viewTodo [ text "Vali tulemused kõigile alagrupimängudele" ] (groupFixture.fixtures |> List.all (\f -> f.result /= Nothing))
+                                :: viewTodo [ text "Märgi topeltpanus ", span [ class "icon-[mdi--verified]" ] [], text " mängule, mille tulemuses oled kõige kindlam" ] (groupFixture.fixtures |> List.any (\f -> f.confident))
                                 :: (groupFixture.fixtures
                                         |> List.map (fixturesContent groupFixture.groupName)
                                    )
@@ -616,7 +654,7 @@ viewGroupStage session model =
     , p [] [ text "Kes võidab mängu?" ]
 
     --, viewButton RandomizeGroupStage "Rändom!" "icon-[mdi--dice]" False
-    , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] groupsContent
+    , div [ class "flex flex-col gap-y-4 my-8 items-center" ] groupsContent
     , viewThirdPlaceRankings model.thirds
     , div [ class "flex flex-row-reverse" ]
         [ viewButton (SetRoundOf32Stage session) "Jätka väljakukkumismängude ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
