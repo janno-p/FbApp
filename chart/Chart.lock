@@ -1,9 +1,9 @@
 dependencies:
 - name: mongodb
-  repository: https://charts.bitnami.com/bitnami
-  version: 15.6.6
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 19.1.6
 - name: postgresql
-  repository: https://charts.bitnami.com/bitnami
-  version: 15.5.5
-digest: sha256:3bb69611d23fbb9299b7821a32f412f9f41560f3255426b7f818165286f84976
-generated: "2026-06-11T12:20:04.379940927+03:00"
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 18.7.3
+digest: sha256:36f07d1d0f6a1f258cc681431ea252d62feed08ad7796c293e8663d93204c875
+generated: "2026-06-11T12:58:57.975253662+03:00"

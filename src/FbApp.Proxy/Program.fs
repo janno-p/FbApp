@@ -18,6 +18,7 @@ open System.Collections.Generic
 open System.Threading.Tasks
 open Yarp.ReverseProxy.Configuration
 open Microsoft.AspNetCore.HttpOverrides
+open System.Net
 
 
 type ProxyJwtBearerEvents () =
@@ -85,7 +86,20 @@ let routes = []
 
 
 let configureApplication (app: WebApplication) =
-    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
+    let forwardedHeadersOptions = ForwardedHeadersOptions()
+    forwardedHeadersOptions.ForwardedHeaders <- ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto ||| ForwardedHeaders.XForwardedFor
+
+    app.Configuration.GetSection("ForwardedHeaders:AllowedHosts").Get<string[]>()
+    |> Option.ofObj
+    |> Option.defaultValue [||]
+    |> Array.iter (fun host -> forwardedHeadersOptions.AllowedHosts.Add host)
+
+    app.Configuration.GetSection("ForwardedHeaders:KnownIPNetworks").Get<string[]>()
+    |> Option.ofObj
+    |> Option.defaultValue [||]
+    |> Array.iter (fun cidr -> forwardedHeadersOptions.KnownIPNetworks.Add(IPNetwork.Parse cidr))
+
+    app.UseForwardedHeaders forwardedHeadersOptions |> ignore
 
     if app.Environment.IsDevelopment() then
         app.UseDeveloperExceptionPage() |> ignore

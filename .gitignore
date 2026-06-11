@@ -8,3 +8,5 @@ out/
 appsettings.user.json
 
 src/FbApp.Web.old
+
+chart/charts/*.tgz

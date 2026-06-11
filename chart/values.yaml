@@ -12,6 +12,7 @@ api:
     tag: v1
   service:
     port: 8080
+    type: ClusterIP
 
 api-database-mongodb:
   architecture: standalone

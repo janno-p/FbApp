@@ -7,9 +7,9 @@ version: 0.1.0
 dependencies:
   - name: mongodb
     alias: api-database-mongodb
-    version: 15.6.6
-    repository: https://charts.bitnami.com/bitnami
+    version: 19.1.6
+    repository: oci://registry-1.docker.io/bitnamicharts
   - name: postgresql
     alias: auth-database-postgresql
-    version: 15.5.5
-    repository: https://charts.bitnami.com/bitnami
+    version: 18.7.3
+    repository: oci://registry-1.docker.io/bitnamicharts

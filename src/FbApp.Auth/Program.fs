@@ -21,6 +21,7 @@ open OpenIddict.Server.AspNetCore
 open Quartz
 open System
 open System.Collections.Generic
+open System.Net
 open System.Security.Claims
 
 
@@ -449,7 +450,21 @@ let configureServices (builder: WebApplicationBuilder) =
 
 
 let configureApplication (app: WebApplication) =
-    app.UseForwardedHeaders(ForwardedHeadersOptions(ForwardedHeaders = (ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto))) |> ignore
+    let forwardedHeadersOptions = ForwardedHeadersOptions()
+    forwardedHeadersOptions.ForwardedHeaders <- ForwardedHeaders.XForwardedHost ||| ForwardedHeaders.XForwardedProto ||| ForwardedHeaders.XForwardedFor
+
+    app.Configuration.GetSection("ForwardedHeaders:AllowedHosts").Get<string[]>()
+    |> Option.ofObj
+    |> Option.defaultValue [||]
+    |> Array.iter (fun host -> forwardedHeadersOptions.AllowedHosts.Add host)
+
+    app.Configuration.GetSection("ForwardedHeaders:KnownIPNetworks").Get<string[]>()
+    |> Option.ofObj
+    |> Option.defaultValue [||]
+    |> Array.iter (fun cidr -> forwardedHeadersOptions.KnownIPNetworks.Add(IPNetwork.Parse cidr))
+
+    app.UseForwardedHeaders forwardedHeadersOptions |> ignore
+
     app.UseRouting() |> ignore
     app.UseAuthentication() |> ignore
     app.UseAuthorization() |> ignore
