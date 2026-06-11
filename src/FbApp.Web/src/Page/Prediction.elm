@@ -2,8 +2,8 @@ module Page.Prediction exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api.Endpoint as Endpoint exposing (competitionInfo, defaultEndpointConfig)
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, h1, h2, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
-import Html.Attributes exposing (checked, class, disabled, for, id, name, placeholder, scope, title, type_, value)
+import Html exposing (Html, button, div, h1, input, label, p, pre, span, table, tbody, td, text, th, thead, tr)
+import Html.Attributes exposing (checked, class, disabled, for, id, placeholder, scope, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Json
@@ -23,25 +23,30 @@ type alias Model =
     , stage : PredictionStage
     , fixturePredictions : List GroupFixturePrediction
     , groupPredictions : List GroupPrediction
-    , top32 : List Int
-    , top16 : List Int
-    , top8 : List Int
-    , top4 : List Int
-    , top2 : List Int
-    , top1 : List Int
     , topScorers : List PlayerPrediction
     , playerPredictions : List PlayerPrediction
     , playerFilter : String
     , selectedPositions : List String
     , selectedCountries : List Int
     , thirds : List TeamRanking
+    , roundOf32 : List KnockoutMatch
+    , roundOf16 : List KnockoutMatch
+    , quarterFinals : List KnockoutMatch
+    , semiFinals : List KnockoutMatch
+    , final : List KnockoutMatch
+    }
+
+
+type alias KnockoutMatch =
+    { team1 : Team
+    , team2 : Team
+    , winner : Maybe Team
     }
 
 
 type PredictionStage
     = Initial
     | GroupStage
-    | PlayOffStage
     | RoundOf32Stage
     | RoundOf16Stage
     | QuarterFinalsStage
@@ -115,6 +120,7 @@ type alias TeamRanking =
     { status : Maybe RankingStatus
     , team : Team
     , points : Int
+    , groupName : String
     }
 
 
@@ -145,18 +151,17 @@ init session =
       , stage = Initial
       , fixturePredictions = []
       , groupPredictions = []
-      , top32 = []
-      , top16 = []
-      , top8 = []
-      , top4 = []
-      , top2 = []
-      , top1 = []
       , topScorers = []
       , playerPredictions = []
       , playerFilter = ""
       , selectedPositions = []
       , selectedCountries = []
       , thirds = []
+      , roundOf32 = []
+      , roundOf16 = []
+      , quarterFinals = []
+      , semiFinals = []
+      , final = []
       }
     , checkExisting session
     )
@@ -175,66 +180,46 @@ view session model =
                     viewNote
 
                 GroupStage ->
-                    viewGroupStage model
-
-                PlayOffStage ->
-                    viewPlayOffStage
-                        model
-                        model.top32
-                        "Alagrupist edasipääsejad"
-                        "Millised meeskonnad jätkavad väljalangemismängudega?"
-                        "Jätka kaheksandikfinalistide ennustamisega"
-                        32
-                        SetRoundOf32Stage
+                    viewGroupStage session model
 
                 RoundOf32Stage ->
-                    viewPlayOffStage
-                        model
-                        model.top16
+                    viewKnockoutRound
+                        model.roundOf32
                         "Kaheksandikfinalistid"
-                        "Millised meeskonnad jõuavad kaheksandikfinaalidesse?"
+                        "Millised meeskonnad jõuavad 16 parema hulka?"
                         "Jätka veerandfinalistide ennustamisega"
-                        16
                         SetRoundOf16Stage
 
                 RoundOf16Stage ->
-                    viewPlayOffStage
-                        model
-                        model.top8
+                    viewKnockoutRound
+                        model.roundOf16
                         "Veerandfinalistid"
                         "Millised meeskonnad jõuavad veerandfinaalidesse?"
                         "Jätka poolfinalistide ennustamisega"
-                        8
                         SetQuarterFinalsStage
 
                 QuarterFinalsStage ->
-                    viewPlayOffStage
-                        model
-                        model.top4
+                    viewKnockoutRound
+                        model.quarterFinals
                         "Poolfinalistid"
                         "Millised meeskonnad jõuavad poolfinaalidesse?"
                         "Jätka finalistide ennustamisega"
-                        4
                         SetSemiFinalsStage
 
                 SemiFinalsStage ->
-                    viewPlayOffStage
-                        model
-                        model.top2
+                    viewKnockoutRound
+                        model.semiFinals
                         "Finalistid"
                         "Millised on kaks meeskonda, kelle vahel selgitatakse turniiri võitja?"
                         "Jätka võitja ennustamisega"
-                        2
                         SetFinalsStage
 
                 FinalsStage ->
-                    viewPlayOffStage
-                        model
-                        model.top1
+                    viewKnockoutRound
+                        model.final
                         "Maailmameister"
-                        "Milline meeskond on uus maailmameister?"
+                        "Milline meeskond on järgmine maailmameister?"
                         "Jätka suurimate väravaküttide ennustamisega"
-                        1
                         SetTopScorersStage
 
                 TopScorersStage ->
@@ -542,8 +527,8 @@ viewThirdPlaceRankings thirds =
         ]
 
 
-viewGroupStage : Model -> List (Html Msg)
-viewGroupStage model =
+viewGroupStage : Session -> Model -> List (Html Msg)
+viewGroupStage session model =
     let
         selectionClass fixture result =
             if fixture.result == Just result then
@@ -583,17 +568,6 @@ viewGroupStage model =
                     ]
                 , div
                     [ class "flex flex-row items-center" ]
-                    {--[ input
-                        [ checked False -- (List.member a.id model.selectedCountries)
-                        , name groupName
-
-                        --, onClick (ToggleCountryFilter a.id)
-                        , type_ "radio"
-                        , class "cursor-pointer size-5 text-blue-600 bg-gray-100 rounded border-gray-300 dark:bg-gray-700 dark:border-gray-600"
-                        , title "Topeltpunktid"
-                        ]
-                        []
-                    ]--}
                     [ span
                         ([ class "text-lg icon-[mdi--verified] hover:opacity-100 cursor-pointer bg-violet-700 border-violet-200"
                          , title "Topeltpanus"
@@ -623,8 +597,21 @@ viewGroupStage model =
                             )
                     )
 
+        allFixturesPredicted =
+            model.fixturePredictions |> List.all (\g -> g.fixtures |> List.all (\f -> f.result /= Nothing))
+
+        allBoostersSet =
+            model.fixturePredictions |> List.all (\g -> g.fixtures |> List.any (\f -> f.confident))
+
+        allRankingsResolved =
+            model.fixturePredictions |> List.all (\g -> g.rankings |> List.all (\r -> r.status == Just Fixed || r.status == Just UserDefined))
+
+        thirdPlaceRankingsResolved =
+            model.thirds |> List.all (\r -> r.status == Just Fixed || r.status == Just UserDefined)
+
         disableNextStep =
-            model.fixturePredictions |> List.map (\g -> g.fixtures) |> List.concat |> List.any (\f -> f.result == Nothing)
+            --not (allFixturesPredicted && allBoostersSet && allRankingsResolved && thirdPlaceRankingsResolved)
+            False
     in
     [ h1 [] [ text "Alagrupimängud" ]
     , p [] [ text "Kes võidab mängu?" ]
@@ -632,7 +619,7 @@ viewGroupStage model =
     , div [ class "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-8 gap-y-4 my-8" ] groupsContent
     , viewThirdPlaceRankings model.thirds
     , div [ class "flex flex-row-reverse" ]
-        [ viewButton SetPlayOffStage "Jätka alagrupist edasipääsejate ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
+        [ viewButton (SetRoundOf32Stage session) "Jätka väljakukkumismängude ennustamisega" "icon-[mdi--chevron-double-right]" disableNextStep
         ]
     ]
 
@@ -660,15 +647,55 @@ viewButton msg label icon isDisabled =
         ]
 
 
-viewPlayOffStage : Model -> List Int -> String -> String -> String -> Int -> Msg -> List (Html Msg)
-viewPlayOffStage model selection title subTitle btnText count msg =
+viewKnockoutRound : List KnockoutMatch -> String -> String -> String -> Msg -> List (Html Msg)
+viewKnockoutRound matches titleText subTitle btnText msg =
     let
         disableNextStep =
-            List.length selection /= count
+            matches |> List.any (\m -> m.winner == Nothing)
+
+        selectionClass team winner =
+            if Just team == winner then
+                class "bg-green-200 hover:bg-green-400"
+
+            else if winner == Nothing then
+                class "bg-gray-200 hover:bg-gray-400"
+
+            else
+                class "bg-red-200 hover:bg-red-400"
     in
-    [ h1 [] [ text title ]
+    [ h1 [] [ text titleText ]
     , p [] [ text subTitle ]
-    , div [ class "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-4 my-8" ] (viewPlayOffSelection count model)
+    , div [ class "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-4 my-8" ]
+        (matches
+            |> List.map
+                (\m ->
+                    div []
+                        [ div []
+                            [ button
+                                [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
+                                , selectionClass m.team1 m.winner
+                                , onClick (ToggleKnockoutWinner m m.team1)
+                                , title m.team1.name
+                                ]
+                                [ span (flagClass m.team1.tla ++ [ class "size-6 flex-none" ]) []
+                                , span [ class "capitalize grow font-mono" ] [ text m.team1.tla ]
+                                ]
+                            ]
+                        , div
+                            []
+                            [ button
+                                [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
+                                , selectionClass m.team2 m.winner
+                                , onClick (ToggleKnockoutWinner m m.team2)
+                                , title m.team2.name
+                                ]
+                                [ span (flagClass m.team2.tla ++ [ class "size-6 flex-none" ]) []
+                                , span [ class "capitalize grow font-mono" ] [ text m.team2.tla ]
+                                ]
+                            ]
+                        ]
+                )
+        )
     , div [ class "flex flex-row-reverse" ]
         [ viewButton msg btnText "icon-[mdi--chevron-double-right]" disableNextStep
         ]
@@ -819,67 +846,6 @@ viewPlayerTable model =
         ]
 
 
-viewGroupSelection : List Int -> Int -> GroupPrediction -> Html Msg
-viewGroupSelection selectedTeams count grp =
-    let
-        selectionClass teamId =
-            if List.member teamId selectedTeams then
-                class "bg-green-200 hover:bg-green-400 cursor-pointer"
-
-            else if List.length selectedTeams /= count then
-                class "bg-gray-200 hover:bg-gray-400 cursor-pointer"
-
-            else
-                class "bg-red-200 cursor-default"
-
-        viewBtn team =
-            button
-                [ class "rounded-md p-2 flex flex-row items-center gap-1"
-                , selectionClass team.id
-                , onClick (ToggleQualifier team.id)
-                , title team.name
-                ]
-                [ span (flagClass team.tla ++ [ class "size-6 flex-none" ]) []
-                , span [ class "capitalize grow font-mono" ] [ text team.tla ]
-                ]
-    in
-    div [ class "flex flex-col" ]
-        (h2 [] [ text (grp.name ++ " alagrupp") ]
-            :: (grp.teams
-                    |> List.map viewBtn
-               )
-        )
-
-
-viewPlayOffSelection : Int -> Model -> List (Html Msg)
-viewPlayOffSelection maxSelection model =
-    let
-        selectedTeams =
-            case maxSelection of
-                32 ->
-                    model.top32
-
-                16 ->
-                    model.top16
-
-                8 ->
-                    model.top8
-
-                4 ->
-                    model.top4
-
-                2 ->
-                    model.top2
-
-                1 ->
-                    model.top1
-
-                _ ->
-                    []
-    in
-    model.groupPredictions |> List.map (viewGroupSelection selectedTeams maxSelection)
-
-
 
 -- UPDATE
 
@@ -887,8 +853,7 @@ viewPlayOffSelection maxSelection model =
 type Msg
     = SetGroupStage
     | GotCompetitionInfo (Result Http.Error CompetitionInfo)
-    | SetPlayOffStage
-    | SetRoundOf32Stage
+    | SetRoundOf32Stage Session
     | SetRoundOf16Stage
     | SetQuarterFinalsStage
     | SetSemiFinalsStage
@@ -908,6 +873,23 @@ type Msg
     | SetUserRanking String Int Int
     | SetThirdsUserRanking Int Int
     | SetConfidenceBooster String FixturePrediction
+    | GotThirdPlaceMatchups (Result Http.Error (List String))
+    | ToggleKnockoutWinner KnockoutMatch Team
+
+
+knockoutAdvance : List KnockoutMatch -> List KnockoutMatch
+knockoutAdvance round =
+    case round of
+        a :: b :: xs ->
+            case ( a.winner, b.winner ) of
+                ( Just tm1, Just tm2 ) ->
+                    { team1 = tm1, team2 = tm2, winner = Nothing } :: knockoutAdvance xs
+
+                _ ->
+                    []
+
+        _ ->
+            []
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -922,23 +904,40 @@ update msg model =
         SetGroupStage ->
             ( { model | stage = GroupStage }, Cmd.none )
 
-        SetPlayOffStage ->
-            ( { model | stage = PlayOffStage }, Cmd.none )
-
-        SetRoundOf32Stage ->
-            ( { model | stage = RoundOf32Stage }, Cmd.none )
+        SetRoundOf32Stage session ->
+            ( model, getThirdPlaceMatchups session (model.thirds |> List.take 8 |> List.map (\r -> r.groupName)) )
 
         SetRoundOf16Stage ->
-            ( { model | stage = RoundOf16Stage }, Cmd.none )
+            ( { model
+                | stage = RoundOf16Stage
+                , roundOf16 = knockoutAdvance model.roundOf32
+              }
+            , Cmd.none
+            )
 
         SetQuarterFinalsStage ->
-            ( { model | stage = QuarterFinalsStage }, Cmd.none )
+            ( { model
+                | stage = QuarterFinalsStage
+                , quarterFinals = knockoutAdvance model.roundOf16
+              }
+            , Cmd.none
+            )
 
         SetSemiFinalsStage ->
-            ( { model | stage = SemiFinalsStage }, Cmd.none )
+            ( { model
+                | stage = SemiFinalsStage
+                , semiFinals = knockoutAdvance model.quarterFinals
+              }
+            , Cmd.none
+            )
 
         SetFinalsStage ->
-            ( { model | stage = FinalsStage }, Cmd.none )
+            ( { model
+                | stage = FinalsStage
+                , final = knockoutAdvance model.semiFinals
+              }
+            , Cmd.none
+            )
 
         SetTopScorersStage ->
             ( { model | stage = TopScorersStage }, Cmd.none )
@@ -971,23 +970,100 @@ update msg model =
 
         ToggleQualifier teamId ->
             case model.stage of
-                PlayOffStage ->
-                    ( { model | top32 = updateQualifier 32 model.top32 teamId }, Cmd.none )
-
                 RoundOf32Stage ->
-                    ( { model | top16 = updateQualifier 16 model.top16 teamId }, Cmd.none )
+                    ( { model
+                        | roundOf32 =
+                            model.roundOf32
+                                |> List.map
+                                    (\m ->
+                                        if m.team1.id == teamId then
+                                            { m | winner = Just m.team1 }
+
+                                        else if m.team2.id == teamId then
+                                            { m | winner = Just m.team2 }
+
+                                        else
+                                            m
+                                    )
+                      }
+                    , Cmd.none
+                    )
 
                 RoundOf16Stage ->
-                    ( { model | top8 = updateQualifier 8 model.top8 teamId }, Cmd.none )
+                    ( { model
+                        | roundOf16 =
+                            model.roundOf16
+                                |> List.map
+                                    (\m ->
+                                        if m.team1.id == teamId then
+                                            { m | winner = Just m.team1 }
+
+                                        else if m.team2.id == teamId then
+                                            { m | winner = Just m.team2 }
+
+                                        else
+                                            m
+                                    )
+                      }
+                    , Cmd.none
+                    )
 
                 QuarterFinalsStage ->
-                    ( { model | top4 = updateQualifier 4 model.top4 teamId }, Cmd.none )
+                    ( { model
+                        | quarterFinals =
+                            model.quarterFinals
+                                |> List.map
+                                    (\m ->
+                                        if m.team1.id == teamId then
+                                            { m | winner = Just m.team1 }
+
+                                        else if m.team2.id == teamId then
+                                            { m | winner = Just m.team2 }
+
+                                        else
+                                            m
+                                    )
+                      }
+                    , Cmd.none
+                    )
 
                 SemiFinalsStage ->
-                    ( { model | top2 = updateQualifier 2 model.top2 teamId }, Cmd.none )
+                    ( { model
+                        | semiFinals =
+                            model.semiFinals
+                                |> List.map
+                                    (\m ->
+                                        if m.team1.id == teamId then
+                                            { m | winner = Just m.team1 }
+
+                                        else if m.team2.id == teamId then
+                                            { m | winner = Just m.team2 }
+
+                                        else
+                                            m
+                                    )
+                      }
+                    , Cmd.none
+                    )
 
                 FinalsStage ->
-                    ( { model | top1 = updateQualifier 1 model.top1 teamId }, Cmd.none )
+                    ( { model
+                        | final =
+                            model.final
+                                |> List.map
+                                    (\m ->
+                                        if m.team1.id == teamId then
+                                            { m | winner = Just m.team1 }
+
+                                        else if m.team2.id == teamId then
+                                            { m | winner = Just m.team2 }
+
+                                        else
+                                            m
+                                    )
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -1079,6 +1155,155 @@ update msg model =
             , Cmd.none
             )
 
+        GotThirdPlaceMatchups (Err _) ->
+            ( { model | stage = FailedToSave "Viga salvestamisel" }, Cmd.none )
+
+        GotThirdPlaceMatchups (Ok matchups) ->
+            ( { model
+                | stage = RoundOf32Stage
+                , roundOf32 = prepareRoundOf32 model matchups
+              }
+            , Cmd.none
+            )
+
+        ToggleKnockoutWinner knockoutMatch winner ->
+            ( { model
+                | roundOf32 =
+                    if model.stage == RoundOf32Stage then
+                        model.roundOf32
+                            |> List.map
+                                (\m ->
+                                    if m == knockoutMatch then
+                                        { m | winner = Just winner }
+
+                                    else
+                                        m
+                                )
+
+                    else
+                        model.roundOf32
+                , roundOf16 =
+                    if model.stage == RoundOf16Stage then
+                        model.roundOf16
+                            |> List.map
+                                (\m ->
+                                    if m == knockoutMatch then
+                                        { m | winner = Just winner }
+
+                                    else
+                                        m
+                                )
+
+                    else
+                        model.roundOf16
+                , quarterFinals =
+                    if model.stage == QuarterFinalsStage then
+                        model.quarterFinals
+                            |> List.map
+                                (\m ->
+                                    if m == knockoutMatch then
+                                        { m | winner = Just winner }
+
+                                    else
+                                        m
+                                )
+
+                    else
+                        model.quarterFinals
+                , semiFinals =
+                    if model.stage == SemiFinalsStage then
+                        model.semiFinals
+                            |> List.map
+                                (\m ->
+                                    if m == knockoutMatch then
+                                        { m | winner = Just winner }
+
+                                    else
+                                        m
+                                )
+
+                    else
+                        model.semiFinals
+                , final =
+                    if model.stage == FinalsStage then
+                        model.final
+                            |> List.map
+                                (\m ->
+                                    if m == knockoutMatch then
+                                        { m | winner = Just winner }
+
+                                    else
+                                        m
+                                )
+
+                    else
+                        model.final
+              }
+            , Cmd.none
+            )
+
+
+getTeam : Model -> Int -> String -> Maybe Team
+getTeam model position groupName =
+    model.fixturePredictions
+        |> List.filter (\g -> g.groupName == groupName)
+        |> List.map (\g -> g.rankings)
+        |> List.concat
+        |> List.drop position
+        |> List.map (\r -> r.team)
+        |> List.head
+
+
+getThird : Model -> List String -> Int -> Maybe Team
+getThird model matchups position =
+    let
+        groupName =
+            matchups
+                |> List.drop position
+                |> List.head
+    in
+    groupName |> Maybe.andThen (\g -> getTeam model 2 g)
+
+
+prepareRoundOf32 : Model -> List String -> List KnockoutMatch
+prepareRoundOf32 model matchups =
+    let
+        g1 =
+            getTeam model 0
+
+        g2 =
+            getTeam model 1
+
+        g3 =
+            getThird model matchups
+
+        mk f1 f2 =
+            case ( f1 (), f2 () ) of
+                ( Just t1, Just t2 ) ->
+                    Just { team1 = t1, team2 = t2, winner = Nothing }
+
+                _ ->
+                    Nothing
+    in
+    [ mk (\() -> g1 "E") (\() -> g3 3)
+    , mk (\() -> g1 "I") (\() -> g3 5)
+    , mk (\() -> g2 "A") (\() -> g2 "B")
+    , mk (\() -> g1 "F") (\() -> g2 "C")
+    , mk (\() -> g2 "K") (\() -> g2 "L")
+    , mk (\() -> g1 "H") (\() -> g2 "J")
+    , mk (\() -> g1 "D") (\() -> g3 2)
+    , mk (\() -> g1 "G") (\() -> g3 4)
+    , mk (\() -> g1 "C") (\() -> g2 "F")
+    , mk (\() -> g2 "E") (\() -> g2 "I")
+    , mk (\() -> g1 "A") (\() -> g3 0)
+    , mk (\() -> g1 "L") (\() -> g3 7)
+    , mk (\() -> g1 "J") (\() -> g2 "H")
+    , mk (\() -> g2 "D") (\() -> g2 "G")
+    , mk (\() -> g1 "B") (\() -> g3 1)
+    , mk (\() -> g1 "K") (\() -> g3 6)
+    ]
+        |> List.filterMap identity
+
 
 setThirdsUserRank : List TeamRanking -> Int -> Int -> List TeamRanking
 setThirdsUserRank rankings oldRank newRank =
@@ -1167,7 +1392,7 @@ randomizeFixturePredictions groups results =
             )
         |> List.map
             (\group ->
-                { group | rankings = mapGroupRankings group.fixtures }
+                { group | rankings = mapGroupRankings group.groupName group.fixtures }
             )
 
 
@@ -1186,6 +1411,22 @@ checkExisting session =
         Endpoint.prediction
         (Http.expectJson CheckedExisting (Json.nullable Json.string))
         { defaultEndpointConfig | headers = Endpoint.useToken session }
+
+
+getThirdPlaceMatchups : Session -> List String -> Cmd Msg
+getThirdPlaceMatchups session groups =
+    let
+        config =
+            Endpoint.defaultEndpointConfig
+    in
+    Endpoint.request
+        Endpoint.thirdPlaceMatchups
+        (Http.expectJson GotThirdPlaceMatchups (Json.list Json.string))
+        { config
+            | body = Http.jsonBody (Encode.list Encode.string groups)
+            , method = "POST"
+            , headers = Endpoint.useToken session
+        }
 
 
 type ErrorDetailed
@@ -1230,18 +1471,6 @@ savePrediction session model =
         }
 
 
-updateQualifier : Int -> List Int -> Int -> List Int
-updateQualifier count selectedTeams teamId =
-    if List.member teamId selectedTeams then
-        selectedTeams |> List.filter ((/=) teamId)
-
-    else if List.length selectedTeams == count then
-        selectedTeams
-
-    else
-        teamId :: selectedTeams
-
-
 updateFixtureResult : Int -> FixtureResult -> GroupFixturePrediction -> GroupFixturePrediction
 updateFixtureResult fixtureId fixtureResult groupFixture =
     let
@@ -1265,7 +1494,7 @@ updateFixtureResult fixtureId fixtureResult groupFixture =
     in
     { groupFixture
         | fixtures = fixtures
-        , rankings = mapGroupRankings fixtures
+        , rankings = mapGroupRankings groupFixture.groupName fixtures
     }
 
 
@@ -1374,7 +1603,7 @@ mapGroupFixture competitionInfo groupDto =
     in
     { groupName = groupDto.name
     , fixtures = fixtures
-    , rankings = mapGroupRankings fixtures
+    , rankings = mapGroupRankings groupDto.name fixtures
     }
 
 
@@ -1397,8 +1626,8 @@ groupBy getKey items =
         items
 
 
-mapGroupRankings : List FixturePrediction -> List TeamRanking
-mapGroupRankings fixtures =
+mapGroupRankings : String -> List FixturePrediction -> List TeamRanking
+mapGroupRankings groupName fixtures =
     let
         groupTable =
             calculateGroupTable fixtures
@@ -1424,6 +1653,7 @@ mapGroupRankings fixtures =
                         Just Loose
                 , team = team
                 , points = pts
+                , groupName = groupName
                 }
             )
 
@@ -1499,7 +1729,7 @@ predictionEncoder model =
         [ ( "competitionId", Encode.string (model.competitionInfo |> Maybe.map (\x -> x.competitionId) |> Maybe.withDefault "") )
         , ( "fixtures", Encode.list fixtureResultEncoder (model.fixturePredictions |> List.map (\x -> x.fixtures) |> List.concat) )
         , ( "qualifiers", qualifiersEncoder model )
-        , ( "winner", Encode.int (model.top1 |> List.head |> Maybe.withDefault 0) )
+        , ( "winner", Encode.int (model.final |> List.head |> Maybe.andThen (\x -> x.winner) |> Maybe.map .id |> Maybe.withDefault 0) )
         , ( "topScorers", Encode.list Encode.int (model.topScorers |> List.map (\x -> x.playerId)) )
         ]
 
@@ -1507,11 +1737,11 @@ predictionEncoder model =
 qualifiersEncoder : Model -> Encode.Value
 qualifiersEncoder model =
     Encode.object
-        [ ( "roundOf32", Encode.list Encode.int model.top32 )
-        , ( "roundOf16", Encode.list Encode.int model.top16 )
-        , ( "roundOf8", Encode.list Encode.int model.top8 )
-        , ( "roundOf4", Encode.list Encode.int model.top4 )
-        , ( "roundOf2", Encode.list Encode.int model.top2 )
+        [ ( "roundOf32", Encode.list Encode.int (model.roundOf32 |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
+        , ( "roundOf16", Encode.list Encode.int (model.roundOf16 |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
+        , ( "roundOf8", Encode.list Encode.int (model.quarterFinals |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
+        , ( "roundOf4", Encode.list Encode.int (model.semiFinals |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
+        , ( "roundOf2", Encode.list Encode.int (model.final |> List.map (\m -> [ m.team1.id, m.team2.id ]) |> List.concat) )
         ]
 
 

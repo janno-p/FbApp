@@ -627,9 +627,9 @@ let private getThirdPlaceMatchups: HttpHandler =
 let predictScope: Endpoint list = [
     POST [
         route "/" (Auth.mustBeLoggedIn >=> Auth.withUser savePredictions)
+        route "/third-place-matchups" getThirdPlaceMatchups
     ]
     GET [
         route "/fixtures" getFixtures
-        route "/third-place-matchups" getThirdPlaceMatchups
     ]
 ]

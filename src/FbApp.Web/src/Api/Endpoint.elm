@@ -9,6 +9,7 @@ module Api.Endpoint exposing
     , prediction
     , request
     , savePrediction
+    , thirdPlaceMatchups
     , useToken
     )
 
@@ -90,6 +91,11 @@ savePrediction =
 prediction : Endpoint
 prediction =
     url [ "prediction" ] []
+
+
+thirdPlaceMatchups : Endpoint
+thirdPlaceMatchups =
+    url [ "predict", "third-place-matchups" ] []
 
 
 defaultFixture : Endpoint
