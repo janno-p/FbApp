@@ -18,6 +18,7 @@ type FixtureResultRegistrationInput =
     {
         Id: int64
         Result: string
+        Confident: bool
     }
 
 [<CLIMutable>]
