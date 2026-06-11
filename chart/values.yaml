@@ -2,10 +2,10 @@ api:
   autoscaling:
     enabled: false
   env:
-    - name: CONNECTIONSTRINGS__MONGODB
+    - name: ConnectionStrings__mongodb
       value: mongodb://user:password@fbapp-api-database-mongodb:27017/fbapp
     - name: ConnectionStrings__eventstore
-      value: esdb://fbapp-eventstore:2113?tls=false
+      value: kurrentdb://fbapp-eventstore:2113?tls=false
   image:
     pullPolicy: Always
     repository: fbapp-api
@@ -24,11 +24,6 @@ api-database-mongodb:
       - fbapp
     rootPassword: root
   useStatefulSet: true
-
-api-valkey:
-  architecture: standalone
-  auth:
-    enabled: false
 
 auth:
   autoscaling:
@@ -55,21 +50,21 @@ eventstore:
   autoscaling:
     enabled: false
   env:
-    - name: EVENTSTORE_CLUSTER_SIZE
+    - name: KURRENTDB_CLUSTER_SIZE
       value: '1'
-    - name: EVENTSTORE_RUN_PROJECTIONS
+    - name: KURRENTDB_RUN_PROJECTIONS
       value: 'All'
-    - name: EVENTSTORE_START_STANDARD_PROJECTIONS
+    - name: KURRENTDB_START_STANDARD_PROJECTIONS
       value: 'true'
-    - name: EVENTSTORE_HTTP_PORT
+    - name: KURRENTDB_NODE_PORT
       value: '2113'
-    - name: EVENTSTORE_INSECURE
+    - name: KURRENTDB_INSECURE
       value: 'true'
-    - name: EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP
+    - name: KURRENTDB_ENABLE_ATOM_PUB_OVER_HTTP
       value: 'true'
   image:
-    repository: eventstore/eventstore
-    tag: '24.2'
+    repository: kurrentplatform/kurrentdb
+    tag: '26.1'
   runRestore: false
   service:
     port: 2113
@@ -103,7 +98,7 @@ proxy:
   autoscaling:
     enabled: false
   env:
-    - name: CONNECTIONSTRINGS__AUTHCLUSTER
+    - name: ConnectionStrings__authCluster
       value: http://fbapp-auth:8080
     - name: ReverseProxy__Clusters__apiCluster__Destinations__destination1__Address
       value: http://fbapp-api:8080

@@ -13,7 +13,3 @@ dependencies:
     alias: auth-database-postgresql
     version: 15.5.5
     repository: https://charts.bitnami.com/bitnami
-  - name: valkey
-    alias: api-valkey
-    version: 0.3.5
-    repository: https://charts.bitnami.com/bitnami

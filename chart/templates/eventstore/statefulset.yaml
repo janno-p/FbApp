@@ -44,20 +44,20 @@ spec:
           - /bin/bash
           - -ec
           - |
-            rm -rf /var/lib/eventstore/*
+            rm -rf /var/lib/kurrentdb/*
             unzip /opt/files/backup.zip -d /tmp
-            mv /tmp/backup/* /var/lib/eventstore/.
+            mv /tmp/backup/* /var/lib/kurrentdb/.
             rmdir /tmp/backup
-            rm /var/lib/eventstore/truncate.chk
-            cp /var/lib/eventstore/chaser.chk /var/lib/eventstore/truncate.chk
-            chown -R 1000:1000 /var/lib/eventstore
+            rm /var/lib/kurrentdb/truncate.chk
+            cp /var/lib/kurrentdb/chaser.chk /var/lib/kurrentdb/truncate.chk
+            chown -R 1000:1000 /var/lib/kurrentdb
         securityContext:
           runAsUser: 0
         volumeMounts:
-          - mountPath: /var/lib/eventstore
+          - mountPath: /var/lib/kurrentdb
             name: datadir
             subPath: data
-          - mountPath: /var/log/eventstore
+          - mountPath: /var/log/kurrentdb
             name: datadir
             subPath: logs
       {{- end }}
@@ -78,10 +78,10 @@ spec:
           resources:
             {{- toYaml .Values.eventstore.resources | nindent 12 }}
           volumeMounts:
-            - mountPath: /var/lib/eventstore
+            - mountPath: /var/lib/kurrentdb
               name: datadir
               subPath: data
-            - mountPath: /var/log/eventstore
+            - mountPath: /var/log/kurrentdb
               name: datadir
               subPath: logs
           {{- with .Values.eventstore.env }}
