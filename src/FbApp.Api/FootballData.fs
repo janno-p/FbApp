@@ -175,7 +175,7 @@ type CompetitionPlayer =
     {
         Id: int64
         Name: string
-        Position: string
+        Position: string option
     }
 
 [<CLIMutable>]
@@ -423,9 +423,17 @@ let getCompetitionLeagueTable (jsonOptions: JsonSerializerOptions) authToken (co
 }
 
 [<CLIMutable>]
+type CompetitionScorerTeam = {
+    Id: int64
+    Name: string
+    Tla: string
+    ShortName: string
+}
+
+[<CLIMutable>]
 type CompetitionScorer = {
     Player: CompetitionPlayer
-    Team: CompetitionTeam
+    Team: CompetitionScorerTeam
     Goals: int
 }
 

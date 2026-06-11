@@ -72,8 +72,8 @@ let getNearestFixtureId : GetNearestFixtureId =
                         rank: {{
                             $let: {{
                                 vars: {{
-                                    diffStart: {{ $abs: {{ $subtract: [ %d{now}, {{ $arrayElemAt: [ "$Date", 0 ] }} ] }} }},
-                                    diffEnd: {{ $abs: {{ $subtract: [ %d{now}, {{ $sum: [ 63000000000, {{ $arrayElemAt: [ "$Date", 0 ] }} ] }} ] }} }}
+                                    diffStart: {{ $abs: {{ $subtract: [ %d{now}, "$Date.Ticks" ] }} }},
+                                    diffEnd: {{ $abs: {{ $subtract: [ %d{now}, {{ $sum: [ 63000000000, "$Date.Ticks" ] }} ] }} }}
                                 }},
                                 in: {{ $cond: {{ if: {{ $eq: [ "$Status", "IN_PLAY" ] }}, then: -1, else: {{ $multiply: [ 1, {{ $min: ["$$diffStart", "$$diffEnd" ] }} ] }} }} }}
                             }}

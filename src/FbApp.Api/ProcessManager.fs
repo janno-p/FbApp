@@ -64,7 +64,7 @@ let processCompetitions (logger: ILogger, db, jsonOptions) (authOptions: AuthOpt
                         teams.Teams |> Seq.map (fun x -> { Name = x.Name; Tla = x.Tla; ExternalId = x.Id } : Competitions.TeamAssignment) |> Seq.toList,
                         fixtures.Fixtures |> Seq.filter (fun f -> f.Matchday |> Option.map ((>) 4) |> Option.defaultValue false) |> Seq.map (fun x -> { HomeTeamId = x.HomeTeam.Value.Id.Value; AwayTeamId = x.AwayTeam.Value.Id.Value; Date = x.Date; ExternalId = x.Id; Group = x.Group |> Option.map normalizeGroupName } : Competitions.FixtureAssignment) |> Seq.toList,
                         groups.Standings |> Seq.map (fun kvp -> normalizeGroupName kvp.Group, kvp.Table |> Array.map (fun x -> x.Team.Id)) |> Seq.toList,
-                        teams.Teams |> Seq.map (fun t -> t.Players |> Seq.map (fun x -> { Name = x.Name; Position = x.Position; TeamExternalId = t.Id; ExternalId = x.Id } : Competitions.PlayerAssignment)) |> Seq.concat |> Seq.toList
+                        teams.Teams |> Seq.map (fun t -> t.Players |> Seq.map (fun x -> { Name = x.Name; Position = x.Position |> Option.defaultValue ""; TeamExternalId = t.Id; ExternalId = x.Id } : Competitions.PlayerAssignment)) |> Seq.concat |> Seq.toList
                     )
             let id = Competitions.createId args.ExternalId
             let! _ = CommandHandlers.competitionsHandler (id, Aggregate.Version md.AggregateSequenceNumber) command
