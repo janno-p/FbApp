@@ -301,8 +301,8 @@ module Fixtures =
                         rank: {{
                             $let: {{
                                 vars: {{
-                                    diffStart: {{ $abs: {{ $subtract: [ %d{now}, {{ $arrayElemAt: [ "$Date", 0 ] }} ] }} }},
-                                    diffEnd: {{ $abs: {{ $subtract: [ %d{now}, {{ $sum: [ 63000000000, {{ $arrayElemAt: [ "$Date", 0 ] }} ] }} ] }} }}
+                                    diffStart: {{ $abs: {{ $subtract: [ %d{now}, "$Date.Ticks" ] }} }},
+                                    diffEnd: {{ $abs: {{ $subtract: [ %d{now}, {{ $sum: [ 63000000000, "$Date.Ticks" ] }} ] }} }}
                                 }},
                                 in: {{ $cond: {{ if: {{ $eq: [ "$Status", "IN_PLAY" ] }}, then: -1, else: {{ $multiply: [ 1, {{ $min: ["$$diffStart", "$$diffEnd" ] }} ] }} }} }}
                             }}
@@ -321,7 +321,7 @@ module Fixtures =
         let projection = ProjectionDefinition<ReadModels.FixtureOrder>.op_Implicit """{ Id: 1, PreviousId: 1, NextId: 1 }"""
         let sort =
             Builders.Sort.Combine(
-                Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Date.0"),
+                Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Date.Ticks"),
                 Builders.Sort.Ascending(FieldDefinition<_>.op_Implicit "Id")
             )
         return! (getCollection db).Find(filter).Sort(sort).Project(projection).ToListAsync()

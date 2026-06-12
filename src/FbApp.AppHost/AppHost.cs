@@ -50,6 +50,7 @@ var apiServiceConfig = builder.Configuration.GetSection("Services:ApiService");
 var apiService = builder
     .AddProject<Projects.FbApp_Api>("fbapp-api", options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(10202)
+    .WithEnvironment("EventStore__Subscriptions__Reset", "true")
     .WithReference(kurrentdb, "eventstore")
     .WithReference(apiDatabase, "mongodb")
     .WaitFor(kurrentdb)

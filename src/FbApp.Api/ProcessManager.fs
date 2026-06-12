@@ -15,6 +15,7 @@ open KurrentDB.Client
 open System.Threading
 open Microsoft.AspNetCore.Http.Json
 open System.Text.Json
+open FSharp.Control
 
 
 let (|Nullable|_|) (x: Nullable<_>) =
@@ -494,6 +495,12 @@ let connectSubscription (services: IServiceProvider) = task {
     let mongoDb = services.GetRequiredService<IMongoDatabase>()
     let authOptions = services.GetService<IOptions<AuthOptions>>().Value
     let jsonOptions = services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions
+
+    if subscriptionsSettings.Reset then
+        let! result = mongoDb.ListCollectionNamesAsync()
+        let! collectionNames = result.ToListAsync()
+        for collectionName in collectionNames do
+            do! mongoDb.DropCollectionAsync collectionName
 
     logger.LogInformation "Initializing process manager"
     let! _ =
