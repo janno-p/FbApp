@@ -6,7 +6,44 @@ var authDatabase = postgres.AddDatabase("fbapp-pgdb-auth");
 var mongo = builder.AddMongoDB("fbapp-mongodb"); //.WithDataVolume();
 var apiDatabase = mongo.AddDatabase("fbapp-mongodb-api");
 
-var kurrentdb = builder.AddKurrentDB("fbapp-kurrentdb"); //.WithDataVolume();
+const string KurrentDbDataVolume = "fbapp-kurrentdb-data";
+const string KurrentDbRegistry = "docker.kurrent.io";
+const string KurrentDbImage = "kurrent-latest/kurrentdb";
+const string KurrentDbTag = "26.1";
+
+var kurrentConfig = builder.Configuration.GetSection("Services:KurrentDB");
+var kurrentRestorePath = kurrentConfig["RestorePath"];
+
+var kurrentdb = builder.AddKurrentDB("fbapp-kurrentdb")
+    .WithImage(KurrentDbImage, KurrentDbTag)
+    .WithImageRegistry(KurrentDbRegistry)
+    .WithDataVolume(KurrentDbDataVolume);
+
+if (!string.IsNullOrEmpty(kurrentRestorePath))
+{
+    var scriptsPath = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "Scripts"));
+
+    var restoreKurrentDb = builder.AddContainer("fbapp-kurrentdb-restore", "alpine", "3.20")
+        .WithBindMount(kurrentRestorePath, "/backup", isReadOnly: true)
+        .WithBindMount(scriptsPath, "/scripts", isReadOnly: true)
+        .WithVolume(KurrentDbDataVolume, "/var/lib/kurrentdb")
+        .WithEnvironment("BACKUP_DIR", "/backup")
+        .WithEnvironment("DATA_DIR", "/var/lib/kurrentdb")
+        .WithEnvironment("KURRENT_UID", "1001")
+        .WithEnvironment("KURRENT_GID", "1001")
+        .WithEntrypoint("/bin/sh")
+        .WithArgs("/scripts/restore-kurrentdb.sh");
+
+    var prepareKurrentDb = builder
+        .AddContainer("fbapp-kurrentdb-prepare", KurrentDbImage, KurrentDbTag)
+        .WithImageRegistry(KurrentDbRegistry)
+        .WithVolume(KurrentDbDataVolume, "/var/lib/kurrentdb")
+        .WithEnvironment("KURRENTDB_INSECURE", "true")
+        .WithEnvironment("KURRENTDB_RUN_PROJECTIONS", "All")
+        .WaitForCompletion(restoreKurrentDb);
+
+    kurrentdb.WaitForCompletion(prepareKurrentDb);
+}
 
 var apiServiceConfig = builder.Configuration.GetSection("Services:ApiService");
 
