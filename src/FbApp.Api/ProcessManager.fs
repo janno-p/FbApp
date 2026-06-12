@@ -147,7 +147,7 @@ let private mapActualResult (status, fullTime, extraTime: int array, penalties: 
     | _ -> null
 
 
-let private mapFixtureResult db competitionId (x: Predictions.FixtureResultRegistration) = task {
+let private mapFixtureResult db competitionId (groups: Predictions.GroupRegistration list) (x: Predictions.FixtureResultRegistration) = task {
     let mapResult = function
         | Predictions.HomeWin -> "HomeWin"
         | Predictions.Tie -> "Tie"
@@ -158,11 +158,14 @@ let private mapFixtureResult db competitionId (x: Predictions.FixtureResultRegis
 
     let result = mapActualResult (result.Status, result.FullTime, result.ExtraTime, result.Penalties)
 
+    let isBoosted = groups |> List.exists (fun group -> group.BoostedFixtureId = x.Id)
+
     let fixtureResult : ReadModels.PredictionFixtureResult =
         {
             FixtureId = x.Id
             PredictedResult = mapResult x.Result
             ActualResult = result
+            IsBoosted = isBoosted
         }
 
     return fixtureResult
@@ -172,7 +175,7 @@ let private mapFixtureResult db competitionId (x: Predictions.FixtureResultRegis
 let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegistration) = task {
     let fixtureTasks =
         model.Fixtures
-        |> Seq.map (mapFixtureResult db model.CompetitionId)
+        |> Seq.map (mapFixtureResult db model.CompetitionId model.Groups)
         |> Seq.toArray
 
     let! fixtures = System.Threading.Tasks.Task.WhenAll fixtureTasks
@@ -181,11 +184,13 @@ let acceptPrediction db (metadata: Metadata) (model: Predictions.PredictionRegis
         fixtures
         |> Array.map
             (fun fixture -> task {
+                let isBoosted = model.Groups |> List.exists (fun group -> group.BoostedFixtureId = fixture.FixtureId)
                 let prediction: ReadModels.FixtureResultPrediction =
                     {
                         PredictionId = metadata.AggregateId
                         Name = model.Name
                         Result = fixture.PredictedResult
+                        IsBoosted = isBoosted
                     }
                 let id = Fixtures.createId (model.CompetitionId, fixture.FixtureId)
                 do! Fixtures.addPrediction db id prediction
@@ -266,6 +271,7 @@ let getResultPredictions db (input: Fixtures.AddFixtureInput) = task {
                     PredictionId = x.Id
                     Name = x.Name
                     Result = x.Fixtures[0].PredictedResult
+                    IsBoosted = x.Fixtures[0].IsBoosted
                 } : ReadModels.FixtureResultPrediction)
         |> Seq.toArray
     return predictions

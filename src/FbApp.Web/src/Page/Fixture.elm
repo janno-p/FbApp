@@ -62,6 +62,7 @@ type alias Team =
 type alias FixtureResultPrediction =
     { name : String
     , result : FixtureResult
+    , isBoosted : Bool
     }
 
 
@@ -241,10 +242,11 @@ viewResultPrediction fixture expectedResult fixtureResult =
                 Tie ->
                     text "Viik"
     in
-    tr [ class "border-b" ]
+    tr [ class "border-b align-middle" ]
         [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult.result ]
         , td [ class "capitalize" ] [ text fixtureResult.name ]
         , td [] [ predictionText ]
+        , td [] (viewBoosterIcon expectedResult fixtureResult)
         ]
 
 
@@ -259,7 +261,24 @@ viewResultIcon expectedResult predictedResult =
                 span [ class "icon-[mdi--close] text-red-500 text-2xl" ] []
 
         Nothing ->
-            span [ class "icon-[mdi--minus] text-gray-200 text-2xl" ] []
+            span [ class "icon-[mdi--minus] text-gray-300 text-2xl" ] []
+
+
+viewBoosterIcon : Maybe FixtureResult -> FixtureResultPrediction -> List (Html Msg)
+viewBoosterIcon expectedResult predictedResult =
+    case ( predictedResult.isBoosted, expectedResult ) of
+        ( False, _ ) ->
+            []
+
+        ( _, Just result ) ->
+            if result == predictedResult.result then
+                [ span [ class "icon-[mdi--plus-one] text-green-500 text-2xl" ] [] ]
+
+            else
+                [ span [ class "icon-[mdi--plus-one] text-red-500 text-2xl" ] [] ]
+
+        ( _, Nothing ) ->
+            [ span [ class "icon-[mdi--plus-one] text-gray-300 text-2xl" ] [] ]
 
 
 qualifierIconClass : Bool -> Html.Attribute Msg
@@ -394,6 +413,7 @@ fixtureResultPredictionDecoder =
     Json.succeed FixtureResultPrediction
         |> required "name" Json.string
         |> required "result" fixtureResultDecoder
+        |> required "isBoosted" Json.bool
 
 
 fixtureResultDecoder : Json.Decoder FixtureResult

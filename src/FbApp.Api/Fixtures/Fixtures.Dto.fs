@@ -14,6 +14,7 @@ type TeamDto = {
 type FixturePredictionDto = {
     Name: string
     Result: string
+    IsBoosted: bool
 }
 
 
@@ -56,6 +57,7 @@ module FixturePredictionDto =
         {
             Name = Helpers.excludeLastName prediction.Name
             Result = prediction.Result
+            IsBoosted = prediction.IsBoosted
         }
 
 

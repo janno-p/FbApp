@@ -17,6 +17,7 @@ type FixtureResultPrediction = {
     PredictionId: Guid
     Name: string
     Result: string
+    IsBoosted: bool
 }
 
 

@@ -56,6 +56,7 @@ module ReadModels =
             PredictionId: Guid
             Name: string
             Result: string
+            IsBoosted: bool
         }
 
     type QualificationPrediction =
@@ -91,6 +92,7 @@ module ReadModels =
             FixtureId: int64
             PredictedResult: string
             ActualResult: string
+            IsBoosted: bool
         }
 
     type PredictionFixture =
