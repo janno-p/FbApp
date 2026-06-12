@@ -15,7 +15,20 @@ type alias LogEntry =
 
 log : List LogEntry
 log =
-  [ { version = "0.1.0"
+  [ { version = "0.2.0"
+    , changes =
+      [ "Lisatud 2026. aasta MM-i ennustuste tugi"
+      , "Alagrupimängude ennustamine gruppide kaupa koos juhusliku valikuga"
+      , "Alagrupi lõppjärjestuste ja parimate kolmandate kohtade muutmine"
+      , "Väljalangemismängude ning kolmanda koha vastasseisude ennustamine"
+      , "Mängupõhised kindlusvalikud ja nende punktiarvestus"
+      , "Ennustuste lõpetamise juhised ja täpsem mänguvaade"
+      , "Meeskondade lippude kuvamine lühikoodide järgi"
+      , "Rakendus viidud .NET 10, Aspire, Bun ja KurrentDB peale"
+      , "Helmi paigalduse, proxy ja read modelite taastamise parandused"
+      ]
+    }
+  , { version = "0.1.0"
     , changes =
       [ "Uuendatud rakenduse aluseks olevaid raamistikke"
       , "Lisatud Dapr runtime"
