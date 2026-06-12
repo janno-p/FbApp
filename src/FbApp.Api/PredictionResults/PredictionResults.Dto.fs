@@ -27,11 +27,16 @@ module PredictionResultDto =
         else
             false, false
 
+    let groupStageScore (isCorrect, isBoosted) =
+        let isCorrectScore = if isCorrect then 1 else 0
+        let isBoostedScore = if isBoosted then 2 else 1
+        isCorrectScore * isBoostedScore
+
     let fromScoresheet (scoresheet: Scoresheet) =
         let topScorer, topScorerIsFinal = getTopScorer scoresheet
         let topScorerGoalPoints = scoresheet.Scorer |> List.map _.GoalCount |> List.sum
         let gainedPoints = [
-            1 * (scoresheet.GroupStage.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
+            1 * (scoresheet.GroupStage.Values |> Seq.choose (Option.map groupStageScore) |> Seq.sum)
             2 * (scoresheet.Qualifiers16ths.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
             3 * (scoresheet.Qualifiers8ths.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
             4 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some true)) |> Seq.length)
@@ -42,7 +47,7 @@ module PredictionResultDto =
             1 * topScorerGoalPoints
         ]
         let lostPoints = [
-            1 * (scoresheet.GroupStage.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
+            1 * (scoresheet.GroupStage.Values |> Seq.choose (Option.map (fun (isCorrect, isBoosted) -> groupStageScore (not isCorrect, isBoosted))) |> Seq.sum)
             2 * (scoresheet.Qualifiers16ths.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
             3 * (scoresheet.Qualifiers8ths.Values |> Seq.filter ((=) (Some false)) |> Seq.length)
             4 * (scoresheet.Quarters.Values |> Seq.filter ((=) (Some false)) |> Seq.length)

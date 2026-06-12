@@ -29,8 +29,13 @@ type Fixture (fixtureId: FixtureId, homeTeamId: TeamId, awayTeamId: TeamId, fixt
     member val FixtureStage = fixtureStage with get
     member val Version = version with get, set
 
+type PredictedResult = {
+    Result: Predictions.FixtureResult
+    IsBoosted: bool
+}
+
 type Predictions = {
-    Matches: IDictionary<FixtureId, Predictions.FixtureResult>
+    Matches: IDictionary<FixtureId, PredictedResult>
     Qualifiers: TeamId list
     RoundOf16: TeamId list
     QuarterFinals: TeamId list
@@ -67,7 +72,7 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
     member _.Scorer with get() = scorers
     member val GroupStage =
         predictions.Matches
-            |> Seq.map (fun kvp -> KeyValuePair<_, bool option>(kvp.Key, None))
+            |> Seq.map (fun kvp -> KeyValuePair<_, (bool * bool) option>(kvp.Key, None))
             |> Dictionary<_,_>
         with get
     member val Qualifiers16ths =
@@ -128,8 +133,8 @@ type Scoresheet(predictionId: PredictionId, name: string, predictions: Predictio
             |> Dict.tryUpdate fixtureId (fun _ ->
                 predictions.Matches
                     |> Dict.tryGet fixtureId
-                    |> Option.map (fun predictedResult -> Some (predictedResult = fixtureResult))
-                    |> Option.defaultValue (Some false))
+                    |> Option.map (fun predictedResult -> Some(if predictedResult.Result = fixtureResult then true, predictedResult.IsBoosted else false, predictedResult.IsBoosted))
+                    |> Option.defaultValue (Some (false, false)))
     member _.UpdateScorers(competitionScorers: Map<PlayerId, CompetitionScorer>) =
         scorers <-
             predictions.TopScorers
@@ -464,7 +469,10 @@ let processPredictions _ _ = function
             {
                 Predictions.Matches =
                     args.Fixtures
-                        |> List.map (fun x -> (FixtureId.create competitionId x.Id, x.Result))
+                        |> List.map (fun x ->
+                            let isBoosted = args.Groups |> List.exists (fun group -> group.BoostedFixtureId = x.Id)
+                            FixtureId.create competitionId x.Id, { Result = x.Result; IsBoosted = isBoosted }
+                        )
                         |> dict
                 Qualifiers = args.Qualifiers.RoundOf32 |> List.map TeamId.create
                 RoundOf16 = args.Qualifiers.RoundOf16 |> List.map TeamId.create
