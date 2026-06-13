@@ -12,6 +12,7 @@ open KurrentDB.Client
 
 let MaxTotalPoints
     = 12 * 6 * 1 // Group matches
+    + 12 * 1 // Boosters
     + 32 * 2 // Qualifiers
     + 16 * 3 // Round of 16
     + 8 * 4 // Quarter-finalists

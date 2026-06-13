@@ -19,6 +19,7 @@ type alias Model =
 type alias PredictionResult =
     { name : String
     , matches : Int
+    , boosters : Int
     , qualifiers : Int
     , roundOf16ths : Int
     , quarterFinals : Int
@@ -86,6 +87,7 @@ viewLeaderboardTable predictionResults =
             [ div [] []
             , div [] []
             , div [ title "Alagrupimängude tulemused", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--format-list-group]" ] [] ]
+            , div [ title "Topeltpanuste punktid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--syringe]" ] [] ]
             , div [ title "Edasipääsejad", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-sixteenth-dotted]" ] [] ]
             , div [ title "Kaheksandikfinalistid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-sixteenth]" ] [] ]
             , div [ title "Veerandfinalistid", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--music-note-eighth]" ] [] ]
@@ -95,7 +97,6 @@ viewLeaderboardTable predictionResults =
             , div [ title "Väravaküttide poolt löödud väravad", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--shoe-cleat]" ] [] ]
             , div [ title "Väravakütt", class "text-center hidden sm:block" ] [ span [ class "icon-[mdi--medal]" ] [] ]
             , div [ title "Punkte kokku", class "text-center" ] [ span [ class "icon-[mdi--sigma]" ] [] ]
-            , div [ title "Trend", class "text-center" ] [ span [ class "icon-[mdi--trending-up]" ] [] ]
             ]
             :: List.map (viewPredictionResult ratioRange) predictionResults
         )
@@ -117,8 +118,12 @@ viewPredictionResult ratioRange predictionResult =
               else
                 text (String.fromInt predictionResult.rank ++ ".")
             ]
-        , div [ class "capitalize" ] [ text predictionResult.name ]
+        , div [ class "capitalize" ]
+            [ viewRatio predictionResult.ratio ratioRange
+            , span [ class "ml-2" ] [ text predictionResult.name ]
+            ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.matches) ]
+        , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.boosters) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.qualifiers) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.roundOf16ths) ]
         , div [ class "text-center hidden sm:block" ] [ text (String.fromInt predictionResult.quarterFinals) ]
@@ -148,7 +153,6 @@ viewPredictionResult ratioRange predictionResult =
                     [ text (String.fromInt predictionResult.total) ]
                 )
             ]
-        , div [ class "text-left" ] [ viewRatio predictionResult.ratio ratioRange ]
         ]
 
 
@@ -214,59 +218,66 @@ mapPredictionResult name points scorerFixed total ratio rank =
 
             _ ->
                 0
-    , qualifiers =
+    , boosters =
         case points of
             _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , roundOf16ths =
+    , qualifiers =
         case points of
             _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , quarterFinals =
+    , roundOf16ths =
         case points of
             _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , semiFinals =
+    , quarterFinals =
         case points of
             _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , finals =
+    , semiFinals =
         case points of
             _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , winner =
+    , finals =
         case points of
             _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
-    , topScorerHit =
+    , winner =
         case points of
             _ :: _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
                 x
 
             _ ->
                 0
+    , topScorerHit =
+        case points of
+            _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
+                x
+
+            _ ->
+                0
     , topScorerGoals =
         case points of
-            _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: y :: _ ->
-                y
+            _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: x :: _ ->
+                x
 
             _ ->
                 0
