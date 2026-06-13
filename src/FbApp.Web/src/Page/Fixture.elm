@@ -349,12 +349,34 @@ viewResultPrediction fixture expectedResult fixtureResult =
                 Tie ->
                     text "Viik"
     in
-    tr [ class "border-b align-middle" ]
+    tr [ boosterRowClass expectedResult fixtureResult ]
         [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult.result ]
         , td [ class "capitalize" ] [ text fixtureResult.name ]
         , td [] [ predictionText ]
-        , td [] (viewBoosterIcon expectedResult fixtureResult)
+        , td [ class "py-2 pr-3 text-right" ] (viewBoosterIcon expectedResult fixtureResult)
         ]
+
+
+boosterRowClass : Maybe FixtureResult -> FixtureResultPrediction -> Html.Attribute Msg
+boosterRowClass expectedResult predictedResult =
+    let
+        baseClass =
+            "border-b align-middle"
+    in
+    if not predictedResult.isBoosted then
+        class baseClass
+
+    else
+        case expectedResult of
+            Nothing ->
+                class (baseClass ++ " bg-violet-50 shadow-[inset_4px_0_0_#7c3aed]")
+
+            Just result ->
+                if result == predictedResult.result then
+                    class (baseClass ++ " bg-green-50 shadow-[inset_4px_0_0_#22c55e]")
+
+                else
+                    class (baseClass ++ " bg-red-50 shadow-[inset_4px_0_0_#ef4444]")
 
 
 viewResultIcon : Maybe FixtureResult -> FixtureResult -> Html Msg
@@ -373,19 +395,29 @@ viewResultIcon expectedResult predictedResult =
 
 viewBoosterIcon : Maybe FixtureResult -> FixtureResultPrediction -> List (Html Msg)
 viewBoosterIcon expectedResult predictedResult =
-    case ( predictedResult.isBoosted, expectedResult ) of
-        ( False, _ ) ->
-            []
+    if not predictedResult.isBoosted then
+        []
 
-        ( _, Just result ) ->
-            if result == predictedResult.result then
-                [ span [ class "icon-[mdi--plus-one] text-green-500 text-2xl" ] [] ]
+    else
+        case expectedResult of
+            Nothing ->
+                [ viewBoosterPill "icon-[mdi--syringe]" "Topeltpanus mängus" "bg-violet-100 text-violet-800" ]
 
-            else
-                [ span [ class "icon-[mdi--plus-one] text-red-500 text-2xl" ] [] ]
+            Just result ->
+                if result == predictedResult.result then
+                    [ viewBoosterPill "icon-[mdi--syringe]" "Topeltpanus tabas" "bg-green-100 text-green-800" ]
 
-        ( _, Nothing ) ->
-            [ span [ class "icon-[mdi--plus-one] text-gray-300 text-2xl" ] [] ]
+                else
+                    [ viewBoosterPill "icon-[mdi--syringe-off]" "Topeltpanus möödas" "bg-red-100 text-red-800" ]
+
+
+viewBoosterPill : String -> String -> String -> Html Msg
+viewBoosterPill iconClass label colorClass =
+    span
+        [ class ("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] sm:text-xs font-extrabold whitespace-nowrap " ++ colorClass) ]
+        [ span [ class (iconClass ++ " text-sm") ] []
+        , span [] [ text label ]
+        ]
 
 
 qualifierIconClass : Bool -> Html.Attribute Msg
