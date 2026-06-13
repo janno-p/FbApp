@@ -12,7 +12,7 @@ import Page exposing (PageTab(..), viewResultsTabs)
 import Route
 import Session exposing (Session)
 import Task
-import Team exposing (flagClass)
+import Team exposing (estonianName, flagClass)
 import Time exposing (Posix, Zone, utc)
 import Url exposing (Protocol(..))
 
@@ -252,8 +252,8 @@ statusChipClass status =
 viewHeroTeam : Team -> Html Msg
 viewHeroTeam team =
     div [ class "min-w-0 text-center" ]
-        [ span (flagClass team.tla ++ [ class "mx-auto h-7 sm:h-9 drop-shadow text-4xl", title team.name ]) []
-        , div [ class "mt-2 truncate text-xs font-extrabold sm:text-base" ] [ text team.name ]
+        [ span (flagClass team.tla ++ [ class "mx-auto h-7 sm:h-9 drop-shadow text-4xl", title (estonianName team) ]) []
+        , div [ class "mt-2 truncate text-xs font-extrabold sm:text-base" ] [ text (estonianName team) ]
         ]
 
 
@@ -341,10 +341,10 @@ viewResultPrediction fixture expectedResult fixtureResult =
         predictionText =
             case fixtureResult.result of
                 HomeWin ->
-                    text fixture.homeTeam.name
+                    text (estonianName fixture.homeTeam)
 
                 AwayWin ->
-                    text fixture.awayTeam.name
+                    text (estonianName fixture.awayTeam)
 
                 Tie ->
                     text "Viik"

@@ -11,7 +11,7 @@ import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import Random
 import Session exposing (Session)
-import Team exposing (flagClass)
+import Team exposing (estonianName, flagClass)
 
 
 
@@ -582,7 +582,7 @@ viewGroupStage session model =
                     [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
                     , selectionClass fixture HomeWin
                     , onClick (ToggleFixtureResult groupName fixture.fixtureId HomeWin)
-                    , title fixture.homeTeam.name
+                    , title (estonianName fixture.homeTeam)
                     ]
                     [ span (flagClass fixture.homeTeam.tla ++ [ class "size-6 flex-none" ]) []
                     , span [ class "capitalize grow font-mono" ] [ text fixture.homeTeam.tla ]
@@ -597,7 +597,7 @@ viewGroupStage session model =
                     [ class "rounded-md basis-1/3 p-2 flex flex-row-reverse items-center gap-1 cursor-pointer"
                     , selectionClass fixture AwayWin
                     , onClick (ToggleFixtureResult groupName fixture.fixtureId AwayWin)
-                    , title fixture.awayTeam.name
+                    , title (estonianName fixture.awayTeam)
                     ]
                     [ span (flagClass fixture.awayTeam.tla ++ [ class "size-6 flex-none" ]) []
                     , span [ class "capitalize grow font-mono" ] [ text fixture.awayTeam.tla ]
@@ -713,7 +713,7 @@ viewKnockoutRound matches titleText subTitle btnText msg =
                                 [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
                                 , selectionClass m.team1 m.winner
                                 , onClick (ToggleKnockoutWinner m m.team1)
-                                , title m.team1.name
+                                , title (estonianName m.team1)
                                 ]
                                 [ span (flagClass m.team1.tla ++ [ class "size-6 flex-none" ]) []
                                 , span [ class "capitalize grow font-mono" ] [ text m.team1.tla ]
@@ -725,7 +725,7 @@ viewKnockoutRound matches titleText subTitle btnText msg =
                                 [ class "rounded-md basis-1/3 p-2 flex flex-row items-center gap-1 cursor-pointer"
                                 , selectionClass m.team2 m.winner
                                 , onClick (ToggleKnockoutWinner m m.team2)
-                                , title m.team2.name
+                                , title (estonianName m.team2)
                                 ]
                                 [ span (flagClass m.team2.tla ++ [ class "size-6 flex-none" ]) []
                                 , span [ class "capitalize grow font-mono" ] [ text m.team2.tla ]
@@ -821,7 +821,7 @@ viewCountryFilter model =
                                 ]
                                 []
                             , span (flagClass a.tla ++ [ class "h-4" ]) []
-                            , text a.name
+                            , text (estonianName a)
                             ]
                     )
     in
@@ -874,7 +874,7 @@ viewPlayerTable model =
                                 , td [ class "py-4 px-6" ]
                                     [ div [ class "p-2 flex flex-row items-center gap-1" ]
                                         [ span (flagClass player.team.tla ++ [ class "h-4" ]) []
-                                        , text player.team.name
+                                        , text (estonianName player.team)
                                         ]
                                     ]
                                 ]
