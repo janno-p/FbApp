@@ -12,7 +12,7 @@ import Page exposing (PageTab(..), viewResultsTabs)
 import Route
 import Session exposing (Session)
 import Task
-import Team exposing (estonianName, flagClass)
+import Team exposing (estonianGenitiveName, estonianName, flagClass)
 import Time exposing (Posix, Zone, utc)
 import Url exposing (Protocol(..))
 
@@ -337,13 +337,23 @@ predictionResultLabel : Fixture -> FixtureResult -> String
 predictionResultLabel fixture result =
     case result of
         HomeWin ->
-            estonianName fixture.homeTeam ++ " võitu"
+            estonianGenitiveName fixture.homeTeam ++ " võitu"
 
         Tie ->
             "viiki"
 
         AwayWin ->
-            estonianName fixture.awayTeam ++ " võitu"
+            estonianGenitiveName fixture.awayTeam ++ " võitu"
+
+
+predictionGroupPrefix : FixtureStatus -> String
+predictionGroupPrefix status =
+    case status of
+        Finished ->
+            "Ennustasid"
+
+        _ ->
+            "Ennustavad"
 
 
 predictionResultShortLabel : Fixture -> FixtureResult -> String
@@ -504,7 +514,7 @@ viewPredictionGroup fixture expectedResult result =
         Just
             (div [ class "mb-2 overflow-hidden rounded-2xl border border-gray-200 bg-white last:mb-0" ]
                 [ div [ class ("flex items-center justify-between gap-2 px-3 py-2 text-xs font-extrabold " ++ predictionGroupHeaderClass expectedResult result) ]
-                    [ span [] [ text ("Ennustasid " ++ predictionResultLabel fixture result) ]
+                    [ span [] [ text (predictionGroupPrefix fixture.status ++ " " ++ predictionResultLabel fixture result) ]
                     , span [] [ text (String.fromInt count) ]
                     ]
                 , div [] (List.map (viewGroupedPredictionRow expectedResult result) predictions)

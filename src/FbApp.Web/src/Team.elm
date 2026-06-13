@@ -1,4 +1,4 @@
-module Team exposing (estonianName, flagClass)
+module Team exposing (estonianGenitiveName, estonianName, flagClass)
 
 import Html
 import Html.Attributes exposing (class)
@@ -153,6 +153,157 @@ estonianName team =
 
         _ ->
             team.name
+
+
+estonianGenitiveName : { a | tla : String, name : String } -> String
+estonianGenitiveName team =
+    case team.tla of
+        "ALG" ->
+            "Alžeeria"
+
+        "ARG" ->
+            "Argentina"
+
+        "AUS" ->
+            "Austraalia"
+
+        "AUT" ->
+            "Austria"
+
+        "BEL" ->
+            "Belgia"
+
+        "BIH" ->
+            "Bosnia ja Hertsegoviina"
+
+        "BRA" ->
+            "Brasiilia"
+
+        "CAN" ->
+            "Kanada"
+
+        "CPV" ->
+            "Roheneemesaarte"
+
+        "COL" ->
+            "Colombia"
+
+        "CRO" ->
+            "Horvaatia"
+
+        "CUW" ->
+            "Curaçao"
+
+        "CZE" ->
+            "Tšehhi"
+
+        "COD" ->
+            "Kongo DV-i"
+
+        "ECU" ->
+            "Ecuadori"
+
+        "EGY" ->
+            "Egiptuse"
+
+        "ENG" ->
+            "Inglismaa"
+
+        "FRA" ->
+            "Prantsusmaa"
+
+        "GER" ->
+            "Saksamaa"
+
+        "GHA" ->
+            "Ghana"
+
+        "HAI" ->
+            "Haiti"
+
+        "IRN" ->
+            "Iraani"
+
+        "IRQ" ->
+            "Iraagi"
+
+        "CIV" ->
+            "Elevandiluuranniku"
+
+        "JPN" ->
+            "Jaapani"
+
+        "JOR" ->
+            "Jordaania"
+
+        "MEX" ->
+            "Mehhiko"
+
+        "MAR" ->
+            "Maroko"
+
+        "NED" ->
+            "Hollandi"
+
+        "NZL" ->
+            "Uus-Meremaa"
+
+        "NOR" ->
+            "Norra"
+
+        "PAN" ->
+            "Panama"
+
+        "PAR" ->
+            "Paraguay"
+
+        "POR" ->
+            "Portugali"
+
+        "QAT" ->
+            "Katari"
+
+        "KSA" ->
+            "Saudi Araabia"
+
+        "SCO" ->
+            "Šotimaa"
+
+        "SEN" ->
+            "Senegali"
+
+        "RSA" ->
+            "Lõuna-Aafrika Vabariigi"
+
+        "KOR" ->
+            "Lõuna-Korea"
+
+        "ESP" ->
+            "Hispaania"
+
+        "SWE" ->
+            "Rootsi"
+
+        "SUI" ->
+            "Šveitsi"
+
+        "TUN" ->
+            "Tuneesia"
+
+        "TUR" ->
+            "Türgi"
+
+        "USA" ->
+            "Ameerika Ühendriikide"
+
+        "URY" ->
+            "Uruguay"
+
+        "UZB" ->
+            "Usbekistani"
+
+        _ ->
+            estonianName team
 
 
 flagClass : String -> List (Html.Attribute msg)
