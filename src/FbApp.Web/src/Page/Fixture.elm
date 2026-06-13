@@ -3,7 +3,7 @@ module Page.Fixture exposing (Model, Msg, init, update, view)
 import Api.Endpoint as Endpoint exposing (defaultEndpointConfig, fixture)
 import DateFormat
 import Html exposing (Html, button, div, span, table, tbody, td, text, tr)
-import Html.Attributes exposing (class, disabled, title)
+import Html.Attributes exposing (class, disabled, style, title)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Json
@@ -146,16 +146,18 @@ viewFixture zone fixture =
                             Tie
                     )
 
-        resultPredictions =
-            List.map (viewResultPrediction fixture expectedResult) fixture.resultPredictions
-
         qualifierPredictions =
             List.map (viewPlayOffPrediction expectedResult) fixture.qualifierPredictions
     in
     div []
         [ viewFixtureHero zone fixture
-        , table [ class "w-full mt-4 mb-8" ]
-            [ tbody [] (resultPredictions ++ qualifierPredictions) ]
+        , viewGroupedResultPredictions fixture expectedResult
+        , if List.isEmpty qualifierPredictions then
+            text ""
+
+          else
+            table [ class "w-full mb-8" ]
+                [ tbody [] qualifierPredictions ]
         ]
 
 
@@ -165,7 +167,7 @@ viewFixtureHero zone fixture =
         [ div [ class "relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-[0.16em] text-blue-100" ]
             [ viewHeroNavButton "Eelmine mäng" "icon-[mdi--arrow-left]" "justify-self-start text-left" fixture.previousFixtureId
             , div [ class ("rounded-full border px-3 py-2 font-extrabold text-white " ++ statusChipClass fixture.status) ] [ text (fixtureStatusLabel fixture.status) ]
-            , viewHeroNavButton "Järgmine mäng" "icon-[mdi--arrow-right]" "justify-self-end text-right" fixture.nextFixtureId
+            , viewHeroNavButton "Järgmine mäng" "icon-[mdi--arrow-right]" "justify-self-end text-right flex-row-reverse" fixture.nextFixtureId
             ]
         , div [ class "relative z-10 mt-5 text-center text-[0.65rem] sm:text-xs uppercase tracking-[0.18em] text-blue-100/90" ]
             [ text (fixtureStage fixture ++ " · " ++ dateFormatter zone fixture.date) ]
@@ -252,7 +254,7 @@ statusChipClass status =
 viewHeroTeam : Team -> Html Msg
 viewHeroTeam team =
     div [ class "min-w-0 text-center" ]
-        [ span (flagClass team.tla ++ [ class "mx-auto h-7 sm:h-9 drop-shadow text-4xl", title (estonianName team) ]) []
+        [ span (flagClass team.tla ++ [ class "mx-auto h-7 sm:h-15 drop-shadow text-6xl", title (estonianName team) ]) []
         , div [ class "mt-2 truncate text-xs font-extrabold sm:text-base" ] [ text (estonianName team) ]
         ]
 
@@ -326,6 +328,96 @@ scorePairText ( home, away ) =
     String.fromInt home ++ " : " ++ String.fromInt away
 
 
+fixtureResultOptions : List FixtureResult
+fixtureResultOptions =
+    [ HomeWin, Tie, AwayWin ]
+
+
+predictionResultLabel : Fixture -> FixtureResult -> String
+predictionResultLabel fixture result =
+    case result of
+        HomeWin ->
+            estonianName fixture.homeTeam ++ " võitu"
+
+        Tie ->
+            "viiki"
+
+        AwayWin ->
+            estonianName fixture.awayTeam ++ " võitu"
+
+
+predictionResultShortLabel : Fixture -> FixtureResult -> String
+predictionResultShortLabel fixture result =
+    case result of
+        HomeWin ->
+            estonianName fixture.homeTeam
+
+        Tie ->
+            "Viik"
+
+        AwayWin ->
+            estonianName fixture.awayTeam
+
+
+resultPredictionCount : FixtureResult -> List FixtureResultPrediction -> Int
+resultPredictionCount result predictions =
+    predictions
+        |> List.filter (\prediction -> prediction.result == result)
+        |> List.length
+
+
+resultPredictionPercentage : Int -> Int -> Int
+resultPredictionPercentage total count =
+    if total == 0 then
+        0
+
+    else
+        round (toFloat count / toFloat total * 100)
+
+
+distributionSegmentClass : FixtureResult -> String
+distributionSegmentClass result =
+    case result of
+        HomeWin ->
+            "bg-blue-500"
+
+        Tie ->
+            "bg-orange-400"
+
+        AwayWin ->
+            "bg-teal-500"
+
+
+predictionGroupHeaderClass : Maybe FixtureResult -> FixtureResult -> String
+predictionGroupHeaderClass expectedResult result =
+    case expectedResult of
+        Just actualResult ->
+            if actualResult == result then
+                "bg-green-100 text-green-800"
+
+            else
+                case result of
+                    HomeWin ->
+                        "bg-blue-50 text-blue-700"
+
+                    Tie ->
+                        "bg-orange-50 text-orange-700"
+
+                    AwayWin ->
+                        "bg-teal-50 text-teal-700"
+
+        Nothing ->
+            case result of
+                HomeWin ->
+                    "bg-blue-50 text-blue-700"
+
+                Tie ->
+                    "bg-orange-50 text-orange-700"
+
+                AwayWin ->
+                    "bg-teal-50 text-teal-700"
+
+
 timeFormatter : Zone -> Posix -> String
 timeFormatter =
     DateFormat.format
@@ -335,48 +427,100 @@ timeFormatter =
         ]
 
 
-viewResultPrediction : Fixture -> Maybe FixtureResult -> FixtureResultPrediction -> Html Msg
-viewResultPrediction fixture expectedResult fixtureResult =
+viewPredictionDistribution : Fixture -> Html Msg
+viewPredictionDistribution fixture =
     let
-        predictionText =
-            case fixtureResult.result of
-                HomeWin ->
-                    text (estonianName fixture.homeTeam)
+        total =
+            List.length fixture.resultPredictions
 
-                AwayWin ->
-                    text (estonianName fixture.awayTeam)
+        viewLabel result =
+            let
+                count =
+                    resultPredictionCount result fixture.resultPredictions
 
-                Tie ->
-                    text "Viik"
+                labelClass =
+                    case result of
+                        HomeWin ->
+                            "min-w-0 truncate text-left"
+
+                        Tie ->
+                            "min-w-0 truncate text-center"
+
+                        AwayWin ->
+                            "min-w-0 truncate text-right"
+            in
+            span [ class labelClass ] [ text (String.fromInt count ++ " " ++ predictionResultShortLabel fixture result) ]
+
+        viewSegment result =
+            let
+                count =
+                    resultPredictionCount result fixture.resultPredictions
+
+                percentage =
+                    resultPredictionPercentage total count
+            in
+            span
+                [ class ("grid place-items-center text-[0.65rem] font-extrabold text-white " ++ distributionSegmentClass result)
+                , style "width" (String.fromInt percentage ++ "%")
+                ]
+                (if count == 0 || percentage == 0 then
+                    []
+
+                 else
+                    [ text (String.fromInt percentage ++ "%") ]
+                )
     in
-    tr [ boosterRowClass expectedResult fixtureResult ]
-        [ td [ class "px-4 w-14" ] [ viewResultIcon expectedResult fixtureResult.result ]
-        , td [ class "capitalize" ] [ text fixtureResult.name ]
-        , td [] [ predictionText ]
-        , td [ class "py-2 pr-3 text-right" ] (viewBoosterIcon expectedResult fixtureResult)
+    div [ class "mb-4" ]
+        [ div [ class "mb-2 grid grid-cols-3 gap-2 text-[0.7rem] font-extrabold text-gray-500" ]
+            (List.map viewLabel fixtureResultOptions)
+        , div [ class "flex h-6 overflow-hidden rounded-full bg-gray-200 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]" ]
+            (List.map viewSegment fixtureResultOptions)
         ]
 
 
-boosterRowClass : Maybe FixtureResult -> FixtureResultPrediction -> Html.Attribute Msg
-boosterRowClass expectedResult predictedResult =
+viewGroupedResultPredictions : Fixture -> Maybe FixtureResult -> Html Msg
+viewGroupedResultPredictions fixture expectedResult =
+    div [ class "px-3 py-4 sm:px-4" ]
+        [ div [ class "mb-1 text-lg font-extrabold tracking-tight" ] [ text "Ennustuste jaotus" ]
+        , viewPredictionDistribution fixture
+        , div [] (List.filterMap (viewPredictionGroup fixture expectedResult) fixtureResultOptions)
+        ]
+
+
+viewPredictionGroup : Fixture -> Maybe FixtureResult -> FixtureResult -> Maybe (Html Msg)
+viewPredictionGroup fixture expectedResult result =
     let
-        baseClass =
-            "border-b align-middle"
+        predictions =
+            fixture.resultPredictions
+                |> List.filter (\prediction -> prediction.result == result)
+
+        count =
+            List.length predictions
     in
-    if not predictedResult.isBoosted then
-        class baseClass
+    if count == 0 then
+        Nothing
 
     else
-        case expectedResult of
-            Nothing ->
-                class (baseClass ++ " bg-violet-50 shadow-[inset_4px_0_0_#7c3aed]")
+        Just
+            (div [ class "mb-2 overflow-hidden rounded-2xl border border-gray-200 bg-white last:mb-0" ]
+                [ div [ class ("flex items-center justify-between gap-2 px-3 py-2 text-xs font-extrabold " ++ predictionGroupHeaderClass expectedResult result) ]
+                    [ span [] [ text ("Ennustasid " ++ predictionResultLabel fixture result) ]
+                    , span [] [ text (String.fromInt count) ]
+                    ]
+                , div [] (List.map (viewGroupedPredictionRow expectedResult result) predictions)
+                ]
+            )
 
-            Just result ->
-                if result == predictedResult.result then
-                    class (baseClass ++ " bg-green-50 shadow-[inset_4px_0_0_#22c55e]")
 
-                else
-                    class (baseClass ++ " bg-red-50 shadow-[inset_4px_0_0_#ef4444]")
+viewGroupedPredictionRow : Maybe FixtureResult -> FixtureResult -> FixtureResultPrediction -> Html Msg
+viewGroupedPredictionRow expectedResult result prediction =
+    div [ class "flex items-center justify-between gap-2 border-t border-gray-200 px-3 py-2 text-sm" ]
+        [ div [ class "flex min-w-0 items-center gap-2" ]
+            [ viewResultIcon expectedResult result
+            , span [ class "truncate capitalize font-bold" ] [ text prediction.name ]
+            ]
+        , div [ class "shrink-0" ] (viewBoosterIcon expectedResult prediction)
+        ]
 
 
 viewResultIcon : Maybe FixtureResult -> FixtureResult -> Html Msg
