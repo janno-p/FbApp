@@ -14,7 +14,6 @@ import Session exposing (Session)
 import Task
 import Team exposing (flagClass)
 import Time exposing (Posix, Zone, utc)
-import Tuple exposing (first, second)
 import Url exposing (Protocol(..))
 
 
@@ -112,52 +111,19 @@ view model =
         content =
             div []
                 [ viewResultsTabs FixtureTab
-                , div [ class "sm:rounded-md sm:border border-gray-200 sm:w-160 sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg" ]
-                    [ viewFixtureHeader model.fixture
-                    , case model.fixture of
+                , div [ class "sm:rounded-md sm:border border-gray-200 sm:w-160 sm:mx-auto mt-2 sm:mt-8 sm:shadow-lg overflow-hidden" ]
+                    [ case model.fixture of
                         Just fixture ->
                             viewFixture model.timeZone fixture
 
                         Nothing ->
-                            div [ class "mt-8 text-center" ] [ text "Laadimine ..." ]
+                            div [ class "mt-8 mb-8 text-center" ] [ text "Laadimine ..." ]
                     ]
                 ]
     in
     { title = "Mängude tulemused"
     , content = content
     }
-
-
-viewFixtureHeader : Maybe Fixture -> Html Msg
-viewFixtureHeader fixture =
-    let
-        previousFixtureId =
-            Maybe.andThen (\x -> x.previousFixtureId) fixture
-
-        nextFixtureId =
-            Maybe.andThen (\x -> x.nextFixtureId) fixture
-
-        buttonStateAttrs refId =
-            case refId of
-                Nothing ->
-                    [ disabled True, class "text-gray-200 cursor-default" ]
-
-                Just id ->
-                    [ onClick (LoadFixture id), class "cursor-pointer hover:bg-gray-100 shadow" ]
-    in
-    div [ class "flex flex-row flex-nowrap border-b border-gray-200 p-4" ]
-        [ button
-            ([ title "Eelmine mäng", class "grow-0 w-8 h-8 rounded-full border border-gray-100" ]
-                ++ buttonStateAttrs previousFixtureId
-            )
-            [ span [ class "icon-[mdi--arrow-left]" ] [] ]
-        , div [ class "grow text-center" ] [ text <| fixtureTitle fixture ]
-        , button
-            ([ title "Järgmine mäng", class "grow-0 w-8 h-8 rounded-full border border-gray-100" ]
-                ++ buttonStateAttrs nextFixtureId
-            )
-            [ span [ class "icon-[mdi--arrow-right]" ] [] ]
-        ]
 
 
 viewFixture : Zone -> Fixture -> Html Msg
@@ -187,44 +153,185 @@ viewFixture zone fixture =
             List.map (viewPlayOffPrediction expectedResult) fixture.qualifierPredictions
     in
     div []
-        [ div [ class "flex flex-row flex-nowrap border-b border-gray-200 py-2" ]
-            [ viewTeam fixture.homeTeam
-            , viewScore zone fixture
-            , viewTeam fixture.awayTeam
-            ]
+        [ viewFixtureHero zone fixture
         , table [ class "w-full mt-4 mb-8" ]
             [ tbody [] (resultPredictions ++ qualifierPredictions) ]
         ]
 
 
-viewTeam : Team -> Html Msg
-viewTeam team =
-    div [ class "grow-0 w-32 self-center content-center" ]
-        [ span (flagClass team.tla ++ [ class "h-8 mx-auto", title team.name ]) []
-        , div [ class "text-center" ] [ text team.name ]
+viewFixtureHero : Zone -> Fixture -> Html Msg
+viewFixtureHero zone fixture =
+    div [ class ("relative overflow-hidden px-4 py-5 sm:px-6 sm:py-6 text-white shadow-xl " ++ heroSurfaceClass fixture.status) ]
+        [ div [ class "relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-[0.16em] text-blue-100" ]
+            [ viewHeroNavButton "Eelmine mäng" "icon-[mdi--arrow-left]" "justify-self-start text-left" fixture.previousFixtureId
+            , div [ class ("rounded-full border px-3 py-2 font-extrabold text-white " ++ statusChipClass fixture.status) ] [ text (fixtureStatusLabel fixture.status) ]
+            , viewHeroNavButton "Järgmine mäng" "icon-[mdi--arrow-right]" "justify-self-end text-right" fixture.nextFixtureId
+            ]
+        , div [ class "relative z-10 mt-5 text-center text-[0.65rem] sm:text-xs uppercase tracking-[0.18em] text-blue-100/90" ]
+            [ text (fixtureStage fixture ++ " · " ++ dateFormatter zone fixture.date) ]
+        , div [ class "relative z-10 mt-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-5" ]
+            [ viewHeroTeam fixture.homeTeam
+            , viewHeroScorePanel zone fixture
+            , viewHeroTeam fixture.awayTeam
+            ]
         ]
 
 
-viewScore : Zone -> Fixture -> Html Msg
-viewScore zone fixture =
+viewHeroNavButton : String -> String -> String -> Maybe String -> Html Msg
+viewHeroNavButton label iconClass alignment maybeFixtureId =
+    case maybeFixtureId of
+        Just fixtureId ->
+            button
+                [ title label
+                , onClick (LoadFixture fixtureId)
+                , class (alignment ++ " inline-flex items-center gap-1 rounded-full px-2 py-2 text-blue-100 hover:bg-white/10 hover:text-white cursor-pointer")
+                ]
+                [ span [ class iconClass ] []
+                , span [ class "hidden sm:inline" ] [ text label ]
+                ]
+
+        Nothing ->
+            button
+                [ title label
+                , disabled True
+                , class (alignment ++ " inline-flex cursor-default items-center gap-1 rounded-full px-2 py-2 text-white/25")
+                ]
+                [ span [ class iconClass ] []
+                , span [ class "hidden sm:inline" ] [ text label ]
+                ]
+
+
+fixtureStatusLabel : FixtureStatus -> String
+fixtureStatusLabel status =
+    case status of
+        InPlay ->
+            "Käimasolev"
+
+        Paused ->
+            "Vaheaeg"
+
+        Finished ->
+            "Lõppenud"
+
+        Pending ->
+            "Tulekul"
+
+
+heroSurfaceClass : FixtureStatus -> String
+heroSurfaceClass status =
+    case status of
+        InPlay ->
+            "bg-[radial-gradient(circle_at_top_left,rgba(33,186,69,0.34),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(242,192,55,0.24),transparent_42%),linear-gradient(135deg,#052e16_0%,#0f172a_100%)]"
+
+        Paused ->
+            "bg-[radial-gradient(circle_at_top_left,rgba(33,186,69,0.28),transparent_38%),linear-gradient(135deg,#064e3b_0%,#0f172a_100%)]"
+
+        Finished ->
+            "bg-[radial-gradient(circle_at_top_left,rgba(38,166,154,0.42),transparent_38%),linear-gradient(135deg,#0f172a_0%,#1e3a8a_100%)]"
+
+        Pending ->
+            "bg-[radial-gradient(circle_at_top_left,rgba(49,204,236,0.34),transparent_38%),linear-gradient(135deg,#111827_0%,#1e3a8a_100%)]"
+
+
+statusChipClass : FixtureStatus -> String
+statusChipClass status =
+    case status of
+        InPlay ->
+            "border-green-200/40 bg-green-500/20"
+
+        Paused ->
+            "border-green-200/30 bg-green-500/15"
+
+        Finished ->
+            "border-white/20 bg-white/15"
+
+        Pending ->
+            "border-sky-200/30 bg-sky-500/15"
+
+
+viewHeroTeam : Team -> Html Msg
+viewHeroTeam team =
+    div [ class "min-w-0 text-center" ]
+        [ span (flagClass team.tla ++ [ class "mx-auto h-7 sm:h-9 drop-shadow text-4xl", title team.name ]) []
+        , div [ class "mt-2 truncate text-xs font-extrabold sm:text-base" ] [ text team.name ]
+        ]
+
+
+viewHeroScorePanel : Zone -> Fixture -> Html Msg
+viewHeroScorePanel zone fixture =
     let
-        penalties =
+        detail =
+            fixtureScoreDetail fixture
+    in
+    div [ class "min-w-24 rounded-2xl border border-white/20 bg-white/15 px-3 py-4 text-center shadow-lg backdrop-blur sm:min-w-32 sm:px-4" ]
+        (case fixture.status of
+            Pending ->
+                [ div [ class "text-2xl font-black tracking-tight sm:text-4xl" ] [ text (timeFormatter zone fixture.date) ]
+                , div [ class "mt-2 text-[0.65rem] uppercase tracking-[0.16em] text-blue-100" ] [ text "Algusaeg" ]
+                ]
+
+            _ ->
+                case fixture.fullTime of
+                    Just score ->
+                        div [ class "text-3xl font-black tracking-[-0.08em] sm:text-5xl" ] [ text (scorePairText score) ]
+                            :: detail
+
+                    Nothing ->
+                        [ div [ class "text-xs font-black uppercase tracking-[0.12em] sm:text-sm" ] [ text "Tulemus puudub" ] ]
+        )
+
+
+fixtureScoreDetail : Fixture -> List (Html Msg)
+fixtureScoreDetail fixture =
+    let
+        extraTimeDetail =
+            case meaningfulExtraTimeScore fixture of
+                Just extraTime ->
+                    [ div [ class "mt-2 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-blue-100" ]
+                        [ text ("Lisaajal " ++ scorePairText extraTime) ]
+                    ]
+
+                Nothing ->
+                    []
+
+        penaltyDetail =
             case fixture.penalties of
                 Just ( home, away ) ->
-                    [ div [ class "text-xs font-semibold uppercase" ] [ text ("(pen " ++ String.fromInt home ++ " : " ++ String.fromInt away ++ ")") ] ]
+                    [ div [ class "mt-2 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-blue-100" ]
+                        [ text ("Pen " ++ String.fromInt home ++ " : " ++ String.fromInt away) ]
+                    ]
 
                 Nothing ->
                     []
     in
-    div [ class "grow" ]
-        [ div
-            [ class "flex flex-col text-center" ]
-            (div [ class "text-3xl font-bold" ] [ text (homeGoals fixture ++ " : " ++ awayGoals fixture) ]
-                :: penalties
-                ++ [ div [ class "text-xs mt-2" ] [ text <| dateFormatter zone fixture.date ]
-                   , div [ class "text-xs uppercase" ] [ text <| fixtureStage fixture ]
-                   ]
-            )
+    extraTimeDetail ++ penaltyDetail
+
+
+meaningfulExtraTimeScore : Fixture -> Maybe ( Int, Int )
+meaningfulExtraTimeScore fixture =
+    case ( fixture.extraTime, fixture.fullTime ) of
+        ( Just extraTime, Just fullTime ) ->
+            if extraTime /= fullTime then
+                Just extraTime
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
+
+
+scorePairText : ( Int, Int ) -> String
+scorePairText ( home, away ) =
+    String.fromInt home ++ " : " ++ String.fromInt away
+
+
+timeFormatter : Zone -> Posix -> String
+timeFormatter =
+    DateFormat.format
+        [ DateFormat.hourMilitaryFixed
+        , DateFormat.text ":"
+        , DateFormat.minuteFixed
         ]
 
 
@@ -509,35 +616,6 @@ fixtureStage fixture =
 
         Unknown ->
             ""
-
-
-fixtureTitle : Maybe Fixture -> String
-fixtureTitle fixture =
-    case Maybe.map (\x -> x.status) fixture of
-        Just InPlay ->
-            "Käimasolev mäng"
-
-        Just Finished ->
-            "Lõppenud mäng"
-
-        Just Paused ->
-            "Käimasolev mäng (vaheaeg)"
-
-        Just Pending ->
-            "Toimumata mäng"
-
-        Nothing ->
-            "Mängu andmete laadimine"
-
-
-homeGoals : Fixture -> String
-homeGoals fixture =
-    fixture.fullTime |> Maybe.map (first >> String.fromInt) |> Maybe.withDefault "-"
-
-
-awayGoals : Fixture -> String
-awayGoals fixture =
-    fixture.fullTime |> Maybe.map (second >> String.fromInt) |> Maybe.withDefault "-"
 
 
 dateFormatter : Zone -> Posix -> String
